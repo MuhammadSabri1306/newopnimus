@@ -1,10 +1,10 @@
 {
-    "name": "telegram-bot/example-bot",
+    "name": "muhammadsabri1306/newopnimus",
     "type": "project",
-    "description": "PHP Telegram Bot Example",
-    "keywords": ["telegram", "bot", "example"],
-    "license": "MIT",
-    "homepage": "https://github.com/php-telegram-bot/example-bot",
+    "description": "New Opnimus Telegram BOT",
+    "keywords": ["opnimus", "telkom", "telegram", "bot"],
+    "license": "",
+    "homepage": "https://github.com/MuhammadSabri1306/newopnimus/",
     "support": {
         "issues": "https://github.com/php-telegram-bot/example-bot/issues",
         "source": "https://github.com/php-telegram-bot/example-bot"
@@ -17,7 +17,7 @@
         }
     ],
     "require": {
-        "longman/telegram-bot": "*"
+        "php-telegram-bot/telegram-bot-manager": "^2.1"
     },
     "require-dev": {
         "php-parallel-lint/php-parallel-lint": "^1.2",

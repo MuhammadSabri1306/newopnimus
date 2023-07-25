@@ -26,7 +26,7 @@ $config = require __DIR__ . '/config.php';
 
 try {
     $bot = new TelegramBot\TelegramBotManager\BotManager($config);
-
+    
     // Run the bot!
     $bot->run();
 
