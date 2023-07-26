@@ -10,48 +10,33 @@
  * file that was distributed with this source code.
  */
 
-/**
- * Start command
- *
- * Gets executed when a user first starts using the bot.
- *
- * When using deep-linking, the parameter can be accessed by getting the command text.
- *
- * @see https://core.telegram.org/bots#deep-linking
- */
-
 namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
 
-class StartCommand extends SystemCommand
+/**
+ * Generic command
+ *
+ * Gets executed for generic commands, when no other appropriate one is found.
+ */
+class GenericCommand extends SystemCommand
 {
     /**
      * @var string
      */
-    protected $name = 'start';
+    protected $name = 'generic';
 
     /**
      * @var string
      */
-    protected $description = 'Start command';
+    protected $description = 'Handles generic commands or is executed by default when a command is not found';
 
     /**
      * @var string
      */
-    protected $usage = '/start';
-
-    /**
-     * @var string
-     */
-    protected $version = '1.2.0';
-
-    /**
-     * @var bool
-     */
-    protected $private_only = true;
+    protected $version = '1.1.0';
 
     /**
      * Main command execution
@@ -61,12 +46,14 @@ class StartCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        // If you use deep-linking, get the parameter like this:
-        // $deep_linking_parameter = $this->getMessage()->getText(true);
+        $message = $this->getMessage();
+        $user_id = $message->getFrom()->getId();
+        $command = $message->getCommand();
 
-        return $this->replyToChat(
-            'Hi there!' . PHP_EOL .
-            'Type /help to see all commands!'
-        );
+        // if (stripos($command, 'whoami') === 0) {
+            // return $this->telegram->executeCommand('whoami');
+        // }
+
+        return $this->replyToChat("Command /{$command} not found.. :(");
     }
 }
