@@ -5,6 +5,8 @@ namespace Longman\TelegramBot\Commands\SystemCommands;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
+use App\Core\DB;
+// use App\Core\Logger;
 
 class TestCommand extends SystemCommand
 {
@@ -41,6 +43,14 @@ class TestCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        return $this->replyToChat('Hello!. BOT has already activated.');
+        // return $this->replyToChat('Hellotelegram_user BOT has already activated.');
+
+        // Logger::debug()->info('This is a test message');
+
+        $db = new DB();
+        $user = $db->queryFirstRow('SELECT username FROM telegram_user');
+        $username = $user['username'];
+
+        return $this->replyToChat("Test: $username");
     }
 }

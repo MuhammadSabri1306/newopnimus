@@ -51,7 +51,7 @@ class GenericCommand extends SystemCommand
         $command = $message->getCommand();
 
         // if (stripos($command, 'whoami') === 0) {
-            // return $this->telegram->executeCommand('whoami');
+        //     return $this->telegram->executeCommand('whoami');
         // }
 
         return $this->replyToChat("Command /{$command} not found.. :(");

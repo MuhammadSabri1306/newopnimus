@@ -17,12 +17,7 @@
  * https://github.com/php-telegram-bot/telegram-bot-manager#set-extra-bot-parameters
  */
 
-// Load composer
-require_once __DIR__ . '/vendor/autoload.php';
-
-// Load all configuration options
-/** @var array $config */
-$config = require __DIR__ . '/config.php';
+require __DIR__.'/app/bootstrap.php';
 
 try {
     $bot = new TelegramBot\TelegramBotManager\BotManager($config);
@@ -35,8 +30,8 @@ try {
     Longman\TelegramBot\TelegramLog::error($e);
 
     // Uncomment this to output any errors (ONLY FOR DEVELOPMENT!)
-    // echo $e;
+    echo $e;
 } catch (Longman\TelegramBot\Exception\TelegramLogException $e) {
     // Uncomment this to output log initialisation errors (ONLY FOR DEVELOPMENT!)
-    // echo $e;
+    echo $e;
 }

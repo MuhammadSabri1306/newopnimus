@@ -14,12 +14,7 @@
  * This file is used to set the webhook.
  */
 
-// Load composer
-require_once __DIR__ . '/vendor/autoload.php';
-
-// Load all configuration options
-/** @var array $config */
-$config = require __DIR__ . '/config.php';
+require __DIR__.'/app/bootstrap.php';
 
 try {
     // Create Telegram API object

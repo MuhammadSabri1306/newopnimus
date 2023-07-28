@@ -15,12 +15,7 @@
  * This file is used to run the bot with the getUpdates method.
  */
 
-// Load composer
-require_once __DIR__ . '/vendor/autoload.php';
-
-// Load all configuration options
-/** @var array $config */
-$config = require __DIR__ . '/config.php';
+require __DIR__.'/app/bootstrap.php';
 
 try {
     // Create Telegram API object
@@ -29,6 +24,9 @@ try {
     /**
      * Check `hook.php` for configuration code to be added here.
      */
+
+    // Enable MySQL
+    $telegram->enableMySql($config['mysql']);
 
     // Handle telegram getUpdates request
     $server_response = $telegram->handleGetUpdates();
@@ -46,8 +44,8 @@ try {
     Longman\TelegramBot\TelegramLog::error($e);
 
     // Uncomment this to output any errors (ONLY FOR DEVELOPMENT!)
-    // echo $e;
+    echo $e;
 } catch (Longman\TelegramBot\Exception\TelegramLogException $e) {
     // Uncomment this to output log initialisation errors (ONLY FOR DEVELOPMENT!)
-    // echo $e;
+    echo $e;
 }

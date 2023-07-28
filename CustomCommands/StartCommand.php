@@ -25,6 +25,8 @@ namespace Longman\TelegramBot\Commands\SystemCommands;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
+use Longman\TelegramBot\Request;
+use App\Controller\Bot\UserController;
 
 class StartCommand extends SystemCommand
 {
@@ -51,7 +53,7 @@ class StartCommand extends SystemCommand
     /**
      * @var bool
      */
-    protected $private_only = true;
+    protected $private_only = false;
 
     /**
      * Main command execution
@@ -61,12 +63,7 @@ class StartCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        // If you use deep-linking, get the parameter like this:
-        // $deep_linking_parameter = $this->getMessage()->getText(true);
-
-        return $this->replyToChat(
-            'Hi there!' . PHP_EOL .
-            'Type /help to see all commands!'
-        );
+        UserController::$command = $this;
+        return UserController::checkRegistStatus();
     }
 }
