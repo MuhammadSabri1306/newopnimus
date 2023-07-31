@@ -1,5 +1,9 @@
 <?php
 
+function useHelper($helperName) {
+    require_once __DIR__."/$helperName.php";
+}
+
 function dd(...$vars) {
     echo '<style>';
     echo 'pre { background-color: #f6f8fa; padding: 10px; }';

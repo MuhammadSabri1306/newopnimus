@@ -24,14 +24,15 @@ try {
     
     // Run the bot!
     $bot->run();
-
-} catch (Longman\TelegramBot\Exception\TelegramException $e) {
-    // Log telegram errors
-    Longman\TelegramBot\TelegramLog::error($e);
-
-    // Uncomment this to output any errors (ONLY FOR DEVELOPMENT!)
-    echo $e;
-} catch (Longman\TelegramBot\Exception\TelegramLogException $e) {
-    // Uncomment this to output log initialisation errors (ONLY FOR DEVELOPMENT!)
+} catch(\Exception $e) {
     echo $e;
 }
+// } catch (Longman\TelegramBot\Exception\TelegramException $e) {
+//     // Uncomment this to output any errors (ONLY FOR DEVELOPMENT!)
+//     echo $e;
+// } catch (Longman\TelegramBot\Exception\TelegramLogException $e) {
+//     // Uncomment this to output log initialisation errors (ONLY FOR DEVELOPMENT!)
+//     echo $e;
+// } catch(TelegramBot\TelegramBotManager\Exception\InvalidAccessException $e) {
+//     echo $e;
+// }

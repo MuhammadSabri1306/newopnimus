@@ -11,21 +11,16 @@
  */
 
 /**
- * Start command
+ * User "/survey" command
  *
- * Gets executed when a user first starts using the bot.
- *
- * When using deep-linking, the parameter can be accessed by getting the command text.
- *
- * @see https://core.telegram.org/bots#deep-linking
+ * Example of the Conversation functionality in form of a simple survey.
  */
 
-namespace Longman\TelegramBot\Commands\SystemCommands;
+ namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Commands\SystemCommand;
+use Longman\TelegramBot\Conversation;
 use Longman\TelegramBot\Entities\ServerResponse;
-use Longman\TelegramBot\Exception\TelegramException;
-use Longman\TelegramBot\Request;
 use App\Controller\Bot\UserController;
 
 class StartCommand extends SystemCommand
@@ -53,7 +48,19 @@ class StartCommand extends SystemCommand
     /**
      * @var bool
      */
+    protected $need_mysql = true;
+
+    /**
+     * @var bool
+     */
     protected $private_only = false;
+
+    /**
+     * Conversation Object
+     *
+     * @var Conversation
+     */
+    protected $conversation;
 
     /**
      * Main command execution
@@ -63,7 +70,17 @@ class StartCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
+        useHelper('error-handler');
         UserController::$command = $this;
-        return UserController::checkRegistStatus();
+        
+        try {
+            $response = UserController::checkRegistStatus();
+            if($response) return $response;
+
+            $response = UserController::tou();
+            return $response;
+        } catch(\Exception $e) {
+            return $this->replyToChat('Error:' . PHP_EOL . $e->getMessage());
+        }
     }
 }

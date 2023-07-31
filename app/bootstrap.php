@@ -9,9 +9,4 @@ $config = require __DIR__ . '/../config.php';
 
 // Load App
 require __DIR__.'/autoload.php';
-
-function useHelper($helperName) {
-    require __DIR__."/Helper/$helperName.php";
-}
-
-useHelper('main');
+require __DIR__.'/Helper/main.php';

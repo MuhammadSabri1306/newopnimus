@@ -30,4 +30,15 @@ class RequestData
         }
         return $data;
     }
+
+    public function duplicate(...$keys)
+    {
+        $newInstance = new self();
+        foreach($keys as $key) {
+            if(isset($this->attributes[$key])) {
+                $newInstance->attributes[$key] = $this->attributes[$key];
+            }
+        }
+        return $newInstance;
+    }
 }
