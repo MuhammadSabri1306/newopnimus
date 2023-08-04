@@ -27,6 +27,8 @@ use Longman\TelegramBot\Entities\Keyboard;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
 
+use App\Controller\Bot\UserController;
+
 class CancelCommand extends UserCommand
 {
     /**
@@ -85,7 +87,9 @@ class CancelCommand extends UserCommand
             $text = 'Conversation "' . $conversation_command . '" cancelled!';
         }
 
-        return $this->removeKeyboard($text);
+        $cancelText = $this->cancelConversation() ?? $text;
+
+        return $this->removeKeyboard($cancelText);
     }
 
     /**
@@ -101,5 +105,19 @@ class CancelCommand extends UserCommand
         return $this->replyToChat($text, [
             'reply_markup' => Keyboard::remove(['selective' => true]),
         ]);
+    }
+
+    private function cancelConversation()
+    {
+        $text = null;
+
+        UserController::$command = $this;
+        $registConversation = UserController::getRegistConversation();
+        if($registConversation->isExists()) {
+            $registConversation->cancel();
+            $text = 'Registrasi dibatalkan.';
+        }
+
+        return $text;
     }
 }

@@ -26,6 +26,8 @@ use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
 use Longman\TelegramBot\Request;
 
+use App\Controller\Bot\UserController;
+
 class GenericmessageCommand extends SystemCommand
 {
     /**
@@ -80,6 +82,23 @@ class GenericmessageCommand extends SystemCommand
             return $this->telegram->executeCommand($command);
         }
 
+        $command =$this->getConversationCommand();
+        if($command != '') {
+            return $this->telegram->executeCommand($command);
+        }
+
         return Request::emptyResponse();
+    }
+
+    private function getConversationCommand()
+    {
+        // App\Core\Conversation
+        UserController::$command = $this;
+        $registConversation = UserController::getRegistConversation();
+        if($registConversation->isExists()) {
+            return 'start';
+        }
+
+        return '';
     }
 }

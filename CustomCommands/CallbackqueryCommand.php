@@ -1,27 +1,9 @@
 <?php
-
-/**
- * This file is part of the PHP Telegram Bot example-bot package.
- * https://github.com/php-telegram-bot/example-bot/
- *
- * (c) PHP Telegram Bot Team
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
-
-/**
- * Callback query command
- *
- * This command handles all callback queries sent via inline keyboard buttons.
- *
- * @see InlinekeyboardCommand.php
- */
-
 namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
+use Longman\TelegramBot\Conversation;
 use App\Controller\Bot\UserController;
 
 class CallbackqueryCommand extends SystemCommand
@@ -42,6 +24,17 @@ class CallbackqueryCommand extends SystemCommand
     protected $version = '1.2.0';
 
     /**
+     * @var bool
+     */
+    protected $need_mysql = true;
+
+    
+    /**
+     * @var bool
+     */
+    protected $private_only = false;
+
+    /**
      * Main command execution
      *
      * @return ServerResponse
@@ -53,22 +46,21 @@ class CallbackqueryCommand extends SystemCommand
         $callbackData  = $callbackQuery->getData();
 
         if($callbackData == UserController::$cdRegistStart) {
-            return $callbackQuery->answer([
-                'text'       => 'Start Regist',
-                'show_alert' => true,
-                'cache_time' => 5,
-            ]);
+            UserController::$command = $this;
+            UserController::onRegistStart();
+            $this->telegram->executeCommandFromCallbackquery('start', $callbackQuery);
+            return $callbackQuery->answer();
         }
 
         if($callbackData === UserController::$cdRegistCancel) {
             UserController::$command = $this;
-            UserController::registCancel();
+            UserController::onRegistCancel();
             return $callbackQuery->answer();
         }
 
         return $callbackQuery->answer([
             'text'       => 'Content of the callback data: ' . $callbackData,
-            'show_alert' => true, // Randomly show (or not) as an alert.
+            'show_alert' => true,
             'cache_time' => 10,
         ]);
     }

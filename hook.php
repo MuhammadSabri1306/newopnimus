@@ -17,9 +17,11 @@
  * This is perfectly normal and expected, because the hook URL has to be reached only by the Telegram servers.
  */
 
+require __DIR__.'/app/Core/Telegram';
+
 try {
     // Create Telegram API object
-    $telegram = new Longman\TelegramBot\Telegram($config['api_key'], $config['bot_username']);
+    $telegram = new Telegram($config['api_key'], $config['bot_username']);
 
     // Enable admin users
     $telegram->enableAdmins($config['admins']);

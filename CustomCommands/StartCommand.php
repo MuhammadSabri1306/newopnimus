@@ -1,27 +1,11 @@
 <?php
-
-/**
- * This file is part of the PHP Telegram Bot example-bot package.
- * https://github.com/php-telegram-bot/example-bot/
- *
- * (c) PHP Telegram Bot Team
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
-
-/**
- * User "/survey" command
- *
- * Example of the Conversation functionality in form of a simple survey.
- */
-
- namespace Longman\TelegramBot\Commands\SystemCommands;
+namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Commands\SystemCommand;
-use Longman\TelegramBot\Conversation;
 use Longman\TelegramBot\Entities\ServerResponse;
+use Longman\TelegramBot\Request;
 use App\Controller\Bot\UserController;
+use App\Core\Conversation;
 
 class StartCommand extends SystemCommand
 {
@@ -43,7 +27,7 @@ class StartCommand extends SystemCommand
     /**
      * @var string
      */
-    protected $version = '1.2.0';
+    protected $version = '1.0.0';
 
     /**
      * @var bool
@@ -56,13 +40,6 @@ class StartCommand extends SystemCommand
     protected $private_only = false;
 
     /**
-     * Conversation Object
-     *
-     * @var Conversation
-     */
-    protected $conversation;
-
-    /**
      * Main command execution
      *
      * @return ServerResponse
@@ -70,17 +47,18 @@ class StartCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        useHelper('error-handler');
         UserController::$command = $this;
-        
-        try {
+        $conversation = UserController::getRegistConversation();
+
+        if(!$conversation->isExists()) {
             $response = UserController::checkRegistStatus();
             if($response) return $response;
-
+    
             $response = UserController::tou();
             return $response;
-        } catch(\Exception $e) {
-            return $this->replyToChat('Error:' . PHP_EOL . $e->getMessage());
         }
+        
+        $response = UserController::register();
+        return $response;
     }
 }

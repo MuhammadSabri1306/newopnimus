@@ -5,13 +5,13 @@ class TelegramText
 {
     private $message;
 
-    public function __construct(String $text = '') {
+    public function __construct(string $text = '') {
         $this->message = $text;
     }
 
-    public static function create()
+    public static function create(string $text = '')
     {
-        return new TelegramText();
+        return new TelegramText($text);
     }
 
     public function get()
@@ -19,7 +19,7 @@ class TelegramText
         return $this->message;
     }
 
-    public function addText(String $text)
+    public function addText(string $text)
     {
         $this->message .= $text;
         return $this;
