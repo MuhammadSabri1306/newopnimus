@@ -41,4 +41,11 @@ class RequestData
         }
         return $newInstance;
     }
+
+    public function getDebugMessage()
+    {
+        $reqData = $this->duplicate('parseMode', 'chatId');
+        $reqData->text = '```'.PHP_EOL.json_encode($this->build()).'```';
+        return $reqData->build();
+    }
 }

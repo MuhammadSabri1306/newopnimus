@@ -4,6 +4,7 @@ namespace Longman\TelegramBot\Commands\SystemCommands;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Conversation;
+use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 
 class CallbackqueryCommand extends SystemCommand
@@ -45,16 +46,8 @@ class CallbackqueryCommand extends SystemCommand
         $callbackQuery = $this->getCallbackQuery();
         $callbackData  = $callbackQuery->getData();
 
-        if($callbackData == UserController::$cdRegistStart) {
-            UserController::$command = $this;
-            UserController::onRegistStart();
-            $this->telegram->executeCommandFromCallbackquery('start', $callbackQuery);
-            return $callbackQuery->answer();
-        }
-
-        if($callbackData === UserController::$cdRegistCancel) {
-            UserController::$command = $this;
-            UserController::onRegistCancel();
+        UserController::$command = $this;
+        if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
             return $callbackQuery->answer();
         }
 

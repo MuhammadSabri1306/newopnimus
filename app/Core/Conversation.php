@@ -25,9 +25,8 @@ class Conversation
 
         $this->db = new DB();
         $conversation = $this->db
-            ->queryFirstRow("SELECT * FROM $this->tableName WHERE status='active' AND name=%s_name AND user_id=%i_userid AND chat_id=%i_chatid", [
+            ->queryFirstRow("SELECT * FROM $this->tableName WHERE status='active' AND name=%s_name AND chat_id=%i_chatid", [
                 'name' => $this->name,
-                'userid' => $this->userId,
                 'chatid' => $this->chatId,
             ]
         );
@@ -116,6 +115,8 @@ class Conversation
         }
 
         $this->db->update($this->tableName, [
+            'step' => $this->step,
+            'state' => json_encode($this->state),
             'status' => 'cancel',
             'updated_at' => date('Y-m-d H:i:s')
         ], "id=%i", $this->id);
@@ -128,6 +129,8 @@ class Conversation
         }
 
         $this->db->update($this->tableName, [
+            'step' => $this->step,
+            'state' => json_encode($this->state),
             'status' => 'done',
             'updated_at' => date('Y-m-d H:i:s')
         ], "id=%i", $this->id);

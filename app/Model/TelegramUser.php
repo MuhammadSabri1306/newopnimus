@@ -15,4 +15,15 @@ class TelegramUser extends Model
 
         return $count > 0; 
     }
+
+    public static function create(array $data)
+    {
+        $data['created_at'] = date('Y-m-d H:i:s');
+
+        $id = TelegramUser::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            return $db->insertId();
+        });
+        return $id ? true : false;
+    }
 }
