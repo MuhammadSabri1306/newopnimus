@@ -9,6 +9,7 @@ spl_autoload_register(function ($className) {
         'App\\Core\\'       => $baseDir . '/Core/',
         'App\\Controller\\' => $baseDir . '/Controller/',
         'App\\Model\\'      => $baseDir . '/Model/',
+        'App\\BuiltMessageText\\'      => $baseDir . '/BuiltMessageText/',
     ];
 
     // Exclude the Helper namespace

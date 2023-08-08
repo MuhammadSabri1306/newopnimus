@@ -1,6 +1,8 @@
 <?php
 namespace App\Controller;
 
+use Longman\TelegramBot\Request;
+use App\Core\RequestData;
 use App\Core\Controller;
 
 class BotController extends Controller
@@ -25,5 +27,14 @@ class BotController extends Controller
             return null;
         }
         return call_user_func([$controller, $targetCallback], $data, $callbackQuery);
+    }
+
+    public static function catchError($err, $chatId)
+    {
+        $reqData = New RequestData();
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $chatId;
+        $reqData->text = $err->getMessage();
+        return Request::sendMessage($reqData->build());
     }
 }

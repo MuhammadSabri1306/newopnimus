@@ -20,10 +20,46 @@ class TelegramUser extends Model
     {
         $data['created_at'] = date('Y-m-d H:i:s');
 
-        $id = TelegramUser::query(function ($db, $table) use ($data) {
+        return TelegramUser::query(function ($db, $table) use ($data) {
             $db->insert($table, $data);
-            return $db->insertId();
+            $id = $db->insertId();
+            return $id ? TelegramUser::find($id) : null;
         });
-        return $id ? true : false;
+    }
+
+    public static function find($id)
+    {
+        $user = TelegramUser::query(function ($db, $table) use ($id) {
+            return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
+        });
+
+        return $user;
+    }
+
+    public static function findByChatId($chatId)
+    {
+        $user = TelegramUser::query(function ($db, $table) use ($chatId) {
+            return $db->queryFirstRow("SELECT * FROM $table WHERE chat_id=%s", $chatId);
+        });
+
+        return $user;
+    }
+
+    public static function delete($id)
+    {
+        $user = TelegramUser::query(function ($db, $table) use ($id) {
+            return $db->delete($table, 'id=%i', $id);
+        });
+
+        return $user;
+    }
+
+    public static function deleteByChatId($chatId)
+    {
+        $user = TelegramUser::query(function ($db, $table) use ($chatId) {
+            return $db->delete($table, 'chat_id=%s', $chatId);
+        });
+
+        return $user;
     }
 }

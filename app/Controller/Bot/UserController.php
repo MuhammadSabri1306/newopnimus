@@ -13,19 +13,11 @@ use App\Core\TelegramText;
 // use App\Core\SessionDebugger;
 use App\Core\Conversation;
 use App\Controller\BotController;
+use App\Controller\Bot\AdminController;
 use App\Model\TelegramUser;
+use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
-
-// function debugConv($conversation, $reqData) {
-//     $reqData->text = $conversation->toJson();
-//     Request::sendMessage($reqData->build());
-// }
-
-// function debug($reqData, ...) {
-//     $reqData->text = $conversation->toJson();
-//     Request::sendMessage($reqData->build());
-// }
 
 class UserController extends BotController
 {
@@ -34,6 +26,7 @@ class UserController extends BotController
         'user.regist_level' => 'onSelectLevel',
         'user.select_regional' => 'onSelectRegional',
         'user.select_witel' => 'onSelectWitel',
+        'user.reset_approval' => 'onRegistReset',
     ];
 
     public static function getRegistConversation()
@@ -164,6 +157,75 @@ class UserController extends BotController
         
         return Request::sendMessage($reqData->build());
         return $response;
+    }
+
+    public static function resetRegistration()
+    {
+        try {
+            $message = UserController::$command->getMessage();
+            $reqData = New RequestData();
+    
+            $reqData->parseMode = 'markdown';
+            $reqData->chatId = $message->getChat()->getId();
+            $reqData->replyMarkup = Keyboard::remove(['selective' => true]);
+            
+            if($message->getChat()->isGroupChat() || $message->getChat()->isSuperGroup()) {
+                $reqData->replyMarkup = Keyboard::forceReply(['selective' => true]);
+            }
+
+            $user = TelegramUser::findByChatId($reqData->chatId);
+            if(!$user) {
+
+                $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+                $chatType = $message->getChat()->getType();
+                $fullName = ($chatType=='group' || $chatType=='supergroup') ? 'Grup '.$message->getChat()->getTitle()
+                    : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
+                $reqData1->animation = 'https://giphy.com/gifs/transformers-optimus-prime-transformer-transformers-rise-of-the-beasts-Bf3Anv7HuOPHEPkiOx';
+                $reqData1->caption = "$fullName tidak terdaftar dalam OPNIMUS.";
+                // return Request::sendMessage($reqData1->getDebugMessage());
+                return Request::sendAnimation($reqData1->build());
+
+            }
+            
+            $replyText = TelegramText::create('User/Grup Ini Akan reset dari Bot OPNIMUS dengan data:')
+                ->newLine(2)
+                ->startCode();
+
+            if(!$user['regional_id']) {
+                $replyText->addText('Level : NASIONAL')->newLine();
+            }
+            
+            if($user['regional_id']) {
+                $regional = Regional::find($user['regional_id']);
+                $replyText->addText('🏢Regional: '.$regional['name'])->newLine();
+            }
+
+            if($user['witel_id']) {
+                $witel = Witel::find($user['witel_id']);
+                $replyText->addText('🌇Witel   : '.$witel['witel_name'])->newLine();
+            }
+
+            $replyText->endCode()->newLine()->addText('Dengan melakukan reset user, user/Grup ini akan berhenti menggunakan layanan OPNIMUS.');
+            $reqData->text = $replyText->get();
+            Request::sendMessage($reqData->build());
+
+            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+            $reqData1->text = TelegramText::create()
+                ->addText('Apakah anda yakin untuk ')
+                ->startBold()->addText('keluar/reset')->endBold()
+                ->addText(' dari OPNIMUS?')
+                ->get();
+                
+            $reqData1->replyMarkup = new InlineKeyboard([
+                ['text' => '📵 Keluar', 'callback_data' => 'user.reset_approval.exit'],
+                ['text' => '❎ Tidak', 'callback_data' => 'user.reset_approval.cancel']
+            ]);
+
+            return Request::sendMessage($reqData1->build());
+
+        } catch(\Exception $err) {
+            return UserController::catchError($err, $reqData->chatId);
+        }
     }
 
     public static function onRegist($data, $callbackQuery)
@@ -334,26 +396,6 @@ class UserController extends BotController
 
     public static function onSelectRegional($data, $callbackQuery)
     {
-        $reqData = New RequestData();
-        $message = $callbackQuery->getMessage();
-        $user = $callbackQuery->getUser();
-        $regional = Regional::find($data);
-
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->messageId = $message->getMessageId();
-
-        $updateText = TelegramText::create($message->getText())->newLine(2);
-
-        if(!$message->getChat()->isPrivateChat()) {
-            $updateText = $updateText->addMention($user->getId())->startBold()->addText(' > ')->endBold()->addText($regional['name']);
-        } else {
-            $updateText = $updateText->startBold()->addText('=> ')->endBold()->addText($regional['name']);
-        }
-
-        $reqData->text = $updateText->get();
-        Request::editMessageText($reqData->build());
-
         $conversation = UserController::getRegistConversation();
         if(!$conversation->isExists()) {
             return Request::emptyResponse();
@@ -361,6 +403,30 @@ class UserController extends BotController
 
         $conversation->regionalId = $data;
         $conversation->commit();
+
+        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getUser();
+        $regional = Regional::find($conversation->regionalId);
+
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->messageId = $message->getMessageId();
+
+        $updateText = TelegramText::create('Pilih Regional yang akan dimonitor.');
+        if($conversation->level == 'regional') {
+            $updateText->newLine()->startItalic()->addText('* Termasuk semua Witel')->endItalic();
+        }
+
+        $updateText->newLine(2);
+        if(!$message->getChat()->isPrivateChat()) {
+            $updateText->addMention($user->getId())->startBold()->addText(' > ')->endBold()->addText($regional['name']);
+        } else {
+            $updateText->startBold()->addText('=> ')->endBold()->addText($regional['name']);
+        }
+
+        $reqData->text = $updateText->get();
+        Request::editMessageText($reqData->build());
 
         if($conversation->level == 'regional') {
             
@@ -393,9 +459,10 @@ class UserController extends BotController
 
             $conversation->nextStep();
             $conversation->commit();
-            Request::sendMessage($reqData1->build());
-
-            return UserController::saveFromConversation();
+            UserController::saveRegistFromConversation();
+            $conversation->done();
+            
+            return Request::sendMessage($reqData1->build());
         
         }
 
@@ -403,7 +470,6 @@ class UserController extends BotController
 
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
             $reqData1->text = 'Pilih Witel yang akan dimonitor.';
-            Request::sendMessage($reqData1->build());
             
             $witels = Witel::getNameOrdered($conversation->regionalId);
             $inlineKeyboardData = array_map(function($witel) {
@@ -435,7 +501,7 @@ class UserController extends BotController
         $reqData->chatId = $message->getChat()->getId();
         $reqData->messageId = $message->getMessageId();
 
-        $updateText = TelegramText::create($message->getText())->newLine(2);
+        $updateText = TelegramText::create('Pilih Witel yang akan dimonitor.')->newLine(2);
 
         if(!$message->getChat()->isPrivateChat()) {
             $updateText = $updateText->addMention($user->getId())->startBold()->addText(' > ')->endBold()->addText($witel['witel_name']);
@@ -486,15 +552,55 @@ class UserController extends BotController
             $reqData1->text = $answerText->get();
 
             $conversation->nextStep();
-            Request::sendMessage($reqData1->build());
-            return UserController::saveFromConversation();
+            UserController::saveRegistFromConversation();
+            $conversation->done();
+
+            return Request::sendMessage($reqData1->build());
         
         }
 
         return Request::emptyResponse();
     }
 
-    private static function saveFromConversation()
+    public static function onRegistReset($data, $callbackQuery)
+    {
+        try {
+
+            $reqData = New RequestData();
+            $message = $callbackQuery->getMessage();
+            $user = $callbackQuery->getUser();
+    
+            $reqData->parseMode = 'markdown';
+            $reqData->chatId = $message->getChat()->getId();
+            $reqData->messageId = $message->getMessageId();
+    
+            $updateText = TelegramText::create($message->getText())->newLine(2);
+            $dataText = $data == 'exit' ? 'Keluar' : 'Tidak';
+    
+            if(!$message->getChat()->isPrivateChat()) {
+                $updateText = $updateText->addMention($user->getId())->startBold()->addText(' > ')->endBold()->addText($dataText);
+            } else {
+                $updateText = $updateText->startBold()->addText('=> ')->endBold()->addText($dataText);
+            }
+    
+            $reqData->text = $updateText->get();
+            $response = Request::editMessageText($reqData->build());
+            if($data != 'exit') {
+                return $response;
+            }
+
+            TelegramUser::deleteByChatId($reqData->chatId);
+
+            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+            $reqData1->text = 'Terimakasih User/Grup ini sudah tidak terdaftar di OPNIMUS lagi. Untuk menggunakan bot ini lagi, silahkan mendaftarkan lagi ke bot ini.';
+            return Request::sendMessage($reqData1->build());
+
+        } catch(\Exception $err) {
+            return UserController::catchError($err, $reqData->chatId);
+        }
+    }
+
+    private static function saveRegistFromConversation()
     {
         $conversation = UserController::getRegistConversation();
         if(!$conversation->isExists()) {
@@ -502,14 +608,13 @@ class UserController extends BotController
         }
 
         $data = [];
+        $data['request_type'] = 'user';
         $data['chat_id'] = $conversation->chatId;
         $data['username'] = $conversation->username;
         $data['first_name'] = $conversation->firstName;
         $data['last_name'] = $conversation->lastName;
         $data['type'] = $conversation->type;
-        $data['regist_id'] = 0;
-        $data['is_organik'] = 0;
-        $data['alert_status'] = 1;
+        $data['level'] = $conversation->level;
         
         if($conversation->level == 'regional' || $conversation->level == 'witel') {
             $data['regional_id'] = $conversation->regionalId;
@@ -519,14 +624,25 @@ class UserController extends BotController
             $data['witel_id'] = $conversation->witelId;
         }
 
-        TelegramUser::create($data);
+        $registration = Registration::create($data);
+        AdminController::whenRegistUser($registration['id']);
+
+        return $registration ?? null;
+    }
+
+    public static function whenRegistApproved($userId)
+    {
+        $telegramUser = TelegramUser::find($userId);
+        if(!$telegramUser) {
+            return Request::emptyResponse();
+        }
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $conversation->chatId;
+        $reqData->chatId = $telegramUser['chat_id'];
         $reqData->text = TelegramText::create()
             ->startBold()->addText('Pendaftaran Opnimus berhasil.')->endBold()->newLine()
-            ->startItalic()->addText(date('Y-m-d H:i:s'))->endItalic()->newLine(2)
+            ->startItalic()->addText($telegramUser['created_at'])->endItalic()->newLine(2)
             ->addText('Proses pendaftaran anda telah mendapat persetujuan Admin. Dengan ini, lokasi-lokasi yang memiliki RTU Osase akan memberi informasi lengkap mengenai Network Element anda. Apabila ada alarm atau RTU yang down akan langsung dilaporkan ke grup ini.')->newLine()
             ->addText('Untuk mengecek alarm kritis saat ini, pilih /alarm')->newLine()
             ->addText('Untuk melihat statistik RTU beserta MD nya pilih /rtu')->newLine()
@@ -536,9 +652,55 @@ class UserController extends BotController
             ->addText('#PeduliInfrastruktur #PeduliCME')
             ->get();
 
-        $response = Request::sendMessage($reqData->build());
-        $conversation->done();
-
-        return $response;
+        return Request::sendMessage($reqData->build());
     }
+
+    // private static function saveRegistFromConversation()
+    // {
+    //     $conversation = UserController::getRegistConversation();
+    //     if(!$conversation->isExists()) {
+    //         return Request::emptyResponse();
+    //     }
+
+    //     $data = [];
+    //     $data['chat_id'] = $conversation->chatId;
+    //     $data['username'] = $conversation->username;
+    //     $data['first_name'] = $conversation->firstName;
+    //     $data['last_name'] = $conversation->lastName;
+    //     $data['type'] = $conversation->type;
+    //     $data['regist_id'] = 0;
+    //     $data['is_organik'] = 0;
+    //     $data['alert_status'] = 1;
+    //     $data['level'] = $conversation->level;
+        
+    //     if($conversation->level == 'regional' || $conversation->level == 'witel') {
+    //         $data['regional_id'] = $conversation->regionalId;
+    //     }
+
+    //     if($conversation->level == 'witel') {
+    //         $data['witel_id'] = $conversation->witelId;
+    //     }
+
+    //     TelegramUser::create($data);
+
+        // $reqData = New RequestData();
+        // $reqData->parseMode = 'markdown';
+        // $reqData->chatId = $conversation->chatId;
+        // $reqData->text = TelegramText::create()
+        //     ->startBold()->addText('Pendaftaran Opnimus berhasil.')->endBold()->newLine()
+        //     ->startItalic()->addText(date('Y-m-d H:i:s'))->endItalic()->newLine(2)
+        //     ->addText('Proses pendaftaran anda telah mendapat persetujuan Admin. Dengan ini, lokasi-lokasi yang memiliki RTU Osase akan memberi informasi lengkap mengenai Network Element anda. Apabila ada alarm atau RTU yang down akan langsung dilaporkan ke grup ini.')->newLine()
+        //     ->addText('Untuk mengecek alarm kritis saat ini, pilih /alarm')->newLine()
+        //     ->addText('Untuk melihat statistik RTU beserta MD nya pilih /rtu')->newLine()
+        //     ->addText('Untuk bantuan dan daftar menu pilih /help.')->newLine()
+        //     ->addText('Terima kasih.')->newLine(2)
+        //     ->addText('OPNIMUS, Stay Alert, Stay Safe ')->newLine(2)
+        //     ->addText('#PeduliInfrastruktur #PeduliCME')
+        //     ->get();
+
+        // $response = Request::sendMessage($reqData->build());
+    //     $conversation->done();
+
+    //     return $response;
+    // }
 }

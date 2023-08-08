@@ -76,6 +76,12 @@ class Conversation
         if($this->isExists()) $this->step++;
     }
 
+    public function setUserId($userId)
+    {
+        $conversation = $this->db->update($this->tableName, [ 'user_id' => $userId ], "id=%i", $this->id);
+        $this->userId = $userId;
+    }
+
     public function create()
     {
         $currDatetime = date('Y-m-d H:i:s');
