@@ -22,7 +22,7 @@ class AdminText
             $text->addText('Nama Grup : '.$registData['username'])->newLine();
         }
 
-        $text->addText('Level     : '.$registData['username'])->newLine();
+        $text->addText('Level     : '.ucfirst($registData['level']))->newLine();
         
         $regional = Regional::find($registData['regional_id']);
         if($registData['level'] == 'regional' || $registData['level'] == 'witel') {
