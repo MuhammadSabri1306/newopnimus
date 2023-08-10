@@ -9,7 +9,7 @@ $conversation = new Conversation('regist', 1931357638, 1931357638);
 //     $conversation->create();
 // }
 
-// header('Content-Type: application/json; charset=utf-8');
+header('Content-Type: application/json; charset=utf-8');
 // echo $conversation->toJson();
 
 // $conversation->name = "Muhammad Sabri";
@@ -17,4 +17,4 @@ $conversation = new Conversation('regist', 1931357638, 1931357638);
 // $conversation->commit();
 // dd($conversation->getStep());
 
-dd($conversation->getStateArray());
+echo $conversation->toJson();

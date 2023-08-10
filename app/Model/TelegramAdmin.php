@@ -18,26 +18,43 @@ class TelegramAdmin extends Model
     public static function getByUserArea(array $user, string $levelKey = 'level', string $regionalKey = 'regional_id', string $witelKey = 'witel_id')
     {
         $admins = TelegramAdmin::query(function ($db, $table) use ($user, $levelKey, $regionalKey, $witelKey) {
-            if($user[$levelKey] == 'nasional' || $user[$levelKey] == 'regional') {
+            if($user[$levelKey] == 'nasional') {
                 return $db->query("SELECT * FROM $table WHERE level=%s", 'nasional');
             }
 
             $regionalId = isset($user[$regionalKey]) ? $user[$regionalKey] : null;
-            if($user[$levelKey] == 'witel') {
-                $query = "SELECT * FROM $table WHERE level=%s_level AND regional_id=%i_regional_id";
-                return $db->query($query, [
-                    'level' => 'regional',
-                    'regional_id' => $regionalId
-                ]);
+            if($user[$levelKey] == 'regional') {
+                $query = "SELECT * FROM $table WHERE (level=%s_level_nas) OR (level=%s_level_reg AND regional_id=%i_reg_id) ".
+                    'ORDER BY regional_id DESC';
+                $params = [
+                    'level_nas' => 'nasional',
+                    'level_reg' => 'regional',
+                    'reg_id' => $regionalId,
+                ];
+
+                $admins = $db->query($query, $params);
+                if(count($admins) < 1) return [];
+                if($admins[0]['level'] == 'nasional') return $admins;
+                return array_filter($admins, fn($item) => $item['level'] == 'regional');
             }
 
             $witelId = isset($user[$witelKey]) ? $user[$witelKey] : null;
-            if($user[$levelKey] == 'pic') {
-                $query = "SELECT * FROM $table WHERE level=%s_level AND witel_id=%i_witel_id";
-                return $db->query($query, [
-                    'level' => 'witel',
-                    'witel_id' => $witelId
-                ]);
+            if($user[$levelKey] == 'witel' || $user[$levelKey] == 'pic') {
+                $query = "SELECT * FROM $table WHERE (level=%s_level_nas) OR (level=%s_level_reg AND regional_id=%i_reg_id) ".
+                    'OR (level=%s_level_wit AND witel_id=%i_wit_id) ORDER BY witel_id DESC, regional_id DESC';
+                $params = [
+                    'level_nas' => 'nasional',
+                    'level_reg' => 'regional',
+                    'level_wit' => 'witel',
+                    'reg_id' => $regionalId,
+                    'wit_id' => $witelId,
+                ];
+
+                $admins = $db->query($query, $params);
+                if(count($admins) < 1) return [];
+                if($admins[0]['level'] == 'nasional') return $admins;
+                if($admins[0]['level'] == 'regional') return array_filter($admins, fn($item) => $item['level'] == 'regional');
+                return array_filter($admins, fn($item) => $item['level'] == 'witel');
             }
             
             return [];

@@ -57,19 +57,15 @@ class TelegramUser extends Model
 
     public static function delete($id)
     {
-        $user = TelegramUser::query(function ($db, $table) use ($id) {
+        return TelegramUser::query(function ($db, $table) use ($id) {
             return $db->delete($table, 'id=%i', $id);
         });
-
-        return $user;
     }
 
     public static function deleteByChatId($chatId)
     {
-        $user = TelegramUser::query(function ($db, $table) use ($chatId) {
+        return TelegramUser::query(function ($db, $table) use ($chatId) {
             return $db->delete($table, 'chat_id=%s', $chatId);
         });
-
-        return $user;
     }
 }

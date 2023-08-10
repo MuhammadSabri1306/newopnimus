@@ -10,6 +10,7 @@ use App\Core\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Model\TelegramUser;
+use App\Model\TelegramPersonalUser;
 use App\Model\TelegramAdmin;
 use App\Model\Registration;
 use App\Model\Regional;
@@ -43,7 +44,7 @@ class AdminController extends BotController
     public static function whenRegistUser($registId)
     {
         $registData = Registration::find($registId);
-        $admins = TelegramAdmin::getByUserArea($registData);
+        $admins = TelegramAdmin::getByUserArea($registData['data']);
         if(count($admins) < 1) return;
 
         $reqData = new RequestData();
@@ -60,6 +61,7 @@ class AdminController extends BotController
 
             $conversation = Conversation::getOrCreate('user_regist', $admin['chat_id'], $admin['chat_id']);
             $conversation->registId = $registData['id'];
+            $conversation->adminId = $admin['id'];
             $conversation->commit();
         }
     }
@@ -84,7 +86,6 @@ class AdminController extends BotController
 
         $registData = Registration::find($conversation->registId);
         $updateText = AdminText::getUserApprovalText($registData);
-        // return Request::sendMessage([ 'chat_id' => 1931357638, 'text' => json_encode($registData) ]);
 
         if(!$registData) {
             $reqData->text = $updateText->newLine(2)
@@ -100,7 +101,7 @@ class AdminController extends BotController
             if($registStatus['updated_by']) {
                 $updateText->newLine(2)
                     ->addText("Permintaan registrasi telah $statusText oleh ")
-                    ->addMention($registStatus['updated_by']['chat_id']);
+                    ->addMention($registStatus['updated_by']['chat_id'], 'Admin lain');
 
                 if($registStatus['updated_by']['witel_name']) {
                     $updateText->addText(' -'.$registStatus['updated_by']['witel_name'].'.');
@@ -120,7 +121,7 @@ class AdminController extends BotController
 
         $answerText = $data == 'approve' ? 'Izinkan' : 'Tolak';
         if(!$message->getChat()->isPrivateChat()) {
-            $updateText = $updateText->newLine(2)->addMention($user->getId())->startBold()->addText(' > ')->endBold()->addText($answerText);
+            $updateText = $updateText->newLine(2)->addText('User')->startBold()->addText(' > ')->endBold()->addText($answerText);
         } else {
             $updateText = $updateText->newLine(2)->startBold()->addText('=> ')->endBold()->addText($answerText);
         }
@@ -133,39 +134,63 @@ class AdminController extends BotController
 
         if($response->isOk() && $data == 'approve') {
 
-            Registration::update($registData['id'], [
-                'status' => 'approved'
-            ]);
+// =================================
+            Registration::update($conversation->registId, [ 'status' => 'approved' ], $conversation->adminId);
             
             $dataUser = [];
+            $dataPersonal = [];
+            $registUser = $registData['data'];
+
             $dataUser['chat_id'] = $registData['chat_id'];
-            $dataUser['username'] = $registData['username'];
-            if($registData['first_name']) $dataUser['first_name'] = $registData['first_name'];
-            if($registData['last_name']) $dataUser['last_name'] = $registData['last_name'];
-            $dataUser['type'] = $registData['type'];
-            $dataUser['regist_id'] = $registData['id'];
-            $dataUser['is_organik'] = $registData['is_organik'];
-            if($registData['nik']) $dataUser['nik'] = $registData['nik'];
-            $dataUser['level'] = $registData['level'];
+            $dataUser['user_id'] = $registData['user_id'];
+            $dataUser['username'] = $registUser['username'];
+            $dataUser['type'] = $registUser['type'];
+            $dataUser['level'] = $registUser['level'];
+            $dataUser['regist_id'] = $conversation->registId;
             $dataUser['alert_status'] = 1;
-            if($registData['regional_id']) $dataUser['regional_id'] = $registData['regional_id'];
-            if($registData['witel_id']) $dataUser['witel_id'] = $registData['witel_id'];
+            
+            if($registUser['level'] == 'regional' || $registUser['level'] == 'witel') {
+                $dataUser['regional_id'] = $registUser['regional_id'];
+            }
+
+            if($registUser['level'] == 'witel') {
+                $dataUser['witel_id'] = $registUser['witel_id'];
+            }
+
+            if($registUser['type'] != 'private') {
+                $dataUser['group_description'] = $registUser['group_description'];
+            } else {
+                $dataUser['first_name'] = $registUser['first_name'];
+                $dataUser['last_name'] = $registUser['last_name'];
+            }
 
             $telegramUser = TelegramUser::create($dataUser);
+            if(!$telegramUser) return $response;
+            
+            if($registUser['type'] == 'private') {
+                $dataPersonal['user_id'] = $telegramUser['id'];
+                $dataPersonal['nama'] = $registUser['full_name'];
+                $dataPersonal['telp'] = $registUser['telp'];
+                $dataPersonal['instansi'] = $registUser['instansi'];
+                $dataPersonal['unit'] = $registUser['unit'];
+                $dataPersonal['is_organik'] = $registUser['is_organik'] ? 1 : 0;
+                $dataPersonal['nik'] = $registUser['nik'];
+
+                $personalUser = TelegramPersonalUser::create($dataPersonal);
+                if(!$personalUser) {
+                    return $response;
+                }
+            }
+// =================================
 
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
             $reqData1->text = 'Akses telah diizinkan.';
-            $response = Request::sendMessage($reqData1->build());
-
-            if($telegramUser['id']) {
-                UserController::whenRegistApproved($telegramUser['id']);
-            }
+            Request::sendMessage($reqData1->build());
+            return UserController::whenRegistApproved($telegramUser['id']);
 
         } elseif($response->isOk() && $data == 'reject') {
 
-            Registration::update($registData['id'], [
-                'status' => 'rejected'
-            ]);
+            Registration::update($registData['id'], [ 'status' => 'rejected' ], $adminId);
 
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
             $reqData1->text = 'Permohonan registrasi telah ditolak.';

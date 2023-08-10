@@ -78,8 +78,14 @@ class TelegramText
         return $this->addText('        ');
     }
 
-    public function addMention($userId)
+    public function addMention($user, $text = null)
     {
-        return $this->addText("[inline mention of a user](tg://user?id=$userId)");
+        // user id
+        if($text) {
+            return $this->addText("[$text](tg://user?id=$user)");
+        }
+
+        // username
+        return $this->addText("@$username");
     }
 }

@@ -1,21 +1,18 @@
 <?php
 require __DIR__.'/../app/bootstrap.php';
 
-// use App\Model\TelegramUser;
-// use App\Model\Witel;
-use App\Model\Registration;
-use App\Model\TelegramAdmin;
-use App\BuiltMessageText\AdminText;
+use App\Model\TelegramPersonalUser;
 
-// $isUserExists = TelegramUser::exists('1231231');
-// dd($isUserExists);
+$dataPersonal = [
+    'user_id' => '11',
+    'nama' => 'Muhammad Sabri',
+    'telp' => '+6285144392944',
+    'instansi' => 'Test Instansi',
+    'unit' => 'Test Unit',
+    'is_organik' => false,
+    'nik' => '123456',
+];
 
-// $witels = Witel::getNameOrdered('2');
-// $witel = Witel::find(null);
+$personalUser = TelegramPersonalUser::create($dataPersonal);
 
-$registData = Registration::find(15);
-$admins = TelegramAdmin::getByUserArea($registData);
-
-dd(AdminText::getUserApprovalText($registData)->get());
-
-dd($admins);
+dd($personalUser);

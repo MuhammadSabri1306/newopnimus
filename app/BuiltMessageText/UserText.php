@@ -2,56 +2,65 @@
 namespace App\BuiltMessageText;
 
 use App\Core\TelegramText;
+use App\Core\Conversation;
 use App\Model\Regional;
 use App\Model\Witel;
 
-class AdminText
+class UserText
 {
-    public static function getRegistSuccessText(bool $isGroupChat, array $data)
+    public static function getRegistSuccessText(Conversation $conversation)
     {
-        $text = TelegramText::create();
-        $regional = isset($data['regional_id']) ? Regional::find($data['regional_id']) : null;
-        $witel = isset($data['witel_id']) ? Witel::find($data['witel_id']) : null;
-        $data = (object) $data;
+        $isPrivateChat = $conversation->type == 'private';
+        $text = TelegramText::create()
+            ->addText('Terima kasih, grup akan didaftarkan sesuai data berikut.')->newLine(2)
+            ->startCode();
 
-        if($isGroupChat) {
-            $text->addText('Terima kasih, grup akan didaftarkan sesuai data berikut.')
-                ->startCode()
-                ->addText("Nama Grup          : $data->username");
+        if($isPrivateChat) {
+            $text->addText("Nama Pengguna   : $conversation->fullName")->newLine();
+            $text->addText("No. Handphone   : $conversation->telp")->newLine();
         } else {
-            $text->addText('Terima kasih, anda akan didaftarkan sesuai data berikut.')->newLine(2)
-                ->startCode()
-                ->addText("Nama User          : $data->first_name $data->last_name");
-        }
-
-        if($data->level != 'nasional' && $regional) {
-            $text->newLine()
-                ->addText('Regional           : '.$regional['name']);
-        }
-
-        if($data->level == 'witel' && $witel) {
-            $text->newLine()
-                ->addText('Witel              : '.$witel['witel_name']);
-        }
-
-        if($data->level == 'nasional') {
-            $text->newLine()
-                ->addText('RTU yang dimonitor : Seluruh RTU yang tersedia');
-        } else {
-            $text->newLine()
-                ->addText("RTU yang dimonitor : Seluruh RTU di $data->level ini");
-        }
-
-        $text->endCode()->newLine(2);
-        if($data->level == 'nasional') {
-            $text->addText('Silahkan menunggu Admin NASIONAL untuk melakukan verifikasi terhadap permintaan anda, terima kasih.')->newLine(2);
-        } elseif($data->level == 'regional') {
-            $text->addText('Silahkan menunggu Admin di '.$regional['name'].' untuk melakukan verifikasi terhadap permintaan anda, terima kasih.')->newLine(2);
-        } else {
-            $text->addText('Silahkan menunggu Admin di '.$witel['witel_name'].' untuk melakukan verifikasi terhadap permintaan anda, terima kasih.')->newLine(2);
+            $text->addText("Nama Grup       : $conversation->username")->newLine();
         }
         
-        $text->startItalic()->addText('OPNIMUS, Stay Alert, Stay Safe')->endItalic();
+        $text->addText('Level           : '.ucfirst($conversation->level))->newLine();
+        
+        if($conversation->level == 'regional' || $conversation->level == 'witel') {
+            $regional = Regional::find($conversation->regionalId);
+            $text->addText('Regional        : '.$regional['name'])->newLine();
+        }
+        
+        if($conversation->level == 'witel') {
+            $witel = Witel::find($conversation->witelId);
+            $text->addText('Witel           : '.$witel['witel_name'])->newLine();
+        }
+        
+        if(!$isPrivateChat) {
+            $text->addText("Deskripsi Grup  : $conversation->groupDescription")->newLine();
+        } else {
+            $text->addText("NIK             : $conversation->nik")->newLine();
+            $text->addText('Status Karyawan : '.($conversation->isOrganik ? 'Organik' : 'Non Organik'))->newLine();
+            $text->addText("Nama Instansi   : $conversation->instansi")->newLine();
+            $text->addText("Unit Kerja      : $conversation->unit")->newLine();
+        }
+
+        $text->endCode()->newLine()
+            ->addText('Silahkan menunggu Admin untuk melakukan verifikasi terhadap permintaan anda, terima kasih.')->newLine(2)
+            ->startItalic()->addText('OPNIMUS, Stay Alert, Stay Safe')->endItalic();
+        
         return $text;
+    }
+
+    public static function getRegistApprovedText(string $approvedAt)
+    {
+        return TelegramText::create()
+            ->startBold()->addText('Pendaftaran Opnimus berhasil.')->endBold()->newLine()
+            ->startItalic()->addText($approvedAt)->endItalic()->newLine(2)
+            ->addText('Proses pendaftaran anda telah mendapat persetujuan Admin. Dengan ini, lokasi-lokasi yang memiliki RTU Osase akan memberi informasi lengkap mengenai Network Element anda. Apabila ada alarm atau RTU yang down akan langsung dilaporkan ke grup ini.')->newLine()
+            ->addText('Untuk mengecek alarm kritis saat ini, pilih /alarm')->newLine()
+            ->addText('Untuk melihat statistik RTU beserta MD nya pilih /rtu')->newLine()
+            ->addText('Untuk bantuan dan daftar menu pilih /help.')->newLine()
+            ->addText('Terima kasih.')->newLine(2)
+            ->addText('OPNIMUS, Stay Alert, Stay Safe ')->newLine(2)
+            ->addText('#PeduliInfrastruktur #PeduliCME');
     }
 }
