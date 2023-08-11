@@ -15,6 +15,7 @@ use App\Core\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
 use App\Model\TelegramUser;
+use App\Model\TelegramPersonalUser;
 use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
@@ -150,7 +151,7 @@ class UserController extends BotController
                     : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
                 $reqData1->animation = 'https://giphy.com/gifs/transformers-optimus-prime-transformer-transformers-rise-of-the-beasts-Bf3Anv7HuOPHEPkiOx';
                 $reqData1->caption = "$fullName tidak terdaftar dalam OPNIMUS.";
-                // return Request::sendMessage($reqData1->getDebugMessage());
+                
                 return Request::sendAnimation($reqData1->build());
 
             }
@@ -708,7 +709,13 @@ class UserController extends BotController
                 return $response;
             }
 
-            TelegramUser::deleteByChatId($reqData->chatId);
+            $telegramUser = TelegramUser::find($reqData->chatId);
+            if(!$telegramUser) {
+                return Request::emptyResponse();
+            }
+
+            TelegramPersonalUser::deleteByUserId($telegramUser['id']);
+            TelegramUser::delete($telegramUser['id']);
 
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
             $reqData1->text = 'Terimakasih User/Grup ini sudah tidak terdaftar di OPNIMUS lagi. Untuk menggunakan bot ini lagi, silahkan mendaftarkan lagi ke bot ini.';
