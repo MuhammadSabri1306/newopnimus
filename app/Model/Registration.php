@@ -5,7 +5,7 @@ use App\Core\Model;
 
 class Registration extends Model
 {
-    protected static $table = 'registration';
+    public static $table = 'registration';
 
     public static function create(array $data)
     {

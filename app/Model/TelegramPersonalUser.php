@@ -5,7 +5,7 @@ use App\Core\Model;
 
 class TelegramPersonalUser extends Model
 {
-    protected static $table = 'telegram_personal_user';
+    public static $table = 'telegram_personal_user';
 
     public static function create(array $data)
     {

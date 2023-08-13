@@ -2,11 +2,11 @@
 namespace App\Model;
 
 use App\Core\Model;
-// use App\Model\PicLocation;
+use App\Model\PicLocation;
 
 class TelegramUser extends Model
 {
-    protected static $table = 'telegram_user';
+    public static $table = 'telegram_user';
     
     public static function exists($chatId)
     {
@@ -47,10 +47,15 @@ class TelegramUser extends Model
     public static function findPicByChatId($chatId)
     {
         return TelegramUser::query(function ($db, $table) use ($chatId) {
-            $user = $db->queryFirstRow("SELECT * FROM $table WHERE chat_id=%s AND is_pic=%i", $chatId, 1);
+            $user = $db->queryFirstRow("SELECT * FROM $table WHERE chat_id=%s", $chatId);
             if(!$user) return null;
 
-            $user['locations'] = PicLocation::getByUser($user['id']);
+            if(boolval($user['is_pic'])) {
+                $user['locations'] = PicLocation::getByUser($user['id']);
+            } else {
+                $user['locations'] = null;
+            }
+            
             return $user;
         });
     }

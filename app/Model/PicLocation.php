@@ -5,7 +5,7 @@ use App\Core\Model;
 
 class PicLocation extends Model
 {
-    protected static $table = 'pic_location';
+    public static $table = 'pic_location';
     
     public static function getByUser($userId)
     {

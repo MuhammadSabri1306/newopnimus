@@ -1,18 +1,19 @@
 <?php
 require __DIR__.'/../app/bootstrap.php';
 
-use App\Model\TelegramPersonalUser;
+use Longman\TelegramBot\Request;
+use App\Model\RtuPortStatus;
+use App\Model\TelegramUser;
+use App\Core\RequestData;
+use App\BuiltMessageText\AlarmText;
+use App\Controller\BotController;
 
-$dataPersonal = [
-    'user_id' => '11',
-    'nama' => 'Muhammad Sabri',
-    'telp' => '+6285144392944',
-    'instansi' => 'Test Instansi',
-    'unit' => 'Test Unit',
-    'is_organik' => false,
-    'nik' => '123456',
-];
+$reqData = New RequestData();
+$reqData->parseMode = 'markdown';
+$reqData->chatId = 1931357638;
 
-$personalUser = TelegramPersonalUser::create($dataPersonal);
-
-dd($personalUser);
+$user = TelegramUser::findPicByChatId(1931357638);
+$ports = RtuPortStatus::getExistsAlarm([ 'witel' => $user['witel_id'] ]);
+$reqData->text = AlarmText::witelAlarmText($user['witel_id'], $ports)->get();
+// Request::sendMessage($reqData->build());
+dd($reqData->build());

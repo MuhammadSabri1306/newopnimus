@@ -78,6 +78,14 @@ class TelegramText
         return $this->addText('        ');
     }
 
+    public function addSpace($count = 1)
+    {
+        for($i=0; $i<$count; $i++) {
+            $this->addText(' ');
+        }
+        return $this;
+    }
+
     public function addMention($user, $text = null)
     {
         // user id

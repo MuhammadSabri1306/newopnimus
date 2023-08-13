@@ -5,7 +5,7 @@ use App\Core\Model;
 
 class Witel extends Model
 {
-    protected static $table = 'witel';
+    public static $table = 'witel';
     
     public static function getAll()
     {

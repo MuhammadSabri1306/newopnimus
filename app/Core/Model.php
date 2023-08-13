@@ -3,7 +3,9 @@ namespace App\Core;
 
 class Model
 {
-    protected static $table;
+    public static $table;
+
+    protected static $relations;
 
     public static function query(callable $callback)
     {
@@ -44,5 +46,11 @@ class Model
         } else {
             throw new Exception("Model's module '$moduleName' not found.");
         }
+    }
+
+    public static function with(...$modelNames)
+    {
+        $modelClass = get_called_class() ?? 'Model';
+    	$modelClass::$relations = $relations;
     }
 }

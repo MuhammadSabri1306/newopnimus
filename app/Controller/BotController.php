@@ -37,4 +37,26 @@ class BotController extends Controller
         $reqData->text = $err->getMessage();
         return Request::sendMessage($reqData->build());
     }
+
+    public static function sendDebugMessage($data, array $config = [])
+    {
+        $chatId = isset($config['chatId']) ? $config['chatId'] : 1931357638;
+        $isCode = isset($config['isCode']) ? $config['isCode'] : true;
+        $toJson = isset($config['toJson']) ? $config['toJson'] : true;
+
+        $reqData = New RequestData();
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $chatId;
+
+        if($toJson) {
+            $data = json_encode($data, JSON_INVALID_UTF8_IGNORE);
+        }
+        
+        if($isCode) {
+            $reqData->text = '```'.PHP_EOL.$data.'```';
+        } else {
+            $reqData->text = $data;
+        }
+        return Request::sendMessage($reqData->build());
+    }
 }

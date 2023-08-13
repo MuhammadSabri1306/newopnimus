@@ -5,7 +5,7 @@ use App\Core\Model;
 
 class Regional extends Model
 {
-    protected static $table = 'regional';
+    public static $table = 'regional';
     
     public static function getAll()
     {

@@ -17,3 +17,8 @@ function dd(...$vars) {
     }
     die();
 }
+
+function dd_json($vars) {
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode($vars, JSON_INVALID_UTF8_IGNORE);
+}

@@ -5,7 +5,7 @@ use App\Core\Model;
 
 class TelegramAdmin extends Model
 {
-    protected static $table = 'telegram_admin';
+    public static $table = 'telegram_admin';
 
     public static function find($id)
     {

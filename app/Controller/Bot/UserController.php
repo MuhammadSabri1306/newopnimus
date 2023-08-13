@@ -64,7 +64,7 @@ class UserController extends BotController
             
         if(!TelegramUser::exists($reqData->chatId)) return null;
         
-        $reqData->animation = 'https://giphy.com/gifs/transformers-optimus-prime-transformer-transformers-rise-of-the-beasts-Bf3Anv7HuOPHEPkiOx';
+        $reqData->animation = 'https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXVmeGxnY21sMGQ5ZG94ZDA2emNiZzZodWk0NW9pamRjejNtYmdoZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Bf3Anv7HuOPHEPkiOx/giphy.gif';
         $reqData->caption = "*$fullName sudah terdaftar dalam OPNIMUS:* \n\n silahkan pilih /help untuk petunjuk lebih lanjut.";
         return Request::sendAnimation($reqData->build());
     }
@@ -85,7 +85,7 @@ class UserController extends BotController
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
         // $reqData1->replyToMessageId = $message->getMessageId();
-        $reqData1->animation = 'https://giphy.com/gifs/transformers-optimus-prime-transformer-transformers-rise-of-the-beasts-Bf3Anv7HuOPHEPkiOx';
+        $reqData1->animation = 'https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXVmeGxnY21sMGQ5ZG94ZDA2emNiZzZodWk0NW9pamRjejNtYmdoZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Bf3Anv7HuOPHEPkiOx/giphy.gif';
         $reqData1->caption = TelegramText::create()
             ->addText('Hello! Welcome Heroes! selamat datang di ')
             ->startBold()->addText('OPNIMUS')->endBold()

@@ -49,7 +49,7 @@ class StartCommand extends SystemCommand
     {
         UserController::$command = $this;
         $conversation = UserController::getRegistConversation();
-
+        
         if(!$conversation->isExists()) {
             $response = UserController::checkRegistStatus();
             if($response) return $response;

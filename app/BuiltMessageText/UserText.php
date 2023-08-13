@@ -63,4 +63,10 @@ class UserText
             ->addText('OPNIMUS, Stay Alert, Stay Safe ')->newLine(2)
             ->addText('#PeduliInfrastruktur #PeduliCME');
     }
+
+    public static function unregistedText()
+    {
+        return TelegramText::create('Anda belum terdaftar sebagai pengguna OPNIMUS.')->newLine()
+            ->addText('Anda dapat mengetikkan perintah /start untuk melakukan registrasi sebagai pengguna.');
+    }
 }
