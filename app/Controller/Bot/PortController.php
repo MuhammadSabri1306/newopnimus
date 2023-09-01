@@ -20,6 +20,7 @@ use App\Request\RequestInKeyboard;
 class PortController extends BotController
 {
     protected static $callbacks = [
+        'port.select_regional' => 'onSelectRegional',
         'port.select_witel' => 'onSelectWitel',
         'port.select_location' => 'onSelectLocation',
         'port.select_rtu' => 'onSelectRtu',
@@ -79,6 +80,21 @@ class PortController extends BotController
             $btnPortRequest = PortController::getBtnPortList($rtuSname, $ports);
             $btnPortRequest->chatId = $reqData->chatId;
             return Request::sendMessage($btnPortRequest->build());
+
+        }
+
+        if($user['level'] == 'nasional') {
+            
+            $reqData->text = PortText::getRegionalInKeyboardText()->newLine(2)
+                ->startItalic()
+                ->addText('* Anda juga dapat memilih RTU dan Port dengan mengeikkan perintah /cekport [Kode RTU] [No. Port], contoh: /cekport RTU00-D7-BAL A-12')
+                ->endItalic()
+                ->get();
+
+            return RequestInKeyboard::regionalList(
+                $reqData,
+                fn($regional) => 'port.select_regional.'.$regional['id']
+            );
 
         }
 
@@ -148,6 +164,30 @@ class PortController extends BotController
         $reqData->text = PortText::getPortInKeyboardText()->get();
         $reqData->replyMarkup = new InlineKeyboard(...$inlineKeyboardData);
         return $reqData;
+    }
+
+    public static function onSelectRegional($regionalId, $callbackQuery)
+    {
+        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getFrom();
+        $regional = Regional::find($regionalId);
+
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->messageId = $message->getMessageId();
+        $reqData->text = PortText::getRegionalInKeyboardText()->newLine(2)
+            ->addBold('=> ')->addText($regional['name'])
+            ->get();
+        Request::editMessageText($reqData->build());
+
+        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+        $reqData1->text = PortText::getWitelInKeyboardText()->get();
+        return RequestInKeyboard::witelList(
+            $regionalId,
+            $reqData1,
+            fn($witel) => 'port.select_witel.'.$witel['id']
+        );
     }
 
     public static function onSelectWitel($witelId, $callbackQuery)
