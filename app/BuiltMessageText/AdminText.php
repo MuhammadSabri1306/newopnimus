@@ -50,4 +50,31 @@ class AdminText
         $text->endCode();
         return $text;
     }
+    
+    public static function getPicApprovalText(array $registData)
+    {
+        $registData = (object) $registData;
+        $userData = isset($registData->data) ? (object) $registData->data : null;
+        $isPrivateChat = $userData->type == 'private';
+
+        $regional = Regional::find($userData->regional_id);
+        $witel = Witel::find($userData->witel_id);
+
+        $text = TelegramText::create()
+            ->addBold('Registrasi PIC OPNIMUS')->newLine(2)
+            ->addText('Terdapat permintaan registrasi User untuk ')->addBold('menjadi PIC')->addText(' sesuai data berikut.')->newLine(2)
+            ->startCode()
+            ->addText("Nama Pengguna   : $userData->full_name")->newLine()
+            ->addText("No. Handphone   : $userData->telp")->newLine()
+            ->addText('Level           : '.ucfirst($userData->level))->newLine()
+            ->addText("Regional        : $userData->regional_name")->newLine()
+            ->addText("Witel           : $userData->witel_name")->newLine(2)
+            ->addText("NIK             : $userData->nik")->newLine()
+            ->addText('Status Karyawan : '.($userData->is_organik ? 'Organik' : 'Non Organik'))->newLine()
+            ->addText("Nama Instansi   : $userData->instansi")->newLine()
+            ->addText("Unit Kerja      : $userData->unit")->newLine()
+            ->endCode();
+            
+        return $text;
+    }
 }

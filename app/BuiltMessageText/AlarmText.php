@@ -13,36 +13,88 @@ class AlarmText
 {
     public static function regionalAlarmText($regionalId, array $ports)
     {
+        $textList = [];
         $regional = Regional::find($regionalId);
-        $alarms = groupPortData($ports, ['witel', 'rtu']);
+        $alarms = groupNewosaseWitelPort($ports);
         $currDateTime = date('Y-m-d H:i:s');
 
         $text = TelegramText::create()
             ->addText('Status alarm OSASE di ')
             ->startBold()->addText($regional['name'])->endBold()
             ->addText(" pada $currDateTime WIB adalah:")->newLine();
+        array_push($textList, $text);
 
         foreach($alarms as $witel) {
-            $text->newLine()->addText('⛺️')->startBold()->addText($witel['witel_name'])->endBold()->addText(' :');
-            foreach($witel['rtus'] as $rtu) {
+            foreach($witel->rtus as $rtu) {
 
-                $text->newLine()
-                    ->addSpace(2)
-                    ->addText('⛽️'.$rtu['rtu_code'].' ('.$rtu['location']['location_name'].') :');
-                foreach($rtu['ports'] as $port) {
+                $text = TelegramText::create()
+                    ->addText('⛺️')->startBold()->addText($rtu->witel)->endBold()->addSpace(2)
+                    ->addText("⛽️$rtu->rtu_sname ($rtu->location) :");
+
+                $rtuIndex = 0;
+                foreach($rtu->ports as $port) {
 
                     $portStatusTitle = AlarmText::buildPortStatusTitle($port);
-                    $portName = $port['port_name'];
+                    $portName = $port->port_name ?? $port->no_port;
                     $portValue = AlarmText::buildPortValue($port);
-                    $duration = dateDiff($port['start_at'], $currDateTime);
+                    $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
 
-                    $text->newLine()
+                    $text->newLine(2)
+                        ->startCode()
+                        ->addSpace(3)
+                        ->addText("$portStatusTitle: $portName ($portValue) selama $duration")
+                        ->endCode();
+
+                    $rtuIndex++;
+                    if($rtuIndex === 10) {
+                        array_push($textList, $text);
+                        $text = TelegramText::create();
+                    }
+
+                }
+
+                array_push($textList, $text);
+            }
+        }
+
+        return $textList;
+    }
+
+    public static function regionalAlarmText1($regionalId, array $ports)
+    {
+        $regional = Regional::find($regionalId);
+        $alarms = groupNewosaseWitelPort($ports);
+        $currDateTime = date('Y-m-d H:i:s');
+
+        $text = TelegramText::create()
+            ->addText('Status alarm OSASE di ')
+            ->startBold()->addText($regional['name'])->endBold()
+            ->addText(" pada $currDateTime WIB adalah:");
+
+        foreach($alarms as $witelName => $witel) {
+            $text->newLine(2)
+                ->startBold()->addText("⛺️$witelName")->endBold();
+
+            foreach($witel->rtus as $rtu) {
+                $text->newLine(2)
+                    ->addSpace(2)->addText("⛽️$rtu->rtu_sname ($rtu->location) :");
+
+                foreach($rtu->ports as $port) {
+
+                    $portStatusTitle = AlarmText::buildPortStatusTitle($port);
+                    $portName = $port->port_name ?? $port->no_port;
+                    $portValue = AlarmText::buildPortValue($port);
+                    $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
+
+                    $text->newLine(2)
                         ->startCode()
                         ->addSpace(4)
                         ->addText("$portStatusTitle: $portName ($portValue) selama $duration")
                         ->endCode();
                 }
+                $text->newLine();
             }
+            $text->newLine();
         }
 
         return $text;
@@ -50,8 +102,52 @@ class AlarmText
 
     public static function witelAlarmText($witelId, array $ports)
     {
+        $textList = [];
         $witel = Witel::find($witelId);
-        $alarms = groupPortData($ports, ['rtu']);
+        $alarms = groupNewosaseRtuPort($ports);
+        $currDateTime = date('Y-m-d H:i:s');
+
+        $text = TelegramText::create()
+            ->addText('Status alarm OSASE di ')
+            ->startBold()->addText($witel['witel_name'])->endBold()
+            ->addText(" pada $currDateTime WIB adalah:")->newLine();
+        array_push($textList, $text);
+
+        $rtuIndex = 0;
+        foreach($alarms as $rtu) {
+
+            $text = TelegramText::create("⛽️$rtu->rtu_sname ($rtu->location) :");
+            foreach($rtu->ports as $port) {
+
+                $portStatusTitle = AlarmText::buildPortStatusTitle($port);
+                $portName = $port->port_name ?? $port->no_port;
+                $portValue = AlarmText::buildPortValue($port);
+                $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
+
+                $text->newLine(2)
+                    ->startCode()
+                    ->addSpace(3)
+                    ->addText("$portStatusTitle: $portName ($portValue) selama $duration")
+                    ->endCode();
+
+                $rtuIndex++;
+                if($rtuIndex === 10) {
+                    array_push($textList, $text);
+                    $text = TelegramText::create();
+                }
+            }
+
+            array_push($textList, $text);
+        }
+
+        return $textList;
+    }
+
+    public static function witelAlarmText1($witelId, array $ports)
+    {
+        $textList = [];
+        $witel = Witel::find($witelId);
+        $alarms = groupNewosaseRtuPort($ports);
         $currDateTime = date('Y-m-d H:i:s');
 
         $text = TelegramText::create()
@@ -60,33 +156,36 @@ class AlarmText
             ->addText(" pada $currDateTime WIB adalah:")->newLine();
 
         foreach($alarms as $rtu) {
+            $text->newLine(2)
+                ->startBold()
+                ->addText("⛽️$rtu->rtu_sname ($rtu->location) :")
+                ->endBold();
 
-            $text->newLine()
-                ->addText('⛽️'.$rtu['rtu_code'].' ('.$rtu['location']['location_name'].') :');
-            foreach($rtu['ports'] as $port) {
-
+            foreach($rtu->ports as $port) {
                 $portStatusTitle = AlarmText::buildPortStatusTitle($port);
-                $portName = $port['port_name'];
+                $portName = $port->port_name ?? $port->no_port;
                 $portValue = AlarmText::buildPortValue($port);
-                $duration = dateDiff($port['start_at'], $currDateTime);
+                $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
 
-                $text->newLine()
+                $text->newLine(2)
                     ->startCode()
-                    ->addSpace(2)
+                    ->addSpace(3)
                     ->addText("$portStatusTitle: $portName ($portValue) selama $duration")
                     ->endCode();
             }
+            $text->newLine();
         }
 
         return $text;
     }
 
-    private static function buildPortStatusTitle(array $port)
+    private static function buildPortStatusTitle($port)
     {
-        if($port['port_name'] == 'Status PLN') return '⚡️ PLN OFF';
-        if($port['port_name'] == 'Status DEG') return '🔆 GENSET ON';
+        $portName = $port->port_name ?? $port->no_port;
+        if($portName == 'Status PLN') return '⚡️ PLN OFF';
+        if($portName == 'Status DEG') return '🔆 GENSET ON';
 
-        $statusKey = strtoupper($port['port_status']);
+        $statusKey = strtoupper($port->severity->name);
         if($statusKey == 'OFF') return '‼️'.$statusKey;
         if($statusKey == 'CRITICAL') return '❗️'.$statusKey;
         if($statusKey == 'WARNING') return '⚠️'.$statusKey;
@@ -94,21 +193,28 @@ class AlarmText
         return $statusKey;
     }
 
-    private static function buildPortValue(array $port)
+    private static function buildPortValue($port)
     {
-        $portUnitKey = strtoupper($port['unit']);
+        $portUnitKey = strtoupper($port->units);
 
         if(in_array($portUnitKey, ['OFF', 'ON/OFF'])) {
-            return boolval($port['value']) ? 'OFF' : 'ON';
+            return boolval($port->value) ? 'OFF' : 'ON';
         }
 
         if($portUnitKey == 'OPEN/CLOSE') {
-            return boolval($port['value']) ? 'OPEN' : 'CLOSE';
+            return boolval($port->value) ? 'OPEN' : 'CLOSE';
         }
 
-        $value = convertToNumber($port['value']);
-        $unit = htmlentities($port['unit']);
+        if(is_null($port->value)) {
+            return 'null';
+        }
 
+        $value = convertToNumber($port->value);
+        $unit = $port->units;
+
+        $unit = utf8_encode($unit);
+        $value = utf8_encode($value);
+        
         if(in_array($portUnitKey, ['#', '%', '%RH', '-'])) {
             return $value.$unit;
         }

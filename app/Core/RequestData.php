@@ -14,6 +14,11 @@ class RequestData
     {
         $this->attributes[$key] = $value;
     }
+
+    public function remove($key)
+    {
+        unset($this->attributes[$key]);
+    }
     
     private function transformKey($key)
     {

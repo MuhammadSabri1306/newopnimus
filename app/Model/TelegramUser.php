@@ -30,21 +30,20 @@ class TelegramUser extends Model
 
     public static function find($id)
     {
-        $user = TelegramUser::query(function ($db, $table) use ($id) {
-            return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
-        });
+        return TelegramUser::query(function ($db, $table) use ($id) {
+            $user = $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
+            if(!$user) return null;
 
-        return $user;
+            $user['locations'] = [];
+            if(boolval($user['is_pic'])) {
+                $user['locations'] = PicLocation::getByUser($user['id']);
+            }
+            
+            return $user;
+        });
     }
 
     public static function findByChatId($chatId)
-    {
-        return TelegramUser::query(function ($db, $table) use ($chatId) {
-            return $db->queryFirstRow("SELECT * FROM $table WHERE chat_id=%s", $chatId);
-        });
-    }
-
-    public static function findPicByChatId($chatId)
     {
         return TelegramUser::query(function ($db, $table) use ($chatId) {
             $user = $db->queryFirstRow("SELECT * FROM $table WHERE chat_id=%s", $chatId);
@@ -53,7 +52,7 @@ class TelegramUser extends Model
             if(boolval($user['is_pic'])) {
                 $user['locations'] = PicLocation::getByUser($user['id']);
             } else {
-                $user['locations'] = null;
+                $user['locations'] = [];
             }
             
             return $user;

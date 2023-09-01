@@ -72,3 +72,60 @@ function groupPortData(array $ports, array $groupKeys = ['regional', 'witel', 'd
 
     return $result;
 }
+
+function groupNewosaseRtuPort(array $ports) {
+    $groupData = [];
+    foreach($ports as $port) {
+
+        $rtuName = $port->rtu_name;
+        if(!isset($groupData[$rtuName])) {
+            $groupData[$rtuName] = [
+                'rtu_id' => $port->rtu_id,
+                'rtu_name' => $port->rtu_name,
+                'rtu_sname' => $port->rtu_sname,
+                'rtu_status' => $port->rtu_status,
+                'location' => $port->location,
+                'witel' => $port->witel,
+                'regional' => $port->regional,
+                'ports' => []
+            ];
+        }
+
+        array_push($groupData[$rtuName]['ports'], $port);
+    }
+
+    return json_decode(json_encode($groupData));
+}
+
+function groupNewosaseWitelPort(array $ports) {
+    $groupData = [];
+    foreach($ports as $port) {
+
+        $witelName = $port->witel;
+        if(!isset($groupData[$witelName])) {
+            $groupData[$witelName] = [
+                'witel' => $port->witel,
+                'regional' => $port->regional,
+                'rtus' => []
+            ];
+        }
+
+        $rtuCode = $port->rtu_sname;
+        if(!isset($groupData[$witelName]['rtus'][$rtuCode])) {
+            $groupData[$witelName]['rtus'][$rtuCode] = [
+                'rtu_id' => $port->rtu_id,
+                'rtu_name' => $port->rtu_name,
+                'rtu_sname' => $port->rtu_sname,
+                'rtu_status' => $port->rtu_status,
+                'location' => $port->location,
+                'witel' => $port->witel,
+                'regional' => $port->regional,
+                'ports' => []
+            ];
+        }
+
+        array_push($groupData[$witelName]['rtus'][$rtuCode]['ports'], $port);
+    }
+
+    return json_decode(json_encode($groupData));
+}

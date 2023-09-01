@@ -130,71 +130,65 @@ class UserController extends BotController
 
     public static function resetRegistration()
     {
-        try {
-            $message = UserController::$command->getMessage();
-            $reqData = New RequestData();
-    
-            $reqData->parseMode = 'markdown';
-            $reqData->chatId = $message->getChat()->getId();
-            $reqData->replyMarkup = Keyboard::remove(['selective' => true]);
-            
-            if($message->getChat()->isGroupChat() || $message->getChat()->isSuperGroup()) {
-                $reqData->replyMarkup = Keyboard::forceReply(['selective' => true]);
-            }
+        $message = UserController::$command->getMessage();
+        $reqData = New RequestData();
 
-            $user = TelegramUser::findByChatId($reqData->chatId);
-            if(!$user) {
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->replyMarkup = Keyboard::remove(['selective' => true]);
+        
+        if($message->getChat()->isGroupChat() || $message->getChat()->isSuperGroup()) {
+            $reqData->replyMarkup = Keyboard::forceReply(['selective' => true]);
+        }
 
-                $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-                $chatType = $message->getChat()->getType();
-                $fullName = ($chatType=='group' || $chatType=='supergroup') ? 'Grup '.$message->getChat()->getTitle()
-                    : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
-                $reqData1->animation = 'https://giphy.com/gifs/transformers-optimus-prime-transformer-transformers-rise-of-the-beasts-Bf3Anv7HuOPHEPkiOx';
-                $reqData1->caption = "$fullName tidak terdaftar dalam OPNIMUS.";
-                
-                return Request::sendAnimation($reqData1->build());
-
-            }
-            
-            $replyText = TelegramText::create('User/Grup Ini Akan reset dari Bot OPNIMUS dengan data:')
-                ->newLine(2)
-                ->startCode();
-
-            if(!$user['regional_id']) {
-                $replyText->addText('Level : NASIONAL')->newLine();
-            }
-            
-            if($user['regional_id']) {
-                $regional = Regional::find($user['regional_id']);
-                $replyText->addText('🏢Regional: '.$regional['name'])->newLine();
-            }
-
-            if($user['witel_id']) {
-                $witel = Witel::find($user['witel_id']);
-                $replyText->addText('🌇Witel   : '.$witel['witel_name'])->newLine();
-            }
-
-            $replyText->endCode()->newLine()->addText('Dengan melakukan reset user, user/Grup ini akan berhenti menggunakan layanan OPNIMUS.');
-            $reqData->text = $replyText->get();
-            Request::sendMessage($reqData->build());
+        $user = TelegramUser::findByChatId($reqData->chatId);
+        if(!$user) {
 
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = TelegramText::create()
-                ->addText('Apakah anda yakin untuk ')
-                ->startBold()->addText('keluar/reset')->endBold()
-                ->addText(' dari OPNIMUS?')
-                ->get();
-                
-            $reqData1->replyMarkup = new InlineKeyboard([
-                ['text' => '📵 Keluar', 'callback_data' => 'user.reset_approval.exit'],
-                ['text' => '❎ Tidak', 'callback_data' => 'user.reset_approval.cancel']
-            ]);
+            $chatType = $message->getChat()->getType();
+            $fullName = ($chatType=='group' || $chatType=='supergroup') ? 'Grup '.$message->getChat()->getTitle()
+                : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
+            $reqData1->animation = 'https://giphy.com/gifs/transformers-optimus-prime-transformer-transformers-rise-of-the-beasts-Bf3Anv7HuOPHEPkiOx';
+            $reqData1->caption = "$fullName tidak terdaftar dalam OPNIMUS.";
+            
+            return Request::sendAnimation($reqData1->build());
 
-            return Request::sendMessage($reqData1->build());
-
-        } catch(\Exception $err) {
-            return UserController::catchError($err, $reqData->chatId);
         }
+        $replyText = TelegramText::create('User/Grup Ini Akan reset dari Bot OPNIMUS dengan data:')
+            ->newLine(2)
+            ->startCode();
+
+        if(!$user['regional_id']) {
+            $replyText->addText('Level : NASIONAL')->newLine();
+        }
+        
+        if($user['regional_id']) {
+            $regional = Regional::find($user['regional_id']);
+            $replyText->addText('🏢Regional: '.$regional['name'])->newLine();
+        }
+
+        if($user['witel_id']) {
+            $witel = Witel::find($user['witel_id']);
+            $replyText->addText('🌇Witel   : '.$witel['witel_name'])->newLine();
+        }
+
+        $replyText->endCode()->newLine()->addText('Dengan melakukan reset user, user/Grup ini akan berhenti menggunakan layanan OPNIMUS.');
+        $reqData->text = $replyText->get();
+        Request::sendMessage($reqData->build());
+
+        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+        $reqData1->text = TelegramText::create()
+            ->addText('Apakah anda yakin untuk ')
+            ->startBold()->addText('keluar/reset')->endBold()
+            ->addText(' dari OPNIMUS?')
+            ->get();
+            
+        $reqData1->replyMarkup = new InlineKeyboard([
+            ['text' => '📵 Keluar', 'callback_data' => 'user.reset_approval.exit'],
+            ['text' => '❎ Tidak', 'callback_data' => 'user.reset_approval.cancel']
+        ]);
+
+        return Request::sendMessage($reqData1->build());
     }
 
     public static function register()
@@ -684,46 +678,42 @@ class UserController extends BotController
 
     public static function onRegistReset($data, $callbackQuery)
     {
-        try {
+        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getFrom();
 
-            $reqData = New RequestData();
-            $message = $callbackQuery->getMessage();
-            $user = $callbackQuery->getUser();
-    
-            $reqData->parseMode = 'markdown';
-            $reqData->chatId = $message->getChat()->getId();
-            $reqData->messageId = $message->getMessageId();
-    
-            $updateText = TelegramText::create($message->getText())->newLine(2);
-            $dataText = $data == 'exit' ? 'Keluar' : 'Tidak';
-    
-            if(!$message->getChat()->isPrivateChat()) {
-                $updateText = $updateText->addText('User')->startBold()->addText(' > ')->endBold()->addText($dataText);
-            } else {
-                $updateText = $updateText->startBold()->addText('=> ')->endBold()->addText($dataText);
-            }
-    
-            $reqData->text = $updateText->get();
-            $response = Request::editMessageText($reqData->build());
-            if($data != 'exit') {
-                return $response;
-            }
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->messageId = $message->getMessageId();
 
-            $telegramUser = TelegramUser::find($reqData->chatId);
-            if(!$telegramUser) {
-                return Request::emptyResponse();
-            }
+        $updateText = TelegramText::create($message->getText())->newLine(2);
+        $dataText = $data == 'exit' ? 'Keluar' : 'Tidak';
 
-            TelegramPersonalUser::deleteByUserId($telegramUser['id']);
-            TelegramUser::delete($telegramUser['id']);
-
-            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = 'Terimakasih User/Grup ini sudah tidak terdaftar di OPNIMUS lagi. Untuk menggunakan bot ini lagi, silahkan mendaftarkan lagi ke bot ini.';
-            return Request::sendMessage($reqData1->build());
-
-        } catch(\Exception $err) {
-            return UserController::catchError($err, $reqData->chatId);
+        if(!$message->getChat()->isPrivateChat()) {
+            $updateText = $updateText->addText('User')->startBold()->addText(' > ')->endBold()->addText($dataText);
+        } else {
+            $updateText = $updateText->startBold()->addText('=> ')->endBold()->addText($dataText);
         }
+
+        $reqData->text = $updateText->get();
+        $response = Request::editMessageText($reqData->build());
+        if($data != 'exit') {
+            return $response;
+        }
+
+        $telegramUser = TelegramUser::findByChatId($reqData->chatId);
+        if(!$telegramUser) {
+            return Request::emptyResponse();
+        }
+
+        if($telegramUser['type'] == 'private') {
+            TelegramPersonalUser::deleteByUserId($telegramUser['id']);
+        }
+        TelegramUser::delete($telegramUser['id']);
+
+        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+        $reqData1->text = 'Terimakasih User/Grup ini sudah tidak terdaftar di OPNIMUS lagi. Untuk menggunakan bot ini lagi, silahkan mendaftarkan lagi ke bot ini.';
+        return Request::sendMessage($reqData1->build());
     }
 
     private static function saveRegistFromConversation()
@@ -739,7 +729,7 @@ class UserController extends BotController
         $reqData->replyMarkup = $conversation->type == 'private' ? Keyboard::remove(['selective' => true])
             : Keyboard::forceReply(['selective' => true]);
 
-        $registration = Registration::findByChatId($conversation->chatId);
+        $registration = Registration::findUnprocessedByChatId($conversation->chatId);
         if($registration) {
             $reqData->text = ( UserText::getRegistSuccessText($conversation) )->get();
             return Request::sendMessage($reqData->build());
@@ -787,9 +777,8 @@ class UserController extends BotController
         return $response;
     }
 
-    public static function whenRegistApproved($userId)
+    public static function whenRegistApproved($telegramUser)
     {
-        $telegramUser = TelegramUser::find($userId);
         if(!$telegramUser) {
             return Request::emptyResponse();
         }
@@ -802,7 +791,33 @@ class UserController extends BotController
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $telegramUser['chat_id'];
-        $reqData->text = ( UserText::getRegistApprovedText($telegramUser['created_at']) )->get();
+        $reqData->text = UserText::getRegistApprovedText($telegramUser['created_at'])->get();
+
+        return Request::sendMessage($reqData->build());
+    }
+
+    public static function whenRegistRejected($registData)
+    {
+        if(!$registData) {
+            return Request::emptyResponse();
+        }
+
+        $conversation = new Conversation('regist', null, $registData['chat_id']);
+        if($conversation->isExists()) {
+            $conversation->done();
+        }
+
+        $reqData = New RequestData();
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $registData['chat_id'];
+
+        $reqData->text = TelegramText::create()
+            ->addBold('Pendaftaran Opnimus ditolak.')->newLine()
+            ->addItalic($registData['updated_at'])->newLine(2)
+            ->addText('Mohon maaf, permintaan anda tidak mendapat persetujuan oleh Admin. ')
+            ->addText('Anda dapat berkoordinasi dengan Admin lokal anda untuk mendapatkan informasi terkait.')->newLine()
+            ->addText('Terima kasih.')
+            ->get();
 
         return Request::sendMessage($reqData->build());
     }

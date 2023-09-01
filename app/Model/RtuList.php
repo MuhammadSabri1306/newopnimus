@@ -20,4 +20,18 @@ class RtuList extends Model
             return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
         });
     }
+    
+    public static function findBySname($sname)
+    {
+        return RtuList::query(function ($db, $table) use ($sname) {
+            return $db->queryFirstRow("SELECT * FROM $table WHERE sname=%s", $sname);
+        });
+    }
+
+    public static function getSnameOrderedByLocation($locationId)
+    {
+        return RtuList::query(function ($db, $table) use ($locationId) {
+            return $db->query("SELECT * FROM $table WHERE location_id=%i ORDER BY sname", $locationId);
+        });
+    }
 }

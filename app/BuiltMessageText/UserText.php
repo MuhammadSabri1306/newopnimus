@@ -50,6 +50,37 @@ class UserText
         return $text;
     }
 
+    public static function registPicSuccess(array $registration, array $locations)
+    {
+        $registData = $registration['data'];
+        $text = TelegramText::create()
+            ->addText('Terima kasih, anda akan didaftarkan sebagai PIC sesuai data berikut.')->newLine(2)
+            ->startCode();
+            
+        $text->addText('Nama Pengguna   : '.$registData['full_name'])->newLine();
+        $text->addText('No. Handphone   : '.$registData['telp'])->newLine();
+        $text->addText('Level           : '.ucfirst($registData['level']))->newLine();
+        $text->addText('Regional        : '.$registData['regional_name'])->newLine();
+        $text->addText('Witel           : '.$registData['witel_name'])->newLine(2);
+        $text->addText('NIK             : '.$registData['nik'])->newLine();
+        $text->addText('Status Karyawan : '.($registData['is_organik'] ? 'Organik' : 'Non Organik'))->newLine();
+        $text->addText('Nama Instansi   : '.$registData['instansi'])->newLine();
+        $text->addText('Unit Kerja      : '.$registData['unit'])->newLine(2);
+        $text->addText('Lokasi PIC      : ');
+
+        foreach($locations as $loc) {
+            $locName = $loc['location_name'];
+            $locSname = $loc['location_sname'];
+            $text->newLine()->addSpace(4)->addText("- $locSname ($locName)");
+        }
+
+        $text->endCode()->newLine(2)
+            ->addText('Silahkan menunggu Admin untuk melakukan verifikasi terhadap permintaan anda, terima kasih.')->newLine(2)
+            ->startItalic()->addText('OPNIMUS, Stay Alert, Stay Safe')->endItalic();
+        
+        return $text;
+    }
+
     public static function getRegistApprovedText(string $approvedAt)
     {
         return TelegramText::create()

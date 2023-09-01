@@ -153,7 +153,11 @@ class Conversation
     public function __set($key, $value)
     {
         $this->state[$key] = $value;
-        // dd($this->state);
+    }
+
+    public function arrayPush($key, $value)
+    {
+        array_push($this->state[$key], $value);
     }
 
     public function getStateArray()

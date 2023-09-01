@@ -7,7 +7,8 @@ use Longman\TelegramBot\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
-use App\Controller\Bot\PicController;
+use App\Controller\Bot\PicController; // on dev
+use App\Controller\Bot\PortController;
 
 class CallbackqueryCommand extends SystemCommand
 {
@@ -60,6 +61,11 @@ class CallbackqueryCommand extends SystemCommand
 
         PicController::$command = $this;
         if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        PortController::$command = $this;
+        if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
             return $callbackQuery->answer();
         }
 

@@ -2,6 +2,7 @@
 namespace App\Controller;
 
 use Longman\TelegramBot\Request;
+use Longman\TelegramBot\ChatAction;
 use App\Core\RequestData;
 use App\Core\Controller;
 
@@ -58,5 +59,29 @@ class BotController extends Controller
             $reqData->text = $data;
         }
         return Request::sendMessage($reqData->build());
+    }
+
+    public static function sendMessageList(RequestData $reqData, array $textList, $useTypingAction = false)
+    {
+        foreach($textList as $replyText) {
+            if($useTypingAction) {
+                $reqDataTyping = $reqData->duplicate('chatId');
+                $reqDataTyping->action = ChatAction::TYPING;
+                Request::sendChatAction($reqDataTyping->build());
+            }
+
+
+            $reqData->text = $replyText;
+            $response = Request::sendMessage($reqData->build());
+
+            if(!$response->isOk()) {
+                return BotController::sendDebugMessage([
+                    'response' => $response,
+                    'text' => $reqData->text
+                ]);
+            }
+        }
+
+        return $response;
     }
 }

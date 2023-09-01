@@ -25,6 +25,13 @@ class TelegramPersonalUser extends Model
         });
     }
 
+    public static function findByUserId($userId)
+    {
+        return TelegramPersonalUser::query(function ($db, $table) use ($userId) {
+            return $db->queryFirstRow("SELECT * FROM $table WHERE user_id=%i", $userId);
+        });
+    }
+
     public static function delete($id)
     {
         return TelegramPersonalUser::query(function ($db, $table) use ($id) {

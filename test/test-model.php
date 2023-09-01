@@ -12,7 +12,7 @@ $reqData = New RequestData();
 $reqData->parseMode = 'markdown';
 $reqData->chatId = 1931357638;
 
-$user = TelegramUser::findPicByChatId(1931357638);
+$user = TelegramUser::findByChatId(1931357638);
 $ports = RtuPortStatus::getExistsAlarm([ 'witel' => $user['witel_id'] ]);
 $reqData->text = AlarmText::witelAlarmText($user['witel_id'], $ports)->get();
 // Request::sendMessage($reqData->build());

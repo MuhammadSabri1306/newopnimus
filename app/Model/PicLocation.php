@@ -6,6 +6,17 @@ use App\Core\Model;
 class PicLocation extends Model
 {
     public static $table = 'pic_location';
+
+    public static function create(array $data)
+    {
+        $data['created_at'] = date('Y-m-d H:i:s');
+
+        return PicLocation::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            $id = $db->insertId();
+            return $id ? PicLocation::find($id) : null;
+        });
+    }
     
     public static function getByUser($userId)
     {
@@ -20,7 +31,7 @@ class PicLocation extends Model
     public static function find($id)
     {
         return PicLocation::query(function ($db, $table) use ($id) {
-            return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
+            return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id) ?? null;
         });
     }
 }

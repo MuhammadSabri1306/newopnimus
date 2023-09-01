@@ -2,12 +2,11 @@
 
 namespace Longman\TelegramBot\Commands\SystemCommands;
 
+use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
-use App\Core\DB;
-use App\Controller\BotController;
-// use App\Core\Logger;
+use App\Controller\Bot\AdminController;
 
 class TestCommand extends SystemCommand
 {
@@ -44,12 +43,15 @@ class TestCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        $message = $this->getMessage();
-        $db = new DB();
-        $user = $db->queryFirstRow('SELECT username FROM telegram_user WHERE chat_id=%i', $message->getChat()->getId());
-        $username = $user['username'];
-
-        // return $this->replyToChat("Test: $username");
-        return BotController::sendDebugMessage('test');
+        $chatId = $this->getMessage()->getChat()->getId();
+        if($chatId != '1931357638') {
+            return Request::sendMessage([
+                'chat_id' => $chatId,
+                'parse_mode' => 'markdown',
+                'text' => 'TEST command'.PHP_EOL.'___- Developer only___'
+            ]);
+        }
+        
+        return $this->replyToChat('Test');
     }
 }

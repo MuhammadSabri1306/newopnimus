@@ -2,6 +2,7 @@
 namespace App\Controller\Bot;
 
 use Longman\TelegramBot\Request;
+use Longman\TelegramBot\ChatAction;
 use App\Core\RequestData;
 use App\Core\TelegramText;
 use App\Controller\BotController;
@@ -9,13 +10,10 @@ use App\Model\TelegramUser;
 use App\Model\RtuPortStatus;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\AlarmText;
+use App\ApiRequest\NewosaseApi;
 
 class AlarmController extends BotController
 {
-    protected static $callbacks = [
-        // 'user.regist_approval' => 'onRegist',
-    ];
-
     public static function checkExistAlarm()
     {
         $message = AlarmController::$command->getMessage();
@@ -24,31 +22,60 @@ class AlarmController extends BotController
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $message->getChat()->getId();
 
-        $user = TelegramUser::findPicByChatId($reqData->chatId);
+        $user = TelegramUser::findByChatId($reqData->chatId);
         if(!$user) {
             $reqData->text = UserText::unregistedText()->get();
             return Request::sendMessage($reqData->build());
         }
 
+        $reqDataTyping = $reqData->duplicate('chatId');
+        $reqDataTyping->action = ChatAction::TYPING;
+        Request::sendChatAction($reqDataTyping->build());
+
         if($user['level'] == 'nasional') {
             return Request::emptyResponse();
         }
 
+        $newosaseApi = new NewosaseApi();
+        $newosaseApi->request['query'] = [ 'isAlert' => 1 ];
+        if($user['level'] == 'regional') {
+            $newosaseApi->request['query']['regionalId'] = $user['regional_id'];
+        } elseif($user['level'] == 'witel') {
+            $newosaseApi->request['query']['witelId'] = $user['witel_id'];
+        }
+
+        $fetResp = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
+        if(!$fetResp) {
+            $reqData->text = 'Terjadi masalah saat menghubungi server.';
+            return Request::sendMessage($reqData->build());
+        }
+
+        $ports = $fetResp->result->payload;
+        if(!$ports || count($ports) < 1) {
+            $reqData->text = 'Data Port tidak dapat ditemukan.';
+            return Request::sendMessage($reqData->build());
+        }
+
         if($user['level'] == 'regional') {
 
-            $ports = RtuPortStatus::getExistsAlarm([ 'regional' => $user['regional_id'] ]);
-            $reqData->text = AlarmText::regionalAlarmText($user['regional_id'], $ports);
-
+            $regionalAlarmText = AlarmText::regionalAlarmText1($user['regional_id'], $ports)->getSplittedByLine(30);
+            $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $regionalAlarmText);
+            return BotController::sendMessageList($reqData, $textList);
+            
         } elseif($user['level'] == 'witel') {
 
-            $ports = RtuPortStatus::getExistsAlarm([ 'witel' => $user['witel_id'] ]);
-            $reqData->text = AlarmText::witelAlarmText($user['witel_id'], $ports)->get();
+            $witelAlarmText = AlarmText::witelAlarmText1($user['witel_id'], $ports)->getSplittedByLine(30);
+            $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $witelAlarmText);
+            return BotController::sendMessageList($reqData, $textList, true);
             
         } else {
-            // $ports = RtuPortStatus::getByWitel($user['witel_id']);
             return Request::emptyResponse();
         }
 
-        return Request::sendMessage($reqData->build());
+        $response = Request::sendMessage($reqData->build());
+        if($response->isOk()) {
+            return $response;
+        }
+        return BotController::sendDebugMessage($response);
     }
 }

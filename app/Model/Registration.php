@@ -43,6 +43,17 @@ class Registration extends Model
         });
     }
 
+    public static function findUnprocessedByChatId($chatId)
+    {
+        return Registration::query(function ($db, $table) use ($chatId) {
+            $data = $db->queryFirstRow("SELECT * FROM $table WHERE status=%s AND chat_id=%i", 'unprocessed', $chatId);
+            if(!$data) return null;
+
+            $data['data'] = json_decode($data['data'], true);
+            return $data;
+        });
+    }
+
     public static function getStatus($id)
     {
         return Registration::query(function ($db, $table) use ($id) {
@@ -75,6 +86,7 @@ class Registration extends Model
     public static function update($id, array $data, $adminId)
     {
         $data['updated_by'] = $adminId;
+        $data['updated_at'] = date('Y-m-d H:i:s');
         if(isset($data['data'])) {
             $data['data'] = json_encode($data['data']);
         }
