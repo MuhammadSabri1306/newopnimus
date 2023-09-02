@@ -454,9 +454,8 @@ class PicController extends BotController
         return $response;
     }
 
-    public static function whenRegistApproved($userId)
+    public static function whenRegistApproved($telegramUser)
     {
-        $telegramUser = TelegramUser::find($userId);
         if(!$telegramUser) {
             return Request::emptyResponse();
         }
@@ -470,6 +469,32 @@ class PicController extends BotController
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $telegramUser['chat_id'];
         $reqData->text = PicText::getRegistApprovedText($telegramUser)->get();
+
+        return Request::sendMessage($reqData->build());
+    }
+
+    public static function whenRegistRejected($registData)
+    {
+        if(!$registData) {
+            return Request::emptyResponse();
+        }
+
+        $conversation = new Conversation('regist_pic', null, $registData['chat_id']);
+        if($conversation->isExists()) {
+            $conversation->done();
+        }
+
+        $reqData = New RequestData();
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $registData['chat_id'];
+
+        $reqData->text = TelegramText::create()
+            ->addBold('Pengajuan PIC ditolak.')->newLine()
+            ->addItalic($registData['updated_at'])->newLine(2)
+            ->addText('Mohon maaf, permintaan anda tidak mendapat persetujuan oleh Admin. ')
+            ->addText('Anda dapat berkoordinasi dengan Admin lokal anda untuk mendapatkan informasi terkait.')->newLine()
+            ->addText('Terima kasih.')
+            ->get();
 
         return Request::sendMessage($reqData->build());
     }

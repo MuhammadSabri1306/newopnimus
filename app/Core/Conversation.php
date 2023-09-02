@@ -17,19 +17,23 @@ class Conversation
 
     private $exists = false;
     
-    public function __construct($name, $userId, $chatId)
+    public function __construct($name, $userId, $chatId, array $config = [])
     {
         $this->name = $name;
         $this->userId = $userId;
         $this->chatId = $chatId;
 
         $this->db = new DB();
-        $conversation = $this->db
-            ->queryFirstRow("SELECT * FROM $this->tableName WHERE status='active' AND name=%s_name AND chat_id=%i_chatid", [
-                'name' => $this->name,
-                'chatid' => $this->chatId,
-            ]
-        );
+        $defaultCall = function($db, $params) {
+            return $db->queryFirstRow(
+                "SELECT * FROM $this->tableName WHERE status='active' AND name=%s_name AND chat_id=%i_chatid",
+                [ 'name' => $params['name'], 'chatid' => $params['chatId'] ]
+            );
+        };
+
+        $callParams = [ 'name' => $this->name, 'userId' => $this->userId, 'chatId' => $this->chatId ];
+        $conversation = isset($config['call']) ? $config['call']($this->db, $callParams)
+            : $defaultCall($this->db, $callParams);
 
         if($conversation) {
             $this->id = (int) $conversation['id'];
@@ -165,9 +169,9 @@ class Conversation
         return $this->state;
     }
 
-    public static function getOrCreate($name, $userId, $chatId)
+    public static function getOrCreate($name, $userId, $chatId, array $config = [])
     {
-        $conversation = new Conversation($name, $userId, $chatId);
+        $conversation = new Conversation($name, $userId, $chatId, $config);
         if(!$conversation->isExists()) {
             $conversation->create();
         }
