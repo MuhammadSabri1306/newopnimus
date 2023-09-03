@@ -9,6 +9,7 @@ use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
 use App\Controller\Bot\PicController; // on dev
 use App\Controller\Bot\PortController;
+use App\Controller\Bot\TestController;
 
 class CallbackqueryCommand extends SystemCommand
 {
@@ -66,6 +67,11 @@ class CallbackqueryCommand extends SystemCommand
 
         PortController::$command = $this;
         if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        TestController::$command = $this;
+        if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
             return $callbackQuery->answer();
         }
 

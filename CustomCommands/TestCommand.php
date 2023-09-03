@@ -6,7 +6,7 @@ use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
-use App\Controller\Bot\AdminController;
+use App\Controller\Bot\TestController;
 
 class TestCommand extends SystemCommand
 {
@@ -52,6 +52,7 @@ class TestCommand extends SystemCommand
             ]);
         }
         
-        return $this->replyToChat('Test');
+        TestController::$command = $this;
+        return TestController::run();
     }
 }
