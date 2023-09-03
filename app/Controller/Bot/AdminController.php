@@ -116,15 +116,20 @@ class AdminController extends BotController
         $statusText = $registStatus['status'] == 'approved' ? 'disetujui' : 'ditolak';
 
         if(isset($registStatus['updated_by'])) {
-            $updateText = TelegramText::create("Permintaan registrasi telah $statusText oleh ")
-                ->addMention($registStatus['updated_by']['chat_id'], 'Admin lain');
+            $updateText = TelegramText::create("Permintaan registrasi telah $statusText oleh ");
+            if($registStatus['updated_by']['username']) {
+                $updateText->addMention($registStatus['updated_by']['username']);
+            } else {
+                $adminFullName = $registStatus['updated_by']['first_name'].' '.$registStatus['updated_by']['last_name'];
+                $updateText->addMention($registStatus['updated_by']['chat_id'], $adminFullName);
+            }
 
             if($registStatus['updated_by']['witel_name']) {
-                $updateText->addText(' -'.$registStatus['updated_by']['witel_name'].'.');
+                $updateText->newLine()->addItalic('- '.$registStatus['updated_by']['witel_name'].'.');
             } elseif($registStatus['updated_by']['regional_name']) {
-                $updateText->addText(' -'.$registStatus['updated_by']['regional_name'].'.');
+                $updateText->newLine()->addItalic('- '.$registStatus['updated_by']['regional_name'].'.');
             } else {
-                $updateText->addText(' -NASIONAL.');
+                $updateText->newLine()->addItalic('- Level NASIONAL.');
             }
 
             $reqData->text = $updateText->get();
@@ -214,6 +219,8 @@ class AdminController extends BotController
         list($callbackAnswer, $registId) = explode(':', $callbackData);
         $admin = TelegramAdmin::findByChatId($chatId);
         
+        $registStatus = Registration::getStatus($registId);
+
         // $status, $registData
         extract(AdminController::getRegistData($registId));
         

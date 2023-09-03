@@ -59,10 +59,11 @@ class TelegramAdmin extends Model
                 ];
 
                 $admins = $db->query($query, $params);
-                if(count($admins) < 1) return [];
-                if($admins[0]['level'] == 'nasional') return $admins;
-                if($admins[0]['level'] == 'regional') return array_filter($admins, fn($item) => $item['level'] == 'regional');
-                return array_filter($admins, fn($item) => $item['level'] == 'witel');
+                // if(count($admins) < 1) return [];
+                // if($admins[0]['level'] == 'nasional') return $admins;
+                // if($admins[0]['level'] == 'regional') return array_filter($admins, fn($item) => $item['level'] == 'regional');
+                // return array_filter($admins, fn($item) => $item['level'] == 'witel');
+                return $admins;
             }
             
             return [];

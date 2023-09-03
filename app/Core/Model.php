@@ -11,8 +11,9 @@ class Model
     {
         if (is_callable($callback)) {
 
-            $backtrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 2);
-            $modelClass = $backtrace[1]['class'];
+            // $backtrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 2);
+            // $modelClass = $backtrace[1]['class'];
+            $modelClass = get_called_class();
 
             $db = new DB();
             $table = $modelClass::$table ?? Model::$table;

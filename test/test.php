@@ -7,18 +7,11 @@ use App\Model\TelegramAdmin;
 use App\Controller\Bot\AdminController;
 use App\BuiltMessageText\AdminText;
 
-$registId = '9';
-$userId = '1931357638';
-$chatId = '1931357638';
+$registId = '16';
+$registData = Registration::find($registId);
+$admins = TelegramAdmin::getByUserArea($registData['data']);
+dd_json($admins);
 
-$conversation = new Conversation('regist', $userId, $chatId);
-$conversation->setUserId($userId);
-extract(AdminController::getRegistData($conversation->registId));
-
-$reqData = AdminController::getUnavailableApproveText($registData);
-$reqData->chatId = $chatId;
-
-dd_json([
-    'status' => $status,
-    'registData' => $registData,
-]);
+// dd_json([
+//     'registStatus' => $registStatus
+// ]);

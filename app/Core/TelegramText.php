@@ -179,6 +179,6 @@ class TelegramText
         }
 
         // username
-        return $this->addText("@$username");
+        return $this->addText("@$user");
     }
 }

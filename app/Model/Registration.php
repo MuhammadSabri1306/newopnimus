@@ -2,6 +2,7 @@
 namespace App\Model;
 
 use App\Core\Model;
+use App\Model\TelegramAdmin;
 
 class Registration extends Model
 {
@@ -56,31 +57,25 @@ class Registration extends Model
 
     public static function getStatus($id)
     {
-        return Registration::query(function ($db, $table) use ($id) {
-            $data = $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
-            if(!$data) return null;
-            
-            if($data['status'] == 'unprocessed') {
-                return [ 'status' => $data['status'] ];
-            }
+        $data = Registration::find($id);
+        if(!$data || $data['status'] == 'unprocessed') {
+            return $data;
+        }
 
-            $adminId = $data['updated_by'];
-            $admin = TelegramAdmin::query(function ($db, $table) use ($adminId) {
-                $regionalTable = Regional::$table;
-                $witelTable = Witel::$table;
-                $query = "SELECT $table.*, $regionalTable.name AS regional_name, $witelTable.witel_name FROM $table ".
-                    "LEFT JOIN $regionalTable ON $regionalTable.id=$table.regional_id ".
-                    "LEFT JOIN $witelTable ON $witelTable.id=$table.witel_id ".
-                    'WHERE id=%i';
-                $data = $db->queryFirstRow($query, $adminId);
-                return $data ?? null;
-            });
-
-            return [
-                'status' => $data['status'],
-                'updated_by' => $admin
-            ];
+        $adminId = $data['updated_by'];
+        $admin = TelegramAdmin::query(function ($db, $table) use ($adminId) {
+            $regionalTable = Regional::$table;
+            $witelTable = Witel::$table;
+            $query = "SELECT $table.*, $regionalTable.name AS regional_name, $witelTable.witel_name FROM $table ".
+                "LEFT JOIN $regionalTable ON $regionalTable.id=$table.regional_id ".
+                "LEFT JOIN $witelTable ON $witelTable.id=$table.witel_id ".
+                "WHERE $table.id=%i";
+            $data = $db->queryFirstRow($query, $adminId);
+            return $data ?? null;
         });
+
+        $data['updated_by'] = $admin;
+        return $data;
     }
 
     public static function update($id, array $data, $adminId)
