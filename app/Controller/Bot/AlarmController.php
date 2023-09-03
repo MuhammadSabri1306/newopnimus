@@ -11,9 +11,14 @@ use App\Model\RtuPortStatus;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\AlarmText;
 use App\ApiRequest\NewosaseApi;
+use App\Request\RequestInKeyboard;
 
 class AlarmController extends BotController
 {
+    protected static $callbacks = [
+        'alarm.select_regional' => 'onSelectRegional'
+    ];
+
     public static function checkExistAlarm()
     {
         $message = AlarmController::$command->getMessage();
@@ -33,7 +38,11 @@ class AlarmController extends BotController
         Request::sendChatAction($reqDataTyping->build());
 
         if($user['level'] == 'nasional') {
-            return Request::emptyResponse();
+            $reqData->text = 'Silahkan pilih Regional.';
+            return RequestInKeyboard::regionalList(
+                $reqData,
+                fn($regional) => 'alarm.select_regional.'.$regional['id']
+            );
         }
 
         $newosaseApi = new NewosaseApi();
@@ -57,25 +66,38 @@ class AlarmController extends BotController
         }
 
         if($user['level'] == 'regional') {
-
             $regionalAlarmText = AlarmText::regionalAlarmText1($user['regional_id'], $ports)->getSplittedByLine(30);
             $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $regionalAlarmText);
             return BotController::sendMessageList($reqData, $textList);
-            
-        } elseif($user['level'] == 'witel') {
-
+        }
+        
+        if($user['level'] == 'witel') {
             $witelAlarmText = AlarmText::witelAlarmText1($user['witel_id'], $ports)->getSplittedByLine(30);
             $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $witelAlarmText);
             return BotController::sendMessageList($reqData, $textList, true);
-            
-        } else {
-            return Request::emptyResponse();
         }
+        
+        // PIC
+        return Request::emptyMessage();
+    }
 
-        $response = Request::sendMessage($reqData->build());
-        if($response->isOk()) {
-            return $response;
-        }
-        return BotController::sendDebugMessage($response);
+    public static function onSelectRegional($regionalId, $callbackQuery)
+    {
+        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getFrom();
+        $regional = Regional::find($regionalId);
+
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->messageId = $message->getMessageId();
+        $reqData->text = TelegramText::create('Silahkan pilih Regional.')->newLine(2)
+            ->addBold('=> ')->addText($regional['name'])
+            ->get();
+        Request::editMessageText($reqData->build());
+
+        $regionalAlarmText = AlarmText::regionalAlarmText1($regionalId, $ports)->getSplittedByLine(30);
+        $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $regionalAlarmText);
+        return BotController::sendMessageList($reqData->duplicate('parseMode', 'chatId'), $textList);
     }
 }

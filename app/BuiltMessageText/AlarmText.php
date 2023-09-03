@@ -153,7 +153,7 @@ class AlarmText
         $text = TelegramText::create()
             ->addText('Status alarm OSASE di ')
             ->startBold()->addText($witel['witel_name'])->endBold()
-            ->addText(" pada $currDateTime WIB adalah:")->newLine();
+            ->addText(" pada $currDateTime WIB adalah:");
 
         foreach($alarms as $rtu) {
             $text->newLine(2)
@@ -167,13 +167,12 @@ class AlarmText
                 $portValue = AlarmText::buildPortValue($port);
                 $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
 
-                $text->newLine(2)
+                $text->newLine()
                     ->startCode()
-                    ->addSpace(3)
+                    ->addSpace(2)
                     ->addText("$portStatusTitle: $portName ($portValue) selama $duration")
                     ->endCode();
             }
-            $text->newLine();
         }
 
         return $text;
