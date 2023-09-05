@@ -3,6 +3,7 @@ namespace App\Controller\Bot;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\InlineKeyboard;
+use Longman\TelegramBot\Entities\Keyboard;
 
 use App\Core\RequestData;
 use App\Core\TelegramText;
@@ -15,6 +16,8 @@ use App\Model\TelegramPersonalUser;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\RtuLocation;
+use App\Model\Registration;
+
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\PicText;
 use App\Request\RequestInKeyboard;
@@ -26,10 +29,12 @@ class PicController extends BotController
 {
     protected static $callbacks = [
         'pic.set_start' => 'onSetStart',
+        'pic.select_regional' => 'onSetRegional',
         'pic.select_witel' => 'onSetWitel',
         'pic.add_location' => 'onAddLocation',
         'pic.update_loc' => 'onUpdateLocation',
         'pic.remove_loc' => 'onRemoveLocation',
+        'pic.set_organik' => 'onSelectOrganik',
     ];
 
     public static function getPicRegistConversation()
@@ -49,65 +54,196 @@ class PicController extends BotController
         return null;
     }
 
-    public static function register()
+    public static function askLocations($chatId, $locIds)
     {
-        $message = UserController::$command->getMessage();
-        $isPrivateChat = $message->getChat()->isPrivateChat();
-        $reqData = New RequestData();
+        $request = BotController::getRequest('Registration/PicSetLocation', [ $chatId, $locIds ]);
+        $request->setRequest(function($inkeyboardData) {
+            $inkeyboardData['next']['callback_data'] = 'pic.update_loc.next';
+            $inkeyboardData['add']['callback_data'] = 'pic.update_loc.add';
+            $inkeyboardData['remove']['callback_data'] = 'pic.update_loc.remove';
+            return $inkeyboardData;
+        });
+        
+        return $request->send();
+    }
 
+    public static function askAgreement($chatId, $telgUser = null)
+    {
+        $isUnregisted = $telgUser ? false : true;
+        if($isUnregisted) {
+
+            $request = BotController::getRequest('Registration/Tou', [ $chatId, true ]);
+            $request->setBtnApprovalRequest(function($inkeyboardData) {
+                $inkeyboardData['agree']['callback_data'] = 'pic.set_start.continue';
+                $inkeyboardData['disagree']['callback_data'] = 'pic.set_start.cancel';
+                return $inkeyboardData;
+            });
+
+        } else {
+
+            $request = BotController::getRequest('Registration/PicTou', [ $chatId, $telgUser ]);
+            $request->setRequest(function($inkeyboardData) {
+                $inkeyboardData['agree']['callback_data'] = 'pic.set_start.continue';
+                $inkeyboardData['disagree']['callback_data'] = 'pic.set_start.cancel';
+                return $inkeyboardData;
+            });
+
+        }
+
+        return $request->send();
+    }
+
+    public static function askPersonal($message, $chatId)
+    {
+        $conversation = PicController::getPicRegistConversation();
+        $messageText = trim($message->getText(true));
+
+        $reqData = new RequestData();
+        $reqData->chatId = $chatId;
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->replyMarkup = $isPrivateChat ? Keyboard::remove(['selective' => true])
-            : Keyboard::forceReply(['selective' => true]);
+        $reqData->replyMarkup = Keyboard::remove(['selective' => true]);
 
-        $telgUser = TelegramUser::findByChatId($reqData->chatId);
-        $conversation = UserController::getRegistConversation();
+        if($conversation->getStep() == 2) {
+            if(empty($messageText)) {
+                $reqData = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
+                $reqData->text = 'Silahkan ketikkan nama lengkap anda.';
+                return Request::sendMessage($reqData->build());
+            }
 
-        // if(!$conversation->isExists()) {
-        //     if(!$telgUser) 
-        // }
+            $conversation->fullName = $messageText;
+            $conversation->nextStep();
+            $conversation->commit();
+            $messageText = '';
+        }
 
-        if(!$telgUser) {
-            $reqData->text = UserText::unregistedText()->get();
+        if($conversation->getStep() == 3) {
+            if(!$message->getContact()) {
+                $reqData->text = 'Silahkan pilih menu "Bagikan Kontak Saya".';
+                
+                $keyboardButton = new KeyboardButton('Bagikan Kontak Saya');
+                $keyboardButton->setRequestContact(true);
+                $reqData->replyMarkup = ( new Keyboard($keyboardButton) )
+                        ->setOneTimeKeyboard(true)
+                        ->setResizeKeyboard(true)
+                        ->setSelective(true);
+
+                return Request::sendMessage($reqData->build());
+            }
+
+            $conversation->telp = $message->getContact()->getPhoneNumber();
+            $conversation->nextStep();
+            $conversation->commit();
+            $messageText = '';
+        }
+
+        if($conversation->getStep() == 4) {
+            if(empty($messageText)) {
+                $reqData->text = 'Silahkan ketikkan instansi anda.';
+                return Request::sendMessage($reqData->build());
+            }
+            
+            $conversation->instansi = $messageText;
+            $conversation->nextStep();
+            $conversation->commit();
+            $messageText = '';
+        }
+
+        if($conversation->getStep() == 5) {
+            if(empty($messageText)) {
+                $reqData->text = 'Silahkan ketikkan unit kerja anda.';
+                return Request::sendMessage($reqData->build());
+            }
+            
+            $conversation->unit = $messageText;
+            $conversation->nextStep();
+            $conversation->commit();
+            $messageText = '';
+        }
+
+        if($conversation->getStep() == 6) {
+            $reqData->text = 'Apakah anda berstatus sebagai karyawan organik?';
+            $reqData->replyMarkup = new InlineKeyboard([
+                ['text' => 'Ya', 'callback_data' => 'pic.set_organik.ya'],
+                ['text' => 'Tidak', 'callback_data' => 'pic.set_organik.tidak']
+            ]);
             return Request::sendMessage($reqData->build());
+        }
+
+        if($conversation->getStep() == 7) {
+            if(empty($messageText)) {
+                $reqData->text = 'Silahkan ketikkan NIK anda.';
+                return Request::sendMessage($reqData->build());
+            }
+
+            $conversation->nik = $messageText;
+            $conversation->nextStep();
+            $conversation->commit();
+            $messageText = '';
         }
     }
 
-    public static function setLocations()
+    public static function register()
     {
         $message = PicController::$command->getMessage();
+        $chatId = $message->getChat()->getId();
+
         if(!$message->getChat()->isPrivateChat()) {
             $replyText = PicText::picAbortInGroup()->get();
             return PicController::$command->replyToChat($replyText);
         }
 
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $registration = Registration::findUnprocessedByChatId($chatId);
+        if($registration) {
 
-        $telgUser = TelegramUser::findByChatId($reqData->chatId);
-        if(!$telgUser) {
-            $reqData->text = UserText::unregistedText()->get();
+            $reqData = new RequestData();
+            $reqData->parseMode = 'markdown';
+            $reqData->chatId = $chatId;
+
+            if($registration['data']['has_regist']) {
+                $telgPersUser = TelegramPersonalUser::findByUserId($registration['data']['telegram_user_id']);
+                $locations = RtuLocation::getByIds($registration['data']['locations']);
+                $reqData->text = PicText::registSuccess($telgPersUser, $locations)->get();
+            } else {
+                $reqData->text = UserText::registPicSuccess($registration, $picLocs)->get();
+            }
+            
             return Request::sendMessage($reqData->build());
-        }
-        
-        $reqData->text = PicText::picStatus($telgUser)->get();
-        $reqData->replyMarkup = new InlineKeyboard([
-            ['text' => 'Lanjutkan', 'callback_data' => 'pic.set_start.continue'],
-            ['text' => 'Batalkan', 'callback_data' => 'pic.set_start.cancel']
-        ]);
 
-        return Request::sendMessage($reqData->build());
+        }
+
+        $telgUser = TelegramUser::findByChatId($chatId);
+        $conversation = PicController::getPicRegistConversation();
+
+        if($conversation->isExists()) {
+            
+            $conversationStep = $conversation->getStep();
+            if($conversationStep == 1) {
+                return PicController::askLocations($chatId, $conversation->locations);
+            }
+
+            if($conversationStep > 1 && $telgUser) {
+                return PicController::sendRegistRequest($chatId);
+            }
+
+            if($conversationStep > 1 && $conversationStep < 8) {
+                return PicController::askPersonal($message, $chatId);
+            }
+
+            return PicController::sendRegistRequest($chatId);
+        }
+
+        return PicController::askAgreement($chatId, $telgUser);
     }
 
     public static function onSetStart($callbackValue, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
         $user = $callbackQuery->getFrom();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
         $telgUser = TelegramUser::findByChatId($reqData->chatId);
@@ -130,27 +266,34 @@ class PicController extends BotController
             $conversation->locations = [];
         }
 
+        $conversation->hasRegist = $telgUser ? true : false;
         if(!$telgUser) {
-            
-            $conversation->userId = $user->getId();
-            $conversation->chatId = $message->getChat()->getId();
-            $conversation->type = $message->getChat()->getType();
-            
-        }
 
-        $conversation->hasRegist = true;
-        $conversation->telegramUserId = $telgUser['id'];
+            $conversation->chatId = $message->getChat()->getId();
+            $conversation->userId = $user->getId();
+            $conversation->username = $user->getUsername();
+            $conversation->type = $message->getChat()->getType();
+            $conversation->firstName = $user->getFirstName();
+            $conversation->lastName = $user->getLastName();
+            
+        } else {
+
+            $conversation->telegramUserId = $telgUser['id'];
+
+        }
 
         if($telgUser['level'] == 'nasional') {
 
             $conversation->level = 'nasional';
             $conversation->commit();
 
-            $reqData1->text = 'Silahkan pilih Regional.';
-            $response = RequestInKeyboard::regionalList(
-                $reqData1,
-                fn($regional) => 'pic.select_regional.'.$regional['id']
-            );
+            $request = BotController::getRequest('Area/SelectRegional', [ $chatId, $telgUser['regional_id'] ]);
+            $request->setRequest(function($inkeyboardItem, $regional) {
+                $inkeyboardItem['callback_data'] = 'pic.select_regional.'.$regional['id'];
+                return $inkeyboardItem;
+            });
+
+            $response = $request->send();
 
         } elseif($telgUser['level'] == 'regional') {
 
@@ -158,26 +301,29 @@ class PicController extends BotController
             $conversation->regionalId = $telgUser['regional_id'];
             $conversation->commit();
 
-            $reqData1->text = 'Silahkan pilih Witel.';
-            $response = RequestInKeyboard::witelList(
-                $telgUser['regional_id'],
-                $reqData1,
-                fn($witel) => 'pic.select_witel.'.$witel['id']
-            );
+            $request = BotController::getRequest('Area/SelectWitel', [ $chatId, $telgUser['regional_id'] ]);
+            $request->setRequest(function($inkeyboardItem, $witel) {
+                $inkeyboardItem['callback_data'] = 'pic.select_witel.'.$witel['id'];
+                return $inkeyboardItem;
+            });
+
+            $response = $request->send();
 
         } elseif($telgUser['level'] == 'witel') {
             
             $conversation->level = 'witel';
+            $conversation->regionalId = $telgUser['regional_id'];
             $conversation->witelId = $telgUser['witel_id'];
             $conversation->nextStep();
             $conversation->commit();
-            
-            $reqData1->text = 'Silahkan pilih Lokasi.';
-            $response = RequestInKeyboard::locationList(
-                $telgUser['witel_id'],
-                $reqData1,
-                fn($loc) => 'pic.add_location.'.$loc['id']
-            );
+
+            $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
+            $request->setRequest(function($inkeyboardItem, $loc) {
+                $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
+                return $inkeyboardItem;
+            });
+
+            $response = $request->send();
         }
 
         if($response->isOk()) {
@@ -186,13 +332,50 @@ class PicController extends BotController
         return BotController::sendDebugMessage($response);
     }
 
-    public static function onSetWitel($selectedWitelId, $callbackQuery)
+    public static function onSetRegional($selectedRegId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
+        $reqData->messageId = $message->getMessageId();
+
+        $regional = Regional::find($selectedRegId);
+        $reqData->text = TelegramText::create('Silahkan pilih Regional.')->newLine(2)
+            ->startBold()->addText('=> ')->endBold()
+            ->addText($regional['name'])
+            ->get();
+
+        $request = Request::editMessageText($reqData->build());
+        
+        $conversation = PicController::getPicRegistConversation();
+        if(!$conversation->isExists()) {
+            return Request::emptyMessage();
+        }
+        
+        $conversation->regionalId = $regional['id'];
+        $conversation->nextStep();
+        $conversation->commit();
+        
+        $request = BotController::getRequest('Area/SelectWitel', [ $chatId, $conversation->regionalId ]);
+        $request->setRequest(function($inkeyboardItem, $witel) {
+            $inkeyboardItem['callback_data'] = 'pic.select_witel.'.$witel['id'];
+            return $inkeyboardItem;
+        });
+        
+        return $request->send();
+    }
+
+    public static function onSetWitel($selectedWitelId, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
+
+        $reqData = New RequestData();
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
         $witel = Witel::find($selectedWitelId);
@@ -211,28 +394,24 @@ class PicController extends BotController
         $conversation->witelId = $witel['id'];
         $conversation->nextStep();
         $conversation->commit();
-        
-        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-        $reqData1->text = 'Silahkan pilih Lokasi.';
-        $response = RequestInKeyboard::locationList(
-            $witel['id'],
-            $reqData1,
-            fn($loc) => 'pic.add_location.'.$loc['id']
-        );
 
-        if($response->isOk()) {
-            return $response;
-        }
-        return BotController::sendDebugMessage($response);
+        $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
+        $request->setRequest(function($inkeyboardItem, $loc) {
+            $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
+            return $inkeyboardItem;
+        });
+        
+        return $request->send();
     }
 
     public static function onAddLocation($selectedLocId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
         $location = RtuLocation::find($selectedLocId);
@@ -250,21 +429,8 @@ class PicController extends BotController
 
         $conversation->arrayPush('locations', $location['id']);
         $conversation->commit();
-        
-        $response = RequestPic::manageLocation(
-            $conversation->locations,
-            function($reqData1) use ($reqData) {
-                $reqData1->chatId = $reqData->chatId;
-                return $reqData1;
-            },
-            function($inKeyboard) {
-                $inKeyboard['next']['callback_data'] = 'pic.update_loc.next';
-                $inKeyboard['add']['callback_data'] = 'pic.update_loc.add';
-                $inKeyboard['remove']['callback_data'] = 'pic.update_loc.remove';
-                return $inKeyboard;
-            }
-        );
 
+        $response = PicController::askLocations($chatId, $conversation->locations);
         if($response->isOk()) {
             return $response;
         }
@@ -274,14 +440,15 @@ class PicController extends BotController
     public static function onRemoveLocation($selectedLocId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
         $location = RtuLocation::find($selectedLocId);
-        $reqData->text = TelegramText::create('Silahkan pilih Lokasi yang ingin dihapus')->newLine(2)
+        $reqData->text = TelegramText::create('Silahkan pilih Lokasi yang ingin dihapus.')->newLine(2)
             ->startBold()->addText('=> ')->endBold()
             ->addText($location['location_sname'])
             ->get();
@@ -302,20 +469,7 @@ class PicController extends BotController
         $conversation->locations = $picLocIds;
         $conversation->commit();
 
-        $response = RequestPic::manageLocation(
-            $conversation->locations,
-            function($reqData1) use ($reqData) {
-                $reqData1->chatId = $reqData->chatId;
-                return $reqData1;
-            },
-            function($inKeyboard) {
-                $inKeyboard['next']['callback_data'] = 'pic.update_loc.next';
-                $inKeyboard['add']['callback_data'] = 'pic.update_loc.add';
-                $inKeyboard['remove']['callback_data'] = 'pic.update_loc.remove';
-                return $inKeyboard;
-            }
-        );
-
+        $response = PicController::askLocations($chatId, $conversation->locations);
         if($response->isOk()) {
             return $response;
         }
@@ -325,6 +479,8 @@ class PicController extends BotController
     public static function onUpdateLocation($callbackValue, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
+
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
             return Request::emptyMessage();
@@ -333,43 +489,45 @@ class PicController extends BotController
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
+        $srcRequest = BotController::getRequest('Registration/PicSetLocation', [ $chatId, $conversation->locations ]);
         $btnText = $callbackValue == 'next' ? 'Lanjutkan'
             : ($callbackValue == 'add' ? 'Tambah' : 'Hapus');
-        $reqData->text = PicText::editSelectedLocation($picLocs)->newLine(2)
+        $reqData->text = $srcRequest->getText()->newLine(2)
             ->addBold('=> ')->addText($btnText)
             ->get();
+            
         $request = Request::editMessageText($reqData->build());
 
         if($callbackValue == 'add') {
 
-            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = 'Silahkan pilih Lokasi.';
-            $response = RequestInKeyboard::locationList(
-                $conversation->witelId,
-                $reqData1,
-                fn($loc) => 'pic.add_location.'.$loc['id']
-            );
+            $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
+            $request->setRequest(function($inkeyboardItem, $loc) {
+                $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
+                return $inkeyboardItem;
+            });
+
+            $response = $request->send();
 
         } elseif($callbackValue == 'remove') {
 
+            $request = BotController::getRequest('Registration/PicRemoveLocation', [ $chatId, $conversation->locations ]);
+            $request->setRequest(
+                function($inkeyboardItem, $loc) {
+                    $inkeyboardItem['callback_data'] = 'pic.remove_loc.'.$loc['id'];
+                    return $inkeyboardItem;
+                }
+            );
 
-            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = 'Silahkan pilih Lokasi yang ingin dihapus.';
-            $reqData1->replyMarkup = new InlineKeyboard(array_map(function($loc) {
-                return [
-                    'text' => '❌ '.$loc['location_sname'],
-                    'callback_data' => 'pic.remove_loc.'.$loc['id']
-                ];
-            }, $picLocs));
-
-            $response = Request::sendMessage($reqData1->build());
+            $response = $request->send();
 
         } elseif($callbackValue == 'next') {
 
-            $response = PicController::sendRegistRequest($reqData1->chatId);
+            $conversation->nextStep();
+            $conversation->commit();
+            $response = PicController::sendRegistRequest($chatId);
 
         }
 
@@ -377,6 +535,36 @@ class PicController extends BotController
             return $response;
         }
         return BotController::sendDebugMessage($response);
+    }
+
+    public static function onSelectOrganik($callbackData, $callbackQuery)
+    {
+        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getUser();
+
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->messageId = $message->getMessageId();
+
+        $updateText = TelegramText::create('Apakah anda berstatus sebagai karyawan organik?')->newLine(2)
+            ->startBold()->addText('=> ')->endBold()->addText(ucfirst($callbackData));
+
+        $reqData->text = $updateText->get();
+        Request::editMessageText($reqData->build());
+
+        $conversation = PicController::getRegistConversation();
+        if(!$conversation->isExists()) {
+            return Request::emptyResponse();
+        }
+
+        $conversation->isOrganik = $callbackData == 'ya';
+        $conversation->nextStep();
+        $conversation->commit();
+
+        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+        $reqData1->text = 'Silahkan ketikkan NIK anda.';
+        return Request::sendMessage($reqData1->build());
     }
 
     private static function sendRegistRequest($chatId)
@@ -391,33 +579,19 @@ class PicController extends BotController
         $reqData->chatId = $chatId;
         $reqData->replyMarkup = Keyboard::remove(['selective' => true]);
 
-        $registration = Registration::findUnprocessedByChatId($reqData->chatId);
-        if($registration) {
-            // $reqData->text = UserText::getRegistSuccessText($conversation)->get();
-            // return Request::sendMessage($reqData->build());
-            return Request::emptyMessage();
-        }
-
         $registData = [];
         $registData['request_type'] = 'pic';
-        $registData['locations'] = $conversation->locations;
-        $registData['has_regist'] = $conversation->hasRegist;
+        $registData['data']['has_regist'] = $conversation->hasRegist;
+        $registData['data']['locations'] = $conversation->locations;
         $picLocs = RtuLocation::getByIds($conversation->locations);
 
         if(!$conversation->hasRegist) {
-
-            $regional = Regional::find($conversation->regionalId);
-            $witel = Witel::find($conversation->witelId);
 
             $registData['chat_id'] = $conversation->chatId;
             $registData['user_id'] = $conversation->userId;
             $registData['data']['username'] = $conversation->username;
             $registData['data']['type'] = $conversation->type;
             $registData['data']['level'] = 'pic';
-            $registData['data']['regional_id'] = $regional['id'];
-            $registData['data']['regional_name'] = $regional['name'];
-            $registData['data']['witel_id'] = $witel['id'];
-            $registData['data']['witel_name'] = $witel['witel_name'];
             $registData['data']['first_name'] = $conversation->firstName;
             $registData['data']['last_name'] = $conversation->lastName;
             $registData['data']['full_name'] = $conversation->fullName;
@@ -426,18 +600,20 @@ class PicController extends BotController
             $registData['data']['unit'] = $conversation->unit;
             $registData['data']['is_organik'] = $conversation->isOrganik;
             $registData['data']['nik'] = $conversation->nik;
+            $registData['data']['regional_id'] = $conversation->regionalId;
+            $registData['data']['witel_id'] = $conversation->witelId;
 
             $reqData->text = UserText::registPicSuccess($registData, $picLocs)->get();
 
         } else {
 
-            $registData['data']['telegram_user_id'] = $conversation->telegramUserId;
-            $registData['data']['regional_id'] = $regional['id'];
-            $registData['data']['regional_name'] = $regional['name'];
-            $registData['data']['witel_id'] = $witel['id'];
-            $registData['data']['witel_name'] = $witel['witel_name'];
-
+            $telgUser = TelegramUser::find($conversation->telegramUserId);
             $telgPersUser = TelegramPersonalUser::findByUserId($conversation->telegramUserId);
+
+            $registData['data']['telegram_user_id'] = $conversation->telegramUserId;
+            $registData['chat_id'] = $telgUser['chat_id'];
+            $registData['user_id'] = $telgUser['user_id'];
+
             $reqData->text = PicText::registSuccess($telgPersUser, $picLocs)->get();
             
         }
@@ -449,6 +625,9 @@ class PicController extends BotController
         }
 
         $response = Request::sendMessage($reqData->build());
+        if(!$response->isOk()) {
+            return BotController::sendDebugMessage($response);
+        }
         AdminController::whenRegistPic($registration['id']);
         
         return $response;

@@ -46,6 +46,6 @@ class SetPicCommand extends UserCommand
     public function execute(): ServerResponse
     {
         PicController::$command = $this;
-        return PicController::setLocations();
+        return PicController::register();
     }
 }

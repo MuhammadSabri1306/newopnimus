@@ -15,6 +15,7 @@ use App\Model\TelegramAdmin;
 use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
+use App\Model\PicLocation;
 use App\BuiltMessageText\AdminText;
 
 
@@ -45,20 +46,51 @@ class AdminController extends BotController
         }
     }
 
+    public static function buildPicApprvData($registData)
+    {
+        if(!is_array($registData)) {
+            return $registData;
+        }
+
+        $apprData = $registData['data'];
+        if($apprData['has_regist']) {
+
+            $telgUser = TelegramUser::find($apprData['telegram_user_id']);
+            $telgPersUser = TelegramPersonalUser::findByUserId($apprData['telegram_user_id']);
+
+            $apprData['request_level'] = 'pic';
+            $apprData['level'] = 'pic';
+            $apprData['full_name'] = $telgPersUser['nama'];
+            $apprData['telp'] = $telgPersUser['telp'];
+            $apprData['level'] = $telgUser['level'];
+            $apprData['nik'] = $telgPersUser['nik'];
+            $apprData['is_organik'] = $telgPersUser['is_organik'];
+            $apprData['instansi'] = $telgPersUser['instansi'];
+            $apprData['unit'] = $telgPersUser['unit'];
+            $apprData['regional_id'] = $telgUser['regional_id'];
+            $apprData['witel_id'] = $telgUser['witel_id'];
+
+        }
+
+        return $apprData;
+    }
+
     public static function whenRegistPic($registId)
     {
         $registData = Registration::find($registId);
-        $admins = TelegramAdmin::getByUserArea($registData['data']);
+        $apprData = AdminController::buildPicApprvData($registData);
+        $admins = TelegramAdmin::getByUserArea($apprData, 'request_level');
         if(count($admins) < 1) return;
-        
+
+        $adminApprovalText = AdminText::getPicApprovalText($apprData)->get();
         foreach($admins as $admin) {
-            $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) {
+            $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
                 $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
                 $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
                 return $inlineKeyboardData;
             });
     
-            $btnApprovalReq->text = AdminText::getPicApprovalText($registData)->get();
+            $btnApprovalReq->text = $adminApprovalText;
             $btnApprovalReq->chatId = $admin['chat_id'];
 
             Request::sendMessage($btnApprovalReq->build());
@@ -191,12 +223,19 @@ class AdminController extends BotController
         $dataUser = [];
         $dataPersonal = [];
         $registData = $registration['data'];
-        
+
         if(!$registData['has_regist']) {
             $telegramUser = AdminController::saveRegisteringUser($registData);
         } else {
             $telegramUser = TelegramUser::find($registData['telegram_user_id']);
         }
+
+        if(!$telegramUser) return null;
+
+        TelegramUser::update($telegramUser['id'], [
+            'is_pic' => 1,
+            'pic_regist_id' => $registration['id']
+        ]);
 
         foreach($registData['locations'] as $locationId) {
             PicLocation::create([
@@ -272,7 +311,7 @@ class AdminController extends BotController
 
         list($callbackAnswer, $registId) = explode(':', $callbackData);
         $admin = TelegramAdmin::findByChatId($chatId);
-        
+
         // $status, $registData
         extract(AdminController::getRegistData($registId));
         
@@ -284,8 +323,9 @@ class AdminController extends BotController
             return Request::editMessageText($reqData->build());
         }
 
+        $apprData = AdminController::buildPicApprvData($registData);
         $answerText = $callbackAnswer == 'approve' ? 'Izinkan' : 'Tolak';
-        $questionText = AdminText::getPicApprovalText($registData)->get();
+        $questionText = AdminText::getPicApprovalText($apprData)->get();
         $reqData->text = AdminController::getInKeyboardAnswerText($questionText, $answerText)->get();
         $response = Request::editMessageText($reqData->build());
         

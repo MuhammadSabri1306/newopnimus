@@ -25,7 +25,7 @@ class TelegramAdmin extends Model
 
     public static function getByUserArea(array $user, string $levelKey = 'level', string $regionalKey = 'regional_id', string $witelKey = 'witel_id')
     {
-        $admins = TelegramAdmin::query(function ($db, $table) use ($user, $levelKey, $regionalKey, $witelKey) {
+        return TelegramAdmin::query(function ($db, $table) use ($user, $levelKey, $regionalKey, $witelKey) {
             if($user[$levelKey] == 'nasional') {
                 return $db->query("SELECT * FROM $table WHERE level=%s", 'nasional');
             }
@@ -68,7 +68,5 @@ class TelegramAdmin extends Model
             
             return [];
         });
-
-        return $admins;
     }
 }

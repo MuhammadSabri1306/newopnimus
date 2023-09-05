@@ -6,7 +6,8 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use App\Core\RequestData;
 
 use App\Model\RtuLocation;
-use App\BuiltMessage\PicText;
+use App\BuiltMessageText\PicText;
+use App\Controller\BotController;
 
 class RequestPic
 {
@@ -14,8 +15,10 @@ class RequestPic
     public static function manageLocation(array $locIds, callable $callReqData, callable $callCalbackData)
     {
         $picLocs = RtuLocation::getByIds($locIds);
+
         $reqData = new RequestData();
         $reqData->parseMode = 'markdown';
+
         $reqData->text = PicText::editSelectedLocation($picLocs)->get();
         
         $inlineKeyboardParams = $callCalbackData([
@@ -40,6 +43,6 @@ class RequestPic
         $reqData->replyMarkup = new InlineKeyboard(...$inlineKeyboardData);
         $reqData1 = $callReqData($reqData);
 
-        $response = Request::sendMessage($reqData1->build());
+        return Request::sendMessage($reqData1->build());
     }
 }

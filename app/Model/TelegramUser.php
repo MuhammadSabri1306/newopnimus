@@ -72,4 +72,12 @@ class TelegramUser extends Model
             return $db->delete($table, 'chat_id=%s', $chatId);
         });
     }
+
+    public static function update($id, array $data)
+    {
+        $data['updated_at'] = date('Y-m-d H:i:s');
+        return TelegramUser::query(function ($db, $table) use ($id, $data) {
+            return $db->update($table, $data, "id=%i", $id);
+        });
+    }
 }

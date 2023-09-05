@@ -84,4 +84,14 @@ class BotController extends Controller
 
         return $response;
     }
+
+    public static function getRequest(string $classPath, array $args = [])
+    {
+        $classPathArr = explode('/', $classPath);
+        $className = 'App\\TelegramResponse\\' . implode('\\', $classPathArr);
+        $filePath = __DIR__."/../TelegramResponse/$classPath.php";
+
+        require_once $filePath;
+        return new $className(...$args);
+    }
 }
