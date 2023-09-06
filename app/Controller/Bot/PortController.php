@@ -331,7 +331,12 @@ class PortController extends BotController
         if(!$fetchResponse || !$fetchResponse->result->payload) {
             return null;
         }
-        return $fetchResponse->result->payload;
+
+        $ports = array_filter($fetchResponse->result->payload, function($port) {
+            return $port->no_port != 'many';
+        });
+
+        return $ports;
     }
 
     public static function sendTextAllPort($rtuSname, $chatId)

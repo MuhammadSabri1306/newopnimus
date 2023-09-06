@@ -59,7 +59,10 @@ class AlarmController extends BotController
             return Request::sendMessage($reqData->build());
         }
 
-        $ports = $fetResp->result->payload;
+        $ports = array_filter($fetResp->result->payload, function($port) {
+            return $port->no_port != 'many';
+        });
+
         if(!$ports || count($ports) < 1) {
             $reqData->text = 'Data Port tidak dapat ditemukan.';
             return Request::sendMessage($reqData->build());

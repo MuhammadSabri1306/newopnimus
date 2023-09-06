@@ -22,7 +22,7 @@ class PicLocation extends Model
     {
         return PicLocation::query(function ($db, $table) use ($userId) {
             $locationTable = RtuLocation::$table;
-            $query = "SELECT $table.*, $locationTable.location_name, $locationTable.location_sname, FROM $table ".
+            $query = "SELECT $table.*, $locationTable.location_name, $locationTable.location_sname FROM $table ".
                 "LEFT JOIN $locationTable ON $locationTable.id=$table.location_id WHERE user_id=%i";
             return $db->query($query, $userId);
         });
