@@ -3,3 +3,4 @@ composer.lock
 vendor
 config.php
 !app/config.php
+test/test.php
