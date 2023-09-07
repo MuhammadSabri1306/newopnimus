@@ -28,25 +28,27 @@ class PicTou extends TelegramResponse
         $text = TelegramText::create();
 
         if(!$user['is_pic']) {
-            $text->addText('Anda akan mendaftarkan diri anda menjadi PIC Lokasi. ')
+            $text->addBold('Anda akan mendaftarkan diri anda menjadi PIC Lokasi.')->newLine()
                 ->addText('Silahkan memanfaatkan fitur ini apabila anda merupakan pengawal perangkat Network Element Telkom Indonesia di lokasi tertentu.')
                 ->newLine(2);
+        } else {
+            $text->addBold('Anda akan memperbaharui Lokasi PIC anda.')->newLine();
         }
 
         if(count($user['locations']) < 1) {
-            $text->startItalic()->addText('Saat ini anda belum menjadi PIC di lokasi manapun.')->endItalic()->newLine(2);
+            $text->addItalic('Saat ini anda belum menjadi PIC di lokasi manapun.')->newLine(2);
         } else {
+            $text->addText('Saat ini anda terdaftar sebagai PIC di lokasi berikut.')->newLine();
             foreach($user['locations'] as $loc) {
                 $locName = $loc['location_name'];
                 $locSname = $loc['location_sname'];
-                $text->startItalic()
-                    ->startBold()->addText("- $locName ($locSname)")->endBold()
-                    ->endItalic()->newLine(2);
+                $text->newLine()->addItalic("- $locName ($locSname)");
             }
-            $text->newLine();
+            $text->newLine(2);
         }
 
-        $text->addText('Dengan mendaftarkan diri anda sebagai PIC lokasi, anda akan mendapatkan:')->newLine()
+
+        $text->addText('Dengan terdaftar sebagai PIC lokasi, anda akan mendapatkan:')->newLine()
             ->addText('📌 ')->startBold()->addText('Alert khusus di lokasi yang anda kawal via japrian OPNIMUS, dan')->endBold()->newLine()
             ->addText('📌 ')->startBold()->addText('Tagging nama anda di grup agar tidak ada alarm yang terlewat dan memudahkan respon.')->endBold()->newLine();
         

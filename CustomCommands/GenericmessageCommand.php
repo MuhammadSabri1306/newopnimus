@@ -1,23 +1,4 @@
 <?php
-
-/**
- * This file is part of the PHP Telegram Bot example-bot package.
- * https://github.com/php-telegram-bot/example-bot/
- *
- * (c) PHP Telegram Bot Team
- *
- * For the full copyright and license information, please view the LICENSE
- * file that was distributed with this source code.
- */
-
-/**
- * Generic message command
- *
- * Gets executed when any type of message is sent.
- *
- * In this conversation-related context, we must ensure that active conversations get executed correctly.
- */
-
 namespace Longman\TelegramBot\Commands\SystemCommands;
 
 use Longman\TelegramBot\Commands\SystemCommand;
@@ -27,6 +8,7 @@ use Longman\TelegramBot\Exception\TelegramException;
 use Longman\TelegramBot\Request;
 
 use App\Controller\Bot\UserController;
+use App\Controller\Bot\PicController;
 
 class GenericmessageCommand extends SystemCommand
 {
@@ -97,6 +79,12 @@ class GenericmessageCommand extends SystemCommand
         $registConversation = UserController::getRegistConversation();
         if($registConversation->isExists()) {
             return 'start';
+        }
+
+        PicController::$command = $this;
+        $registPicConversation = PicController::getPicRegistConversation();
+        if($registPicConversation->isExists()) {
+            return 'setpic';
         }
 
         return '';

@@ -86,13 +86,13 @@ class PicText
 
     public static function getRegistApprovedText(array $telegramUser)
     {
-        $approvedDate = isset($telegramUser['updated_at']) ? isset($telegramUser['updated_at'])
+        $approvedDate = isset($telegramUser['updated_at']) ? $telegramUser['updated_at']
             : $telegramUser['created_at'];
 
         $text = TelegramText::create()
             ->addBold('Pengajuan Lokasi PIC berhasil.')->newLine()
             ->addItalic($approvedDate)->newLine(2)
-            ->addText('Proses pengajuan anda telah mendapat persetujuan Admin. Dengan ini, anda telah merupakan PIC di lokasi berikut.')->newLine(2);
+            ->addText('Proses pengajuan anda telah mendapat persetujuan Admin. Dengan ini, anda telah merupakan PIC di lokasi berikut.');
 
         foreach($telegramUser['locations'] as $loc) {
             $locName = $loc['location_name'];
@@ -100,7 +100,7 @@ class PicText
             $text->newLine()->addSpace(4)->addText("- $locSname ($locName)");
         }
 
-        $text->newLine()->addText('Terima kasih.')->newLine()
+        $text->newLine(2)->addText('Terima kasih.')->newLine()
             ->addText('OPNIMUS, Stay Alert, Stay Safe ')->newLine(2)
             ->addText('#PeduliInfrastruktur #PeduliCME');
         

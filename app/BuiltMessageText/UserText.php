@@ -53,6 +53,9 @@ class UserText
     public static function registPicSuccess(array $registration, array $locations)
     {
         $registData = $registration['data'];
+        $regional = Regional::find($registData['regional_id']);
+        $witel = Witel::find($registData['witel_id']);
+
         $text = TelegramText::create()
             ->addText('Terima kasih, anda akan didaftarkan sebagai PIC sesuai data berikut.')->newLine(2)
             ->startCode();
@@ -60,8 +63,8 @@ class UserText
         $text->addText('Nama Pengguna   : '.$registData['full_name'])->newLine();
         $text->addText('No. Handphone   : '.$registData['telp'])->newLine();
         $text->addText('Level           : '.ucfirst($registData['level']))->newLine();
-        $text->addText('Regional        : '.$registData['regional_name'])->newLine();
-        $text->addText('Witel           : '.$registData['witel_name'])->newLine(2);
+        $text->addText('Regional        : '.$regional['name'])->newLine();
+        $text->addText('Witel           : '.$witel['witel_name'])->newLine(2);
         $text->addText('NIK             : '.$registData['nik'])->newLine();
         $text->addText('Status Karyawan : '.($registData['is_organik'] ? 'Organik' : 'Non Organik'))->newLine();
         $text->addText('Nama Instansi   : '.$registData['instansi'])->newLine();

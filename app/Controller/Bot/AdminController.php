@@ -30,18 +30,18 @@ class AdminController extends BotController
     {
         $registData = Registration::find($registId);
         $admins = TelegramAdmin::getByUserArea($registData['data']);
-        if(count($admins) < 1) return;
+        if(!$registData || count($admins) < 1) return;
+
+        $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
+            $inlineKeyboardData['approve']['callback_data'] = 'admin.user_approval.approve:'.$registId;
+            $inlineKeyboardData['reject']['callback_data'] = 'admin.user_approval.reject:'.$registId;
+            return $inlineKeyboardData;
+        });
+
+        $btnApprovalReq->text = AdminText::getUserApprovalText($registData)->get();
         
         foreach($admins as $admin) {
-            $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
-                $inlineKeyboardData['approve']['callback_data'] = 'admin.user_approval.approve:'.$registId;
-                $inlineKeyboardData['reject']['callback_data'] = 'admin.user_approval.reject:'.$registId;
-                return $inlineKeyboardData;
-            });
-    
-            $btnApprovalReq->text = AdminText::getUserApprovalText($registData)->get();
             $btnApprovalReq->chatId = $admin['chat_id'];
-
             Request::sendMessage($btnApprovalReq->build());
         }
     }
@@ -53,13 +53,12 @@ class AdminController extends BotController
         }
 
         $apprData = $registData['data'];
+        $apprData['request_level'] = 'pic';
         if($apprData['has_regist']) {
 
             $telgUser = TelegramUser::find($apprData['telegram_user_id']);
             $telgPersUser = TelegramPersonalUser::findByUserId($apprData['telegram_user_id']);
 
-            $apprData['request_level'] = 'pic';
-            $apprData['level'] = 'pic';
             $apprData['full_name'] = $telgPersUser['nama'];
             $apprData['telp'] = $telgPersUser['telp'];
             $apprData['level'] = $telgUser['level'];
@@ -78,21 +77,22 @@ class AdminController extends BotController
     public static function whenRegistPic($registId)
     {
         $registData = Registration::find($registId);
+        if(!$registData) return null;
+
         $apprData = AdminController::buildPicApprvData($registData);
         $admins = TelegramAdmin::getByUserArea($apprData, 'request_level');
         if(count($admins) < 1) return;
 
-        $adminApprovalText = AdminText::getPicApprovalText($apprData)->get();
-        foreach($admins as $admin) {
-            $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
-                $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
-                $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
-                return $inlineKeyboardData;
-            });
-    
-            $btnApprovalReq->text = $adminApprovalText;
-            $btnApprovalReq->chatId = $admin['chat_id'];
+        $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
+            $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
+            $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
+            return $inlineKeyboardData;
+        });
 
+        $btnApprovalReq->text = AdminText::getPicApprovalText($apprData)->get();
+
+        foreach($admins as $admin) {
+            $btnApprovalReq->chatId = $admin['chat_id'];
             Request::sendMessage($btnApprovalReq->build());
         }
     }
@@ -225,7 +225,7 @@ class AdminController extends BotController
         $registData = $registration['data'];
 
         if(!$registData['has_regist']) {
-            $telegramUser = AdminController::saveRegisteringUser($registData);
+            $telegramUser = AdminController::saveRegisteringUser($registration);
         } else {
             $telegramUser = TelegramUser::find($registData['telegram_user_id']);
         }
@@ -237,15 +237,33 @@ class AdminController extends BotController
             'pic_regist_id' => $registration['id']
         ]);
 
-        foreach($registData['locations'] as $locationId) {
-            PicLocation::create([
-                'regist_id' => $registration['id'],
-                'user_id' => $telegramUser['id'],
-                'location_id' => $locationId,
-            ]);
+        $savedLocs = PicLocation::getByUser($telegramUser['id']);
+        $savedLocIds = array_column($savedLocs, 'location_id');
+        $requestLocIds = $registData['locations'];
+
+        // create and update pic location
+        foreach($requestLocIds as $locationId) {
+            if(!in_array($locationId, $savedLocIds)) {
+                PicLocation::create([
+                    'regist_id' => $registration['id'],
+                    'user_id' => $telegramUser['id'],
+                    'location_id' => $locationId,
+                ]);
+            } else {
+                PicLocation::update($locationId, [
+                    'regist_id' => $registration['id']
+                ]);
+            }
         }
 
-        return $telegramUser;
+        // remove pic location
+        foreach($savedLocs as $savedLocItem) {
+            if(!in_array($savedLocItem['location_id'], $requestLocIds)) {
+                PicLocation::delete($savedLocItem['id']);
+            }
+        }
+
+        return TelegramUser::find($telegramUser['id']);
     }
 
     public static function onUserApproval($callbackData, $callbackQuery)
@@ -287,10 +305,10 @@ class AdminController extends BotController
 
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
             $reqData1->text = 'Akses telah diizinkan.';
-            Request::sendMessage($reqData1->build());
-
-            return UserController::whenRegistApproved($telegramUser);
-
+            
+            $response = Request::sendMessage($reqData1->build());
+            UserController::whenRegistApproved($telegramUser);
+            return $response;
         }
         
         Registration::update($registData['id'], [ 'status' => 'rejected' ], $admin['id']);
@@ -342,8 +360,9 @@ class AdminController extends BotController
             $reqData1 = $reqData->duplicate('parseMode', 'chatId');
             $reqData1->text = 'Pengajuan PIC telah diizinkan.';
 
-            Request::sendMessage($reqData1->build());
-            return PicController::whenRegistApproved($telegramUser);
+            $response = Request::sendMessage($reqData1->build());
+            PicController::whenRegistApproved($telegramUser);
+            return $response;
 
         }
 

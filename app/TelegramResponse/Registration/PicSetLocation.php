@@ -3,7 +3,6 @@ namespace App\TelegramResponse\Registration;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
-use Longman\TelegramBot\Entities\Keyboard;
 use Longman\TelegramBot\Entities\InlineKeyboard;
 use App\Core\TelegramResponse;
 use App\Core\RequestData;

@@ -25,6 +25,11 @@ class Tou extends TelegramResponse
         $this->setBtnApprovalRequest();
     }
 
+    public function getRequestData(string $key = null)
+    {
+        return is_null($key) ? $this->requestData : $this->requestData[$key];
+    }
+
     public function setAnimationRequest(callable $callRequest = null)
     {
         $reqData = new RequestData();
@@ -84,7 +89,7 @@ class Tou extends TelegramResponse
         ];
 
         if(is_callable($callButton)) {
-            $inlineKeyboardData = $callButton($callButton);
+            $inlineKeyboardData = $callButton($inlineKeyboardData);
         }
 
         $reqData->replyMarkup = new InlineKeyboard([

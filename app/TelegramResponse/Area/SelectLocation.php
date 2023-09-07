@@ -33,6 +33,11 @@ class SelectLocation extends TelegramResponse
             ->addText('.');
     }
 
+    public function filterLocation(callable $filterCallback)
+    {
+        $this->locations = array_filter($this->locations, $filterCallback);
+    }
+
     public function setRequest(callable $callButton = null, callable $callRequest = null)
     {
         $reqData = new RequestData();

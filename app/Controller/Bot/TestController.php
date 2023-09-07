@@ -10,6 +10,7 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use App\Core\RequestData;
 use App\Core\TelegramText;
 use App\Controller\BotController;
+use App\Controller\Bot\AdminController;
 
 class TestController extends BotController
 {
@@ -21,9 +22,12 @@ class TestController extends BotController
     {
         $message = TestController::$command->getMessage();
         $messageText = strtolower(trim($message->getText(true)));
+        $params = explode(' ', $messageText);
+        $modulKey = array_shift($params);
 
-        switch($messageText) {
-            case 'inkeyboardjson': return TestController::inKeyboardJson(); break;
+        switch($modulKey) {
+            case 'inkeyboardjson': return TestController::inKeyboardJson(...$params); break;
+            case 'adminregistapproval': return TestController::adminRegistApproval(...$params); break;
             default: return Request::emptyMessage();
         }
     }
@@ -52,6 +56,28 @@ class TestController extends BotController
         ]);
 
         return Request::sendMessage($reqData->build());
+    }
+
+    public static function adminRegistApproval($registId = null)
+    {
+        $message = TestController::$command->getMessage();
+        
+        $reqData = new RequestData();
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->parseMode = 'markdown';
+        
+        if(is_null($registId)) {
+            $reqData->text = TelegramText::create('Format:')
+                ->addCode('/test adminregistapproval [registration_id]')
+                ->get();
+            return Request::sendMessage($reqData->build());
+        }
+
+        $reqData->text = 'Test Regist Approval Admin, registId:'.$registId;
+        $response = Request::sendMessage($reqData->build());
+
+        AdminController::whenRegistPic($registId);
+        return $response;
     }
 
     public static function onSelectInKeyboardJson($callbackData, $callbackQuery)

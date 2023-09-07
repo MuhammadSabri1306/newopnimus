@@ -86,13 +86,12 @@ class AlarmText
                     $portValue = AlarmText::buildPortValue($port);
                     $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
 
-                    $text->newLine(2)
+                    $text->newLine()
                         ->startCode()
                         ->addSpace(4)
                         ->addText("$portStatusTitle: $portName ($portValue) selama $duration")
                         ->endCode();
                 }
-                $text->newLine();
             }
             $text->newLine();
         }

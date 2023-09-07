@@ -34,4 +34,18 @@ class PicLocation extends Model
             return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id) ?? null;
         });
     }
+
+    public static function update($id, array $data)
+    {
+        return PicLocation::query(function ($db, $table) use ($id, $data) {
+            return $db->update($table, $data, "id=%i", $id);
+        });
+    }
+
+    public static function delete($id)
+    {
+        return PicLocation::query(function ($db, $table) use ($id) {
+            return $db->delete($table, 'id=%i', $id);
+        });
+    }
 }

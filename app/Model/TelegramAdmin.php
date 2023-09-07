@@ -17,7 +17,7 @@ class TelegramAdmin extends Model
 
     public static function findByChatId($chatId)
     {
-        return TelegramUser::query(function ($db, $table) use ($chatId) {
+        return TelegramAdmin::query(function ($db, $table) use ($chatId) {
             $user = $db->queryFirstRow("SELECT * FROM $table WHERE chat_id=%s", $chatId);
             return $user ?? null;
         });

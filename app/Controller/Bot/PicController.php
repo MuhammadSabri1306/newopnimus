@@ -4,6 +4,7 @@ namespace App\Controller\Bot;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\InlineKeyboard;
 use Longman\TelegramBot\Entities\Keyboard;
+use Longman\TelegramBot\Entities\KeyboardButton;
 
 use App\Core\RequestData;
 use App\Core\TelegramText;
@@ -93,10 +94,10 @@ class PicController extends BotController
         return $request->send();
     }
 
-    public static function askPersonal($message, $chatId)
+    public static function askPersonal(bool $isCallback, $message, $chatId)
     {
         $conversation = PicController::getPicRegistConversation();
-        $messageText = trim($message->getText(true));
+        $messageText = $isCallback ? '' : trim($message->getText(true));
 
         $reqData = new RequestData();
         $reqData->chatId = $chatId;
@@ -179,7 +180,10 @@ class PicController extends BotController
             $conversation->nextStep();
             $conversation->commit();
             $messageText = '';
+            return PicController::sendRegistRequest($chatId);
         }
+
+        return Request::emptyMessage();
     }
 
     public static function register()
@@ -195,16 +199,16 @@ class PicController extends BotController
         $registration = Registration::findUnprocessedByChatId($chatId);
         if($registration) {
 
+            $locations = RtuLocation::getByIds($registration['data']['locations']);
             $reqData = new RequestData();
             $reqData->parseMode = 'markdown';
             $reqData->chatId = $chatId;
 
             if($registration['data']['has_regist']) {
                 $telgPersUser = TelegramPersonalUser::findByUserId($registration['data']['telegram_user_id']);
-                $locations = RtuLocation::getByIds($registration['data']['locations']);
                 $reqData->text = PicText::registSuccess($telgPersUser, $locations)->get();
             } else {
-                $reqData->text = UserText::registPicSuccess($registration, $picLocs)->get();
+                $reqData->text = UserText::registPicSuccess($registration, $locations)->get();
             }
             
             return Request::sendMessage($reqData->build());
@@ -226,7 +230,7 @@ class PicController extends BotController
             }
 
             if($conversationStep > 1 && $conversationStep < 8) {
-                return PicController::askPersonal($message, $chatId);
+                return PicController::askPersonal(false, $message, $chatId);
             }
 
             return PicController::sendRegistRequest($chatId);
@@ -247,10 +251,23 @@ class PicController extends BotController
         $reqData->messageId = $message->getMessageId();
 
         $telgUser = TelegramUser::findByChatId($reqData->chatId);
-        $reqData->text = PicText::picStatus($telgUser)->newLine(2)
-            ->startBold()->addText('=> ')->endBold()
-            ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan')
-            ->get();
+        if($telgUser) {
+
+            $reqData->text = PicText::picStatus($telgUser)->newLine(2)
+                ->startBold()->addText('=> ')->endBold()
+                ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan')
+                ->get();
+
+        } else {
+
+            $touRequest = BotController::getRequest('Registration/Tou', [ $chatId, true ]);
+            $touApprovalText = $touRequest->getRequestData('btnApproval')->text;
+            $reqData->text = TelegramText::create($touApprovalText)->newLine(2)
+                ->startBold()->addText('=> ')->endBold()
+                ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan')
+                ->get();
+
+        }
 
         $request = Request::editMessageText($reqData->build());
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
@@ -259,7 +276,7 @@ class PicController extends BotController
             $reqData1->text = 'Proses registrasi dibatalkan. Terima kasih.';
             return Request::sendMessage($reqData1->build());
         }
-        
+
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
             $conversation->create();
@@ -267,7 +284,7 @@ class PicController extends BotController
         }
 
         $conversation->hasRegist = $telgUser ? true : false;
-        if(!$telgUser) {
+        if(!$conversation->hasRegist) {
 
             $conversation->chatId = $message->getChat()->getId();
             $conversation->userId = $user->getId();
@@ -275,11 +292,22 @@ class PicController extends BotController
             $conversation->type = $message->getChat()->getType();
             $conversation->firstName = $user->getFirstName();
             $conversation->lastName = $user->getLastName();
+            $conversation->level = 'pic';
+            $conversation->commit();
+
+            $request = BotController::getRequest('Area/SelectRegional', [ $chatId, $telgUser['regional_id'] ]);
+            $request->setRequest(function($inkeyboardItem, $regional) {
+                $inkeyboardItem['callback_data'] = 'pic.select_regional.'.$regional['id'];
+                return $inkeyboardItem;
+            });
+
+            return $request->send();
             
-        } else {
-
-            $conversation->telegramUserId = $telgUser['id'];
-
+        }
+        
+        $conversation->telegramUserId = $telgUser['id'];
+        if($telgUser['is_pic']) {
+            $conversation->locations = array_column($telgUser['locations'], 'location_id');
         }
 
         if($telgUser['level'] == 'nasional') {
@@ -317,13 +345,27 @@ class PicController extends BotController
             $conversation->nextStep();
             $conversation->commit();
 
-            $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
-            $request->setRequest(function($inkeyboardItem, $loc) {
-                $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
-                return $inkeyboardItem;
-            });
+            if(count($conversation->locations) < 1) {
 
-            $response = $request->send();
+                $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
+                $request->filterLocation(function($loc) use ($conversation) {
+                    return !in_array($loc['id'], $conversation->locations);
+                });
+    
+                $request->setRequest(
+                    function($inkeyboardItem, $loc) {
+                        $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
+                        return $inkeyboardItem;
+                    }
+                );
+
+                $response = $request->send();
+
+            } else {
+
+                $response = PicController::askLocations($chatId, $conversation->locations);
+
+            }
         }
 
         if($response->isOk()) {
@@ -396,6 +438,10 @@ class PicController extends BotController
         $conversation->commit();
 
         $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
+        $request->filterLocation(function($loc) use ($conversation) {
+            return !in_array($loc['id'], $conversation->locations);
+        });
+
         $request->setRequest(function($inkeyboardItem, $loc) {
             $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
             return $inkeyboardItem;
@@ -504,6 +550,10 @@ class PicController extends BotController
         if($callbackValue == 'add') {
 
             $request = BotController::getRequest('Area/SelectLocation', [ $chatId, $conversation->witelId ]);
+            $request->filterLocation(function($loc) use ($conversation) {
+                return !in_array($loc['id'], $conversation->locations);
+            });
+            
             $request->setRequest(function($inkeyboardItem, $loc) {
                 $inkeyboardItem['callback_data'] = 'pic.add_location.'.$loc['id'];
                 return $inkeyboardItem;
@@ -524,10 +574,14 @@ class PicController extends BotController
             $response = $request->send();
 
         } elseif($callbackValue == 'next') {
-
-            $conversation->nextStep();
-            $conversation->commit();
-            $response = PicController::sendRegistRequest($chatId);
+            
+            if($conversation->hasRegist) {
+                $conversation->nextStep();
+                $conversation->commit();
+                $response = PicController::sendRegistRequest($chatId);
+            } else {
+                $response = PicController::askPersonal(true, $message, $chatId);
+            }
 
         }
 
@@ -553,7 +607,7 @@ class PicController extends BotController
         $reqData->text = $updateText->get();
         Request::editMessageText($reqData->build());
 
-        $conversation = PicController::getRegistConversation();
+        $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
             return Request::emptyResponse();
         }
