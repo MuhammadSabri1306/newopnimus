@@ -14,6 +14,7 @@ use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
 use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
+use App\Model\PicLocation;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\RtuLocation;
@@ -36,6 +37,7 @@ class PicController extends BotController
         'pic.update_loc' => 'onUpdateLocation',
         'pic.remove_loc' => 'onRemoveLocation',
         'pic.set_organik' => 'onSelectOrganik',
+        'pic.set_reset' => 'onSetReset',
     ];
 
     public static function getPicRegistConversation()
@@ -237,6 +239,28 @@ class PicController extends BotController
         }
 
         return PicController::askAgreement($chatId, $telgUser);
+    }
+
+    public static function reset()
+    {
+        $message = PicController::$command->getMessage();
+        $chatId = $message->getChat()->getId();
+
+        if(!$message->getChat()->isPrivateChat()) {
+            $replyText = PicText::picAbortInGroup()->get();
+            return PicController::$command->replyToChat($replyText);
+        }
+
+        $telgUser = TelegramUser::findByChatId($chatId);
+        $request = BotController::getRequest('Registration/PicReset', [ $chatId, $telgUser ]);
+
+        $request->setRequest(function($inkeyboardData) {
+            $inkeyboardData['continue']['callback_data'] = 'pic.set_reset.continue';
+            $inkeyboardData['cancel']['callback_data'] = 'pic.set_reset.cancel';
+            return $inkeyboardData;
+        });
+
+        return $request->send();
     }
 
     public static function onSetStart($callbackValue, $callbackQuery)
@@ -618,6 +642,37 @@ class PicController extends BotController
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
         $reqData1->text = 'Silahkan ketikkan NIK anda.';
+        return Request::sendMessage($reqData1->build());
+    }
+
+    public static function onSetReset($callbackValue, $callbackQuery)
+    {
+        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getUser();
+
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->messageId = $message->getMessageId();
+
+        $telgUser = TelegramUser::findByChatId($reqData->chatId);
+        $srcRequest = BotController::getRequest('Registration/PicReset', [ $reqData->chatId, $telgUser ]);
+
+        $updateText = $srcRequest->getText()->newLine(2)
+            ->startBold()->addText('=> ')->endBold()
+            ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan');
+        $reqData->text = $updateText->get();
+
+        $response = Request::editMessageText($reqData->build());
+        if($callbackValue != 'continue') {
+            return $response;
+        }
+
+        PicLocation::deleteByUserId($telgUser['id']);
+        TelegramUser::update($telgUser['id'], [ 'is_pic' => 0 ]);
+        
+        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
+        $reqData1->text = 'Status PIC anda telah di-reset.';
         return Request::sendMessage($reqData1->build());
     }
 

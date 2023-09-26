@@ -48,4 +48,11 @@ class PicLocation extends Model
             return $db->delete($table, 'id=%i', $id);
         });
     }
+
+    public static function deleteByUserId($userId)
+    {
+        return PicLocation::query(function ($db, $table) use ($userId) {
+            return $db->delete($table, 'user_id=%i', $userId);
+        });
+    }
 }

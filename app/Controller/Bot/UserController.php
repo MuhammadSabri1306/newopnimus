@@ -16,6 +16,7 @@ use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
 use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
+use App\Model\PicLocation;
 use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
@@ -709,6 +710,11 @@ class UserController extends BotController
         if($telegramUser['type'] == 'private') {
             TelegramPersonalUser::deleteByUserId($telegramUser['id']);
         }
+        
+        if($telegramUser['is_pic']) {
+            PicLocation::deleteByUserId($telegramUser['id']);
+        }
+
         TelegramUser::delete($telegramUser['id']);
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
