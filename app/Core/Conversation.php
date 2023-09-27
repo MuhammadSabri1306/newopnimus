@@ -1,6 +1,8 @@
 <?php
 namespace App\Core;
 
+use App\Core\DB;
+
 class Conversation
 {
     private $db;

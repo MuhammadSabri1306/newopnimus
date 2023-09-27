@@ -41,7 +41,9 @@ class BotController extends Controller
 
     public static function sendDebugMessage($data, array $config = [])
     {
-        $chatId = isset($config['chatId']) ? $config['chatId'] : 1931357638;
+        global $appConfig;
+
+        $chatId = isset($config['chatId']) ? $config['chatId'] : $appConfig->userTesting->chatId;
         $isCode = isset($config['isCode']) ? $config['isCode'] : true;
         $toJson = isset($config['toJson']) ? $config['toJson'] : true;
 
@@ -93,5 +95,15 @@ class BotController extends Controller
 
         require_once $filePath;
         return new $className(...$args);
+    }
+
+    public static function request(string $classPath, array $args = [])
+    {
+        $classPathArr = explode('/', $classPath);
+        $className = 'App\\TelegramRequest\\' . implode('\\', $classPathArr);
+        $filePath = __DIR__."/../TelegramRequest/$classPath.php";
+
+        require_once $filePath;
+        return empty($args) ? new $className() : new $className(...$args);
     }
 }

@@ -4,6 +4,9 @@
 require_once __DIR__ . '/../vendor/autoload.php';
 
 // Load all configuration options
+require __DIR__ . '/config.php';
+$appConfig = getConfig();
+
 /** @var array $config */
 $config = require __DIR__ . '/../config.php';
 

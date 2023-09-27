@@ -9,7 +9,10 @@ use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
 use App\Controller\Bot\PicController; // on dev
 use App\Controller\Bot\PortController;
+use App\Controller\Bot\RtuController;
 use App\Controller\Bot\TestController;
+
+useHelper('telegram-callback');
 
 class CallbackqueryCommand extends SystemCommand
 {
@@ -49,6 +52,7 @@ class CallbackqueryCommand extends SystemCommand
     {
         $callbackQuery = $this->getCallbackQuery();
         $callbackData  = $callbackQuery->getData();
+        $decodedCallbackData = decodeCallbackData($callbackData);
 
         UserController::$command = $this;
         if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
@@ -70,6 +74,20 @@ class CallbackqueryCommand extends SystemCommand
             return $callbackQuery->answer();
         }
 
+        // RtuController::$command = $this;
+        // if(BotController::catchCallback(RtuController::class, $callbackData, $callbackQuery)) {
+        //     return $callbackQuery->answer();
+        // }
+        if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
+            $this->callHandler(
+                RtuController::class,
+                $methodName,
+                $callbackQuery,
+                $decodedCallbackData
+            );
+            return $callbackQuery->answer();
+        }
+
         TestController::$command = $this;
         if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
             return $callbackQuery->answer();
@@ -80,5 +98,29 @@ class CallbackqueryCommand extends SystemCommand
             'show_alert' => true,
             'cache_time' => 10,
         ]);
+    }
+
+    private function isCallbackOf($controller, $decodedCallbackData)
+    {
+        if(!is_array($decodedCallbackData)) {
+            return null;
+        }
+
+        $callbacks = $controller::$callbacks ?? [];
+        $currCallbackKey = isset($decodedCallbackData['callbackKey']) ? $decodedCallbackData['callbackKey'] : null;
+
+        if(!array_key_exists($currCallbackKey, $callbacks)) {
+            return null;
+        }
+        return $callbacks[$currCallbackKey];
+    }
+
+    private function callHandler($controller, $methodName, $callbackQuery, $decodedCallbackData)
+    {
+        $callbackData = [
+            'title' => $decodedCallbackData['optionTitle'],
+            'value' => $decodedCallbackData['optionValue'],
+        ];
+        $controller::$methodName($callbackData, $callbackQuery);
     }
 }
