@@ -6,6 +6,8 @@ use App\Core\DB;
 
 class NewosaseApi extends RestClient
 {
+    private $useAuth = false;
+
     public function __construct()
     {
         $this->setBaseUrl('https://newosase.telkom.co.id/api/v1');
@@ -17,6 +19,7 @@ class NewosaseApi extends RestClient
 
     public function setupAuth()
     {
+        $this->useAuth = true;
         $auth = $this->getToken();
         if(!$auth) {
             $token = $this->generateToken();
@@ -27,17 +30,17 @@ class NewosaseApi extends RestClient
 
     public function updateAuth()
     {
-        $token = $this->generateToken();
-        $auth = $this->getToken();
-        $newAuth = $this->updateToken($token, $auth['id']);
-        $this->request['headers']['token'] = $newAuth['generated_token'];
+        $newGeneratedToken = $this->generateToken();
+        $token = $this->getToken();
+        $newToken = $this->updateToken($token['id'], $newGeneratedToken);
+        $this->request['headers']['token'] = $newToken['generated_token'];
     }
 
     public function generateToken()
     {
         global $appConfig;
         $newosaseApi = new NewosaseApi();
-        $newosaseApi->request['body'] = [
+        $newosaseApi->request['json'] = [
             'application' => $appConfig->newosase_auth->application,
             'token' => $appConfig->newosase_auth->token,
         ];
@@ -71,7 +74,7 @@ class NewosaseApi extends RestClient
         return $this->getToken();
     }
 
-    public function updateToken($token, $id)
+    public function updateToken($id, $token)
     {
         global $appConfig;
         $tableName = $appConfig->newosase_auth->db_table;
@@ -83,5 +86,27 @@ class NewosaseApi extends RestClient
         $db = new DB();
         $db->update($tableName, $data, "id=%i", $id);
         return $this->getToken();
+    }
+
+    public function sendRequest(string $httpMethod, string $pathUrl, $associative = null)
+    {
+        $data = parent::sendRequest($httpMethod, $pathUrl, $associative);
+        if($this->useAuth && !$data) {
+            $fetchErr = $this->getErrorMessages()->response;
+            if(is_array($fetchErr)) {
+                $isTokenExpired = isset($fetchErr['result']['isTokenExpired']) ? $fetchErr['result']['isTokenExpired'] : null;
+                $message = isset($fetchErr['message']) ? $fetchErr['message'] : null;
+            } else {
+                $isTokenExpired = isset($fetchErr->result->isTokenExpired) ? $fetchErr->result->isTokenExpired : null;
+                $message = isset($fetchErr->message) ? $fetchErr->message : null;
+            }
+
+            if($isTokenExpired === true || $message == 'Unauthorized') {
+                $this->updateAuth();
+                $data = parent::sendRequest($httpMethod, $pathUrl, $associative);
+            }
+        }
+
+        return $data;
     }
 }

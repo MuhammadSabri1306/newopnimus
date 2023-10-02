@@ -43,8 +43,11 @@ class RestClient
         return $this->option['base_uri'].'/'.$this->path;
     }
 
-    public function getErrorMessages()
+    public function getErrorMessages($key = null)
     {
+        if($key) {
+            return array_key_exists($key, $this->errorMessages) ? $this->errorMessages[$key] : null;
+        }
         return (object) $this->errorMessages;
     }
 
@@ -60,8 +63,10 @@ class RestClient
             return json_decode($body, $associative);
         
         } catch (ClientException $e) {
-            $this->errorMessages['request'] = Psr7\Message::toString($e->getRequest());
-            $this->errorMessages['response'] = Psr7\Message::toString($e->getResponse());
+            $errRequest = $e->getRequest()->getBody()->getContents();
+            $errResponse = $e->getResponse()->getBody()->getContents();
+            $this->errorMessages['request'] = json_decode($errRequest, $associative);
+            $this->errorMessages['response'] = json_decode($errResponse, $associative);
             return null;
         } catch (\Exception $e) {
             $this->errorMessages['inline'] = $e->getMessage();
