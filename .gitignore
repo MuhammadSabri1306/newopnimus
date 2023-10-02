@@ -1,6 +1,7 @@
 composer.phar
 composer.lock
-vendor
+/vendor/*
+!/vendor/*/
 config.php
 !app/config.php
 test/test.php
