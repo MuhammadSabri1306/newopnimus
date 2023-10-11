@@ -1,14 +1,33 @@
 <?php
 namespace App\Core;
 
+use Longman\TelegramBot\Request;
+use App\Core\RequestData;
+
 class Model
 {
     public static $table;
 
     protected static $relations;
 
+    private static $errorHandler = null;
+
+    public static function setErrorHandler(callable $handler) {
+        Model::$errorHandler = $handler;
+    }
+
     public static function query(callable $callback)
     {
+        Model::setErrorHandler(function($hash) {
+            global $appConfig;
+            $errorMessage = $hash['error'];
+
+            $reqData = new RequestData();
+            $reqData->text = $errorMessage;
+            $reqData->chatId = $appConfig->userTesting->chatId;
+            Request::sendMessage($reqData->build());
+        });
+
         if (is_callable($callback)) {
 
             // $backtrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 2);
@@ -16,6 +35,10 @@ class Model
             $modelClass = get_called_class();
 
             $db = new DB();
+            if(is_callable(Model::$errorHandler)) {
+                $db->addHook('run_failed', Model::$errorHandler);
+            }
+
             $table = $modelClass::$table ?? Model::$table;
             if($table) {
                 return $callback($db, $modelClass::$table);

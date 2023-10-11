@@ -1,0 +1,27 @@
+<?php
+namespace App\TelegramRequest\Registration;
+
+use Longman\TelegramBot\Request;
+use Longman\TelegramBot\Entities\ServerResponse;
+use App\Core\TelegramRequest;
+use App\Core\TelegramText;
+
+class TextTouReject extends TelegramRequest
+{
+    public function __construct()
+    {
+        parent::__construct();
+        $this->params->parseMode = 'markdown';
+        $this->params->text = $this->getText()->get();
+    }
+
+    public function getText()
+    {
+        return TelegramText::create('Proses registrasi dibatalkan. Terima kasih.');
+    }
+
+    public function send(): ServerResponse
+    {
+        return Request::sendMessage($this->params->build());
+    }
+}

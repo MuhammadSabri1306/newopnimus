@@ -47,6 +47,24 @@ class RequestData
         return $newInstance;
     }
 
+    public function copy(...$keys)
+    {
+        $attrs = [];
+        foreach($keys as $key) {
+            if(isset($this->attributes[$key])) {
+                $attrs[$key] = $this->attributes[$key];
+            }
+        }
+        return $attrs;
+    }
+
+    public function paste(array $attrs)
+    {
+        foreach($attrs as $key => $value) {
+            $this->attributes[$key] = $value;
+        }
+    }
+
     public function getDebugMessage()
     {
         $reqData = $this->duplicate('parseMode', 'chatId');

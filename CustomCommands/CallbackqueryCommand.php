@@ -54,6 +54,30 @@ class CallbackqueryCommand extends SystemCommand
         $callbackData  = $callbackQuery->getData();
         $decodedCallbackData = decodeCallbackData($callbackData);
 
+        if($decodedCallbackData) {
+
+            if($methodName = $this->isCallbackOf(UserController::class, $decodedCallbackData)) {
+                $this->callHandler(
+                    UserController::class,
+                    $methodName,
+                    $callbackQuery,
+                    $decodedCallbackData
+                );
+                return $callbackQuery->answer();
+            }
+
+            if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
+                $this->callHandler(
+                    RtuController::class,
+                    $methodName,
+                    $callbackQuery,
+                    $decodedCallbackData
+                );
+                return $callbackQuery->answer();
+            }
+            
+        }
+        
         UserController::$command = $this;
         if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
             return $callbackQuery->answer();
@@ -71,20 +95,6 @@ class CallbackqueryCommand extends SystemCommand
 
         PortController::$command = $this;
         if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        // RtuController::$command = $this;
-        // if(BotController::catchCallback(RtuController::class, $callbackData, $callbackQuery)) {
-        //     return $callbackQuery->answer();
-        // }
-        if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
-            $this->callHandler(
-                RtuController::class,
-                $methodName,
-                $callbackQuery,
-                $decodedCallbackData
-            );
             return $callbackQuery->answer();
         }
 
@@ -121,6 +131,7 @@ class CallbackqueryCommand extends SystemCommand
             'title' => $decodedCallbackData['optionTitle'],
             'value' => $decodedCallbackData['optionValue'],
         ];
+        $controller::$command = $this;
         $controller::$methodName($callbackData, $callbackQuery);
     }
 }

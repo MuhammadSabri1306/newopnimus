@@ -28,7 +28,7 @@ class TestController extends BotController
         switch($modulKey) {
             case 'inkeyboardjson': return TestController::inKeyboardJson(...$params); break;
             case 'adminregistapproval': return TestController::adminRegistApproval(...$params); break;
-            default: return Request::emptyMessage();
+            default: return TestController::$command->replyToChat('This is TEST Command.');
         }
     }
 
