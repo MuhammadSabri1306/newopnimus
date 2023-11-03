@@ -50,64 +50,71 @@ class CallbackqueryCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        $callbackQuery = $this->getCallbackQuery();
-        $callbackData  = $callbackQuery->getData();
-        $decodedCallbackData = decodeCallbackData($callbackData);
+        try {
 
-        if($decodedCallbackData) {
-
-            if($methodName = $this->isCallbackOf(UserController::class, $decodedCallbackData)) {
-                $this->callHandler(
-                    UserController::class,
-                    $methodName,
-                    $callbackQuery,
-                    $decodedCallbackData
-                );
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
-                $this->callHandler(
-                    RtuController::class,
-                    $methodName,
-                    $callbackQuery,
-                    $decodedCallbackData
-                );
-                return $callbackQuery->answer();
+            $callbackQuery = $this->getCallbackQuery();
+            $callbackData  = $callbackQuery->getData();
+            $decodedCallbackData = decodeCallbackData($callbackData);
+    
+            if($decodedCallbackData) {
+    
+                if($methodName = $this->isCallbackOf(UserController::class, $decodedCallbackData)) {
+                    $this->callHandler(
+                        UserController::class,
+                        $methodName,
+                        $callbackQuery,
+                        $decodedCallbackData
+                    );
+                    return $callbackQuery->answer();
+                }
+    
+                if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
+                    $this->callHandler(
+                        RtuController::class,
+                        $methodName,
+                        $callbackQuery,
+                        $decodedCallbackData
+                    );
+                    return $callbackQuery->answer();
+                }
+                
             }
             
-        }
-        
-        UserController::$command = $this;
-        if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
+            UserController::$command = $this;
+            if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
+                return $callbackQuery->answer();
+            }
+    
+            AdminController::$command = $this;
+            if(BotController::catchCallback(AdminController::class, $callbackData, $callbackQuery)) {
+                return $callbackQuery->answer();
+            }
+    
+            PicController::$command = $this;
+            if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
+                return $callbackQuery->answer();
+            }
+    
+            PortController::$command = $this;
+            if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
+                return $callbackQuery->answer();
+            }
+    
+            TestController::$command = $this;
+            if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
+                return $callbackQuery->answer();
+            }
+    
+            return $callbackQuery->answer([
+                'text'       => 'Content of the callback data: ' . $callbackData,
+                'show_alert' => true,
+                'cache_time' => 10,
+            ]);
+
+        } catch(\Throwable $err) {
+            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
             return $callbackQuery->answer();
         }
-
-        AdminController::$command = $this;
-        if(BotController::catchCallback(AdminController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        PicController::$command = $this;
-        if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        PortController::$command = $this;
-        if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        TestController::$command = $this;
-        if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        return $callbackQuery->answer([
-            'text'       => 'Content of the callback data: ' . $callbackData,
-            'show_alert' => true,
-            'cache_time' => 10,
-        ]);
     }
 
     private function isCallbackOf($controller, $decodedCallbackData)

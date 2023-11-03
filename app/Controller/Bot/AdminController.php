@@ -41,8 +41,10 @@ class AdminController extends BotController
         $btnApprovalReq->text = AdminText::getUserApprovalText($registData)->get();
         
         foreach($admins as $admin) {
-            $btnApprovalReq->chatId = $admin['chat_id'];
-            Request::sendMessage($btnApprovalReq->build());
+            if($admin['username'] == 'Sabri_m13') {
+                $btnApprovalReq->chatId = $admin['chat_id'];
+                Request::sendMessage($btnApprovalReq->build());
+            }
         }
     }
 
@@ -143,17 +145,24 @@ class AdminController extends BotController
         }
 
         $updateText = AdminText::getUserApprovalText($registData);
-        $registStatus = Registration::getStatus($registData['id']);
-        
+        $registStatus = Registration::getStatus($registData['id']);        
         $statusText = $registStatus['status'] == 'approved' ? 'disetujui' : 'ditolak';
 
         if(isset($registStatus['updated_by'])) {
             $updateText = TelegramText::create("Permintaan registrasi telah $statusText oleh ");
-            if($registStatus['updated_by']['username']) {
-                $updateText->addMention($registStatus['updated_by']['username']);
+            $adminUserId = $registStatus['updated_by']['chat_id'] ?? null;
+            $adminFirstName = $registStatus['updated_by']['first_name'] ?? null;
+            $adminLastName = $registStatus['updated_by']['last_name'] ?? null;
+            $adminUsername = $registStatus['updated_by']['username'] ?? null;
+
+            if($adminFirstName && $adminLastName) {
+                $updateText->addText('Admin ')
+                    ->addMentionByName($adminUserId, "$adminFirstName $adminLastName");
+            } elseif($adminUsername) {
+                $updateText->addText('Admin ')
+                    ->addMentionByUsername($adminUserId, $adminUsername);
             } else {
-                $adminFullName = $registStatus['updated_by']['first_name'].' '.$registStatus['updated_by']['last_name'];
-                $updateText->addMention($registStatus['updated_by']['chat_id'], $adminFullName);
+                $updateText->addMentionByName($adminUserId, 'ADMIN');
             }
 
             if($registStatus['updated_by']['witel_name']) {
@@ -367,6 +376,7 @@ class AdminController extends BotController
         }
 
         Registration::update($registData['id'], [ 'status' => 'rejected' ], $admin['id']);
+        $registData = Registration::find($registData['id']);
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
         $reqData1->text = 'Pengajuan PIC telah ditolak.';

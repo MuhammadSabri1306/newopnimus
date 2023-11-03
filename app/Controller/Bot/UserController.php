@@ -10,7 +10,6 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use App\Core\DB;
 use App\Core\RequestData;
 use App\Core\TelegramText;
-// use App\Core\SessionDebugger;
 use App\Core\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
@@ -21,10 +20,13 @@ use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\BuiltMessageText\UserText;
+use App\Core\Exception\TelegramResponseException;
+
+useHelper('telegram-callback');
 
 class UserController extends BotController
 {
-    protected static $callbacks = [
+    public static $callbacks = [
         'user.regist_approval' => 'onRegist',
         'user.regist_level' => 'onSelectLevel',
         'user.select_regional' => 'onSelectRegional',
@@ -53,80 +55,62 @@ class UserController extends BotController
     public static function checkRegistStatus()
     {
         $message = UserController::$command->getMessage();
-        $reqData = New RequestData();
-
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        // $reqData->replyToMessageId = $message->getMessageId();
-
         $chatType = $message->getChat()->getType();
-        $fullName = ($chatType=='group' || $chatType=='supergroup') ? 'Grup '.$message->getChat()->getTitle()
+        $chatId = $message->getChat()->getId();
+
+        if(!TelegramUser::exists($chatId)) {
+            return null;
+        }
+
+        $fullName = ($chatType == 'group' || $chatType == 'supergroup') ? 'Grup '.$message->getChat()->getTitle()
             : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
-            
-        if(!TelegramUser::exists($reqData->chatId)) return null;
         
-        $reqData->animation = 'https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXVmeGxnY21sMGQ5ZG94ZDA2emNiZzZodWk0NW9pamRjejNtYmdoZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Bf3Anv7HuOPHEPkiOx/giphy.gif';
-        $reqData->caption = "*$fullName sudah terdaftar dalam OPNIMUS:* \n\n silahkan pilih /help untuk petunjuk lebih lanjut.";
-        return Request::sendAnimation($reqData->build());
+        $request = BotController::request('Registration/AnimationUserExists');
+        $request->params->chatId = $chatId;
+        $request->setName($fullName);
+        return $request->send();
     }
 
     public static function tou()
     {
         $message = UserController::$command->getMessage();
+        $chatType = $message->getChat()->getType();
+        $chatId = $message->getChat()->getId();
         $reqData = New RequestData();
-
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->replyMarkup = Keyboard::remove(['selective' => true]);
         
-        if($message->getChat()->isGroupChat() || $message->getChat()->isSuperGroup()) {
+        $request1 = BotController::request('Registration/AnimationTou');
+        $request1->params->chatId = $chatId;
+        $request1->params->replyMarkup = Keyboard::remove(['selective' => true]);
+        if($chatType != 'private') {
             // Force reply is applied by default so it can work with privacy on
-            $reqData->replyMarkup = Keyboard::forceReply(['selective' => true]);
+            $request1->params->replyMarkup = Keyboard::forceReply(['selective' => true]);
         }
 
-        $reqData1 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
-        // $reqData1->replyToMessageId = $message->getMessageId();
-        $reqData1->animation = 'https://media1.giphy.com/media/v1.Y2lkPTc5MGI3NjExcXVmeGxnY21sMGQ5ZG94ZDA2emNiZzZodWk0NW9pamRjejNtYmdoZCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/Bf3Anv7HuOPHEPkiOx/giphy.gif';
-        $reqData1->caption = TelegramText::create()
-            ->addText('Hello! Welcome Heroes! selamat datang di ')
-            ->startBold()->addText('OPNIMUS')->endBold()
-            ->newLine()->newLine()
-            ->startCode()
-            ->addText('OPNIMUS (Operational Network Infra Monitoring & Surveillance System)')
-            ->addText(' adalah sebuah sistem monitoring kondisi kesehatan network')
-            ->addText(' element secara realtime dan sistem early warning terhadap potensi gangguan')
-            ->addText(' karena permasalahan fisik (catuan, suhu, arus listrik).')
-            ->endCode()
-            ->get();
+        $response = $request1->send();
 
-        $response = Request::sendAnimation($reqData1->build());
+        $request2 = BotController::request('Registration/TextTou');
+        $request2->params->paste($request1->params->copy('parseMode', 'chatId', 'replyMarkup'));
+        // $reqData2->params->replyToMessageId = $response->getResult()->getMessageId();
+        $response = $request2->send();
 
-        $reqData2 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
-        // $reqData2->replyToMessageId = $response->getResult()->getMessageId();
-        $reqData2->text = TelegramText::create()
-            ->startBold()->addText('Term of Use | Ketentuan Penggunaan OPNIMUS')->endBold()->newLine(2)
-            ->addTabspace()->addText('Pembaca diharuskan memahami beberapa persyaratan berikut yang ditetapkan oleh OPNIMUS. Jika anda tidak menyetujuinya, disarankan untuk tidak menggunakan tools ini.')->newLine(2)
-            ->addTabspace()->startItalic()->addText('Konten')->endItalic()->newLine()
-            ->addTabspace()->addText('1. Semua materi di dalam ')->startBold()->addText('OPNIMUS')->endBold()->addText(' tidak boleh disalin, diproduksi ulang, dipublikasikan, dan disebarluaskan baik berupa informasi, data, gambar, foto, logo dan lainnya secara utuh maupun sebagian dengan cara apapun dan melalui media apapun kecuali untuk keperluan Operasional.')->newLine()
-            ->addTabspace()->addText('2. Aplikasi  ini berikut seluruh materinya tidak boleh dimanfaatkan untuk hal-hal yang bertujuan melanggar hukum atau norma agama dan masyarakat atau hak asasi manusia.')->newLine(2)
-            ->addTabspace()->startItalic()->addText('Dalam Penggunaan OPNIMUS, anda setuju untuk:')->endItalic()->newLine()
-            ->addTabspace()->addText('1. Memberikan informasi yang akurat, baru dan lengkap tentang diri Anda saat Mendaftar ')->startBold()->addText('OPNIMUS')->endBold()->addText('.')->newLine()
-            ->addTabspace()->addText('2. ')->startBold()->addText('OPNIMUS')->endBold()->addText(' tidak bertanggungjawab atas dampak yang ditimbulkan atas penggunaan materi di dalam aplikasi.')->newLine()
-            ->addTabspace()->addText('3. Anda tidak diperbolehkan menggunakan ')->startBold()->addText('OPNIMUS')->endBold()->addText(' dalam kondisi atau cara apapun yang dapat merusak, melumpuhkan, membebani dan/atau mengganggu server atau jaringan ')->startBold()->addText('OPNIMUS')->endBold()->addText('. Anda juga tidak diperbolehkan untuk mengakses layanan, akun pengguna, sistem komputer atau jaringan secara tidak sah, dengan cara perentasan (hacking), password mining, dan/atau cara lainnya.')->newLine(2)
-            ->addTabspace()->addText('Dengan menggunakan atau mengakses (termasuk berbagai perubahan) ')->startBold()->addText('OPNIMUS')->endBold()->addText(' ini, anda berarti menyetujui syarat-syarat penggunaan ')->startBold()->addText('OPNIMUS')->endBold()->addText('.')
-            ->get();
+        $request3 = BotController::request('Registration/SelectTouApproval');
+        $request3->params->paste($request1->params->copy('parseMode', 'chatId'));
+        // $reqData3->params->replyToMessageId = $response->getResult()->getMessageId();
+        $request3->setInKeyboard(function($inKeyboardItem) {
+            $inKeyboardItem['approve']['callback_data'] = encodeCallbackData(
+                'user.regist_approval',
+                'Setuju',
+                'agree'
+            );
+            $inKeyboardItem['reject']['callback_data'] = encodeCallbackData(
+                'user.regist_approval',
+                'Tidak',
+                'disagree'
+            );
+            return $inKeyboardItem;
+        });
 
-        $response = Request::sendMessage($reqData2->build());
-
-        $reqData3 = $reqData->duplicate('parseMode', 'chatId');
-        // $reqData3->replyToMessageId = $response->getResult()->getMessageId();
-        $reqData3->text = 'Sebelum mendaftar OPNIMUS apakah anda setuju dengan Ketentuan Penggunaan diatas?';
-        $reqData3->replyMarkup = new InlineKeyboard([
-            ['text' => '👍 Setuju', 'callback_data' => 'user.regist_approval.agree'],
-            ['text' => '❌ Tidak', 'callback_data' => 'user.regist_approval.disagree']
-        ]);
-
-        return Request::sendMessage($reqData3->build());        
+        return $request3->send();
     }
 
     public static function resetRegistration()
@@ -353,36 +337,28 @@ class UserController extends BotController
         return Request::emptyResponse();
     }
 
-    public static function onRegist($data, $callbackQuery)
+    public static function onRegist($option, $callbackQuery)
     {
-        $reqData = New RequestData();
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('TextAnswerSelect', [
+            BotController::request('Registration/SelectTouApproval')->getText()->get(),
+            $option['title']
+        ]);
+        $request->params->chatId = $chatId;
+        $request->params->messageId = $messageId;
+        $request->send();
+
         $message = $callbackQuery->getMessage();
         $user = $callbackQuery->getFrom();
 
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->messageId = $message->getMessageId();
+        if($option['value'] == 'disagree') {
 
-        if($data == 'disagree') {
-
-            $updateText = TelegramText::create()
-                ->addText('Sebelum mendaftar OPNIMUS apakah anda setuju dengan Ketentuan Penggunaan diatas?')
-                ->newLine(2);
-
-            if(!$message->getChat()->isPrivateChat()) {
-                $updateText = $updateText->addText('User')->startBold()->addText(' > ')->endBold()->addText('Tidak');
-            } else {
-                $updateText = $updateText->startBold()->addText('=> ')->endBold()->addText('Tidak');
-            }
-
-            $reqData->text = $updateText->get();
-            $response = Request::editMessageText($reqData->build());
-
-            if($response->isOk()) {
-                $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-                $reqData1->text = 'Proses registrasi dibatalkan. Terima kasih.';
-                $response = Request::sendMessage($reqData1->build());
-            }
+            $request = BotController::request('Registration/TextTouReject');
+            $request->params->chatId = $chatId;
+            $response = $request->send();
             
             $conversation = UserController::getRegistConversation();
             if($conversation->isExists()) {
@@ -393,24 +369,11 @@ class UserController extends BotController
 
         }
         
-        if($data == 'agree') {
-
-            $updateText = TelegramText::create()
-                ->addText('Sebelum mendaftar OPNIMUS apakah anda setuju dengan Ketentuan Penggunaan diatas?')
-                ->newLine(2);
-    
-            if(!$message->getChat()->isPrivateChat()) {
-                $updateText = $updateText->addText('User')->startBold()->addText(' > ')->endBold()->addText('Setuju');
-            } else {
-                $updateText = $updateText->startBold()->addText('=> ')->endBold()->addText('Setuju');
-            }
-    
-            $reqData->text = $updateText->get();
-            $response = Request::editMessageText($reqData->build());
-    
+        if($option['value'] == 'agree') {
+            
             $conversation = UserController::getRegistConversation();
             if(!$conversation->isExists()) {
-
+                
                 $conversation->create();
                 $conversation->userId = $user->getId();
                 $conversation->chatId = $message->getChat()->getId();
@@ -426,21 +389,18 @@ class UserController extends BotController
                 $conversation->commit();
 
             }
-    
-            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = TelegramText::create()
-                ->addText('Terima kasih. Silahkan memilih ')->startBold()->addText('Level Monitoring')->endBold()->addText('.')->newLine(2)
-                ->startItalic()->addText('* Pilih Witel Apabila anda Petugas CME/Teknisi di Lokasi Tertentu')->endItalic()
-                ->get();
-                
-            $reqData1->replyMarkup = new InlineKeyboard([
-                ['text' => 'Nasional', 'callback_data' => 'user.regist_level.nasional'],
-            ], [
-                ['text' => 'Regional', 'callback_data' => 'user.regist_level.regional'],
-                ['text' => 'Witel', 'callback_data' => 'user.regist_level.witel']
-            ]);
-    
-            $response = Request::sendMessage($reqData1->build());
+
+            $request = BotController::request('Registration/SelectLevel');
+            $request->params->chatId = $chatId;
+
+            $request->setInKeyboard(function($inKeyboardItem) {
+                $inKeyboardItem['nasional']['callback_data'] = 'user.regist_level.nasional';
+                $inKeyboardItem['regional']['callback_data'] = 'user.regist_level.regional';
+                $inKeyboardItem['witel']['callback_data'] = 'user.regist_level.witel';
+                return $inKeyboardItem;
+            });
+
+            $response = $request->send();
             return $response;
 
         }

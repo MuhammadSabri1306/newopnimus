@@ -20,6 +20,7 @@
 require __DIR__.'/app/Core/Telegram';
 
 try {
+
     // Create Telegram API object
     $telegram = new Telegram($config['api_key'], $config['bot_username']);
 

@@ -28,6 +28,8 @@ class TestController extends BotController
         switch($modulKey) {
             case 'inkeyboardjson': return TestController::inKeyboardJson(...$params); break;
             case 'adminregistapproval': return TestController::adminRegistApproval(...$params); break;
+            case 'errorlog': return TestController::errorLog(...$params); break;
+            case 'errorresponse': return TestController::throwErrorResponse(...$params); break;
             default: return TestController::$command->replyToChat('This is TEST Command.');
         }
     }
@@ -76,7 +78,7 @@ class TestController extends BotController
         $reqData->text = 'Test Regist Approval Admin, registId:'.$registId;
         $response = Request::sendMessage($reqData->build());
 
-        AdminController::whenRegistPic($registId);
+        AdminController::whenRegistUser($registId);
         return $response;
     }
 
@@ -96,6 +98,31 @@ class TestController extends BotController
             ->endCode()
             ->get();
 
+        return Request::sendMessage($reqData->build());
+    }
+
+    public static function errorLog()
+    {
+        $test = testError();
+        // try {
+
+
+        // } catch(\Throwable $err) {
+        //     $test = \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        //     BotController::sendDebugMessage($test, [ 'toJson' => false ]);
+        // } finally {
+        //     // return Request::emptyResponse();
+        //     return TestController::$command->replyToChat('TEST Logger');
+        // }
+        // BotController::sendDebugMessage(\MuhammadSabri1306\MyBotLogger\Logger::$botUsername);
+        // return TestController::$command->replyToChat('TEST Logger');
+    }
+
+    public static function throwErrorResponse()
+    {
+        $reqData = new RequestData();
+        $reqData->chatId = '-40921168081231';
+        $reqData->text = 'Test Throw Error Response';
         return Request::sendMessage($reqData->build());
     }
 }

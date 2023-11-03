@@ -181,4 +181,14 @@ class TelegramText
         // username
         return $this->addText("@$user");
     }
+
+    public function addMentionByName($userId, $name)
+    {
+        return $this->addText("[$name](tg://user?id=$userId)");
+    }
+
+    public function addMentionByUsername($userId, $username)
+    {
+        return $this->addText("[$username](tg://user?id=$userId)");
+    }
 }

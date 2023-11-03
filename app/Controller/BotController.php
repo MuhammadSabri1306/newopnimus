@@ -1,10 +1,12 @@
 <?php
 namespace App\Controller;
 
+use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
 use App\Core\RequestData;
 use App\Core\Controller;
+use App\Core\Exception\TelegramResponseException;
 
 class BotController extends Controller
 {
@@ -105,5 +107,21 @@ class BotController extends Controller
 
         require_once $filePath;
         return empty($args) ? new $className() : new $className(...$args);
+    }
+
+    public static function sendErrorMessage()
+    {
+        if(static::$command) {
+            $text = '*Tidak dapat merespon Permintaan Anda.*'.PHP_EOL.
+                'Terjadi masalah saat memproses permintaan anda, silahkan menunggu beberapa saat.'.
+                ' Anda juga dapat melaporkan kepada Tim Pengembang sebagai bug jika Error tetap berlanjut.';
+            static::$command->replyToChat($text, [ 'parse_mode' => 'markdown' ]);
+        }
+    }
+
+    public static function catchErrorRequest(ServerResponse $response)
+    {
+        if($response->isOk()) return $response;
+        throw new TelegramResponseException($response);
     }
 }

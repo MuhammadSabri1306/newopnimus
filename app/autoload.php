@@ -6,12 +6,13 @@ spl_autoload_register(function ($className) {
 
     // Map the namespace prefix to the corresponding base directory
     $namespaceMap = [
-        'App\\Core\\'       => $baseDir . '/Core/',
-        'App\\Controller\\' => $baseDir . '/Controller/',
-        'App\\Model\\'      => $baseDir . '/Model/',
-        'App\\BuiltMessageText\\'      => $baseDir . '/BuiltMessageText/',
-        'App\\ApiRequest\\'      => $baseDir . '/ApiRequest/',
-        'App\\Request\\'      => $baseDir . '/Request/',
+        'App\\Core\\' => "$baseDir/Core/",
+        'App\\Controller\\' => "$baseDir/Controller/",
+        'App\\Model\\' => "$baseDir/Model/",
+        'App\\BuiltMessageText\\' => "$baseDir/BuiltMessageText/",
+        'App\\ApiRequest\\' => "$baseDir/ApiRequest/",
+        'App\\Request\\' => "$baseDir/Request/",
+        'MuhammadSabri1306\\MyBotLogger\\' => "$baseDir/../my-bot-logger/php/",
     ];
 
     // Exclude the Helper namespace

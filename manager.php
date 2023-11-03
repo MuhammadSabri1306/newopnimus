@@ -1,4 +1,5 @@
 <?php
+// error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
 
 /**
  * This file is part of the PHP Telegram Bot example-bot package.
@@ -20,19 +21,43 @@
 require __DIR__.'/app/bootstrap.php';
 
 try {
+
+    \MuhammadSabri1306\MyBotLogger\Logger::$botToken = $config['api_key'];
+    \MuhammadSabri1306\MyBotLogger\Logger::$botUsername = $config['bot_username'];
+    \MuhammadSabri1306\MyBotLogger\Logger::$chatId = '-4092116808';
+
     $bot = new TelegramBot\TelegramBotManager\BotManager($config);
     
     // Run the bot!
     $bot->run();
-} catch(\Exception $e) {
-    echo $e;
+
+
+    // Handling error response from all controllers
+    // $telegramResponse = $bot->getTelegram()->getLastCommandResponse();
+    // if($telegramResponse && $telegramResponse instanceof \Longman\TelegramBot\Entities\ServerResponse) {
+    //     if(!$telegramResponse->isOk()) {
+    //         throw new \App\Core\Exception\TelegramResponseException($telegramResponse);
+    //     }
+    // }
+
+} catch(\Throwable $err) {
+
+    $chatIdExists = true;
+    if($err instanceof \App\Core\Exception\TelegramResponseException) {
+
+        \MuhammadSabri1306\MyBotLogger\Entities\TelegramResponseLogger::catch($err);
+        if($err->getResponseData()['description'] == 'Bad Request: chat not found') {
+            $chatIdExists = false;
+        }
+
+    } else {
+
+        \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+
+    }
+
+    if($chatIdExists) {
+        \App\Controller\BotController::sendErrorMessage();
+    }
+
 }
-// } catch (Longman\TelegramBot\Exception\TelegramException $e) {
-//     // Uncomment this to output any errors (ONLY FOR DEVELOPMENT!)
-//     echo $e;
-// } catch (Longman\TelegramBot\Exception\TelegramLogException $e) {
-//     // Uncomment this to output log initialisation errors (ONLY FOR DEVELOPMENT!)
-//     echo $e;
-// } catch(TelegramBot\TelegramBotManager\Exception\InvalidAccessException $e) {
-//     echo $e;
-// }

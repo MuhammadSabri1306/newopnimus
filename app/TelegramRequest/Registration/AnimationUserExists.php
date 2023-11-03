@@ -5,6 +5,7 @@ use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
 use App\Core\TelegramRequest;
 use App\Core\TelegramText;
+use App\Core\Exception\TelegramResponseException;
 
 class AnimationUserExists extends TelegramRequest
 {
@@ -31,8 +32,12 @@ class AnimationUserExists extends TelegramRequest
         $this->params->caption = $this->getCaption()->get();
     }
 
-    public function send(): ServerResponse
+    public function send($throwErr = true): ServerResponse
     {
-        return Request::sendAnimation($this->params->build());
+        $response = Request::sendAnimation($this->params->build());
+        if($throwErr && !$response->isOk()) {
+            throw new TelegramResponseException($response);
+        }
+        return $response;
     }
 }

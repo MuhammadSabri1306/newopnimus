@@ -47,13 +47,14 @@ class GenericCommand extends SystemCommand
     public function execute(): ServerResponse
     {
         $message = $this->getMessage();
-        $user_id = $message->getFrom()->getId();
-        $command = $message->getCommand();
+        if($message && $command = $message->getCommand()) {
+            return $this->replyToChat("Command /{$command} tidak ditemukan.. :(");
+        }
 
         // if (stripos($command, 'whoami') === 0) {
         //     return $this->telegram->executeCommand('whoami');
         // }
 
-        return $this->replyToChat("Command /{$command} not found.. :(");
+        return Request::emptyResponse();
     }
 }

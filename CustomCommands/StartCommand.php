@@ -47,18 +47,25 @@ class StartCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        UserController::$command = $this;
-        $conversation = UserController::getRegistConversation();
+        try {
+            
+            UserController::$command = $this;
+            $conversation = UserController::getRegistConversation();
+            
+            if(!$conversation->isExists()) {
+                $response = UserController::checkRegistStatus();
+                if($response) return $response;
         
-        if(!$conversation->isExists()) {
-            $response = UserController::checkRegistStatus();
-            if($response) return $response;
-    
-            $response = UserController::tou();
+                $response = UserController::tou();
+                return $response;
+            }
+            
+            $response = UserController::register();
             return $response;
+
+        } catch(\Throwable $err) {
+            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+            return Request::emptyResponse();
         }
-        
-        $response = UserController::register();
-        return $response;
     }
 }
