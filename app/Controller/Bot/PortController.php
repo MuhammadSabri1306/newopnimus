@@ -56,7 +56,7 @@ class PortController extends BotController
                 return PortController::sendTextAllPort($rtuSname, $reqData->chatId);
             }
             
-            return PortController::sendTextDetailPort($rtuSname, $noPort, $reqData->chatId);
+            return PortController::sendTextDetailPort($rtuSname, 'port', $noPort, $reqData->chatId);
 
         }
 
@@ -133,10 +133,17 @@ class PortController extends BotController
     public static function getBtnPortList($rtuSname, $portsData)
     {
         $ports = array_map(function($port) {
+
+            $portKey = "$port->rtu_sname:$port->no_port";
+            if($port->result_type != 'port') {
+                $portKey .= ":$port->description";
+            }
+
             return [
                 'title' => $port->no_port,
-                'key' => "$port->rtu_sname:$port->no_port"
+                'key' => $portKey
             ];
+
         }, $portsData);
 
         array_push($ports, [
@@ -300,6 +307,7 @@ class PortController extends BotController
         $portDataArr = explode(':', $portData);
         $rtuSname = $portDataArr[0];
         if(count($portDataArr) > 1) $noPort = $portDataArr[1];
+        if(count($portDataArr) > 2) $portDescr = $portDataArr[2];
 
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $message->getChat()->getId();
@@ -315,7 +323,9 @@ class PortController extends BotController
             return PortController::sendTextAllPort($rtuSname, $reqData->chatId);
         }
 
-        return PortController::sendTextDetailPort($rtuSname, $noPort, $reqData->chatId);
+        $identifierType = isset($portDescr) ? 'description' : 'port';
+        $identifierKey = $identifierType == 'port' ? $noPort : $portDescr;
+        return PortController::sendTextDetailPort($rtuSname, $identifierType, $identifierKey, $reqData->chatId);
     }
 
     public static function fetchNewosasePorts(callable $callApi, $reqDataTyping = null)
@@ -365,19 +375,41 @@ class PortController extends BotController
         return BotController::sendMessageList($reqData, $textList, true);
     }
 
-    public static function sendTextDetailPort($rtuSname, $noPort, $chatId)
+    public static function sendTextDetailPort($rtuSname, $identifierType, $identifierKey, $chatId)
     {
         $reqData = new RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
 
-        $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtuSname, $noPort) {
-            $newosaseApi->request['query'] = [
-                'searchRtuSname' => $rtuSname,
-                'searchNoPort' => $noPort
-            ];
-            return $newosaseApi;
-        }, $reqData->duplicate('chatId'));
+        if($identifierType == 'port') {
+
+            $noPort = $identifierKey;
+            $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtuSname, $noPort) {
+                $newosaseApi->request['query'] = [
+                    'searchRtuSname' => $rtuSname,
+                    'searchNoPort' => $noPort
+                ];
+                return $newosaseApi;
+            }, $reqData->duplicate('chatId'));
+
+        } elseif($identifierType == 'description') {
+
+            $portDescr = $identifierKey;
+            $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtuSname, $portDescr) {
+                $newosaseApi->request['query'] = [
+                    'searchRtuSname' => $rtuSname,
+                    'searchDescription' => $portDescr
+                ];
+                return $newosaseApi;
+            }, $reqData->duplicate('chatId'));
+
+        } else {
+
+            $ports = null;
+
+        }
+        // BotController::sendDebugMessage([$identifierType, $identifierKey]);
+        // return Request::emptyResponse();
 
         if(!$ports) {
             $reqData->text = 'Terjadi masalah saat menghubungi server.';
