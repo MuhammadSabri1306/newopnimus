@@ -59,6 +59,37 @@ class TelegramUser extends Model
         });
     }
 
+    public static function findByRegistId($registId)
+    {
+        return TelegramUser::query(function ($db, $table) use ($registId) {
+            $user = $db->queryFirstRow("SELECT * FROM $table WHERE regist_id=%i", $registId);
+            if(!$user) return null;
+
+            $user['locations'] = [];
+            if(boolval($user['is_pic'])) {
+                $user['locations'] = PicLocation::getByUser($user['id']);
+            }
+            
+            return $user;
+        });
+    }
+
+    public static function findWitelGroup($witelId)
+    {
+        return TelegramUser::query(function ($db, $table) use ($witelId) {
+            $group = $db->queryFirstRow("SELECT * FROM $table WHERE level='witel' AND witel_id=%i", $witelId);
+            return $group ?? null;
+        });
+    }
+
+    public static function findRegionalGroup($regionalId)
+    {
+        return TelegramUser::query(function ($db, $table) use ($regionalId) {
+            $group = $db->queryFirstRow("SELECT * FROM $table WHERE level='regional' AND regional_id=%i", $regionalId);
+            return $group ?? null;
+        });
+    }
+
     public static function delete($id)
     {
         return TelegramUser::query(function ($db, $table) use ($id) {

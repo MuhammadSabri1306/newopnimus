@@ -41,10 +41,8 @@ class AdminController extends BotController
         $btnApprovalReq->text = AdminText::getUserApprovalText($registData)->get();
         
         foreach($admins as $admin) {
-            if($admin['username'] == 'Sabri_m13') {
-                $btnApprovalReq->chatId = $admin['chat_id'];
-                Request::sendMessage($btnApprovalReq->build());
-            }
+            $btnApprovalReq->chatId = $admin['chat_id'];
+            Request::sendMessage($btnApprovalReq->build());
         }
     }
 
@@ -193,7 +191,6 @@ class AdminController extends BotController
         $dataUser['type'] = $registUser['type'];
         $dataUser['level'] = $registUser['level'];
         $dataUser['regist_id'] = $registData['id'];
-        $dataUser['alert_status'] = 1;
         
         if($registUser['level'] == 'regional' || $registUser['level'] == 'witel') {
             $dataUser['regional_id'] = $registUser['regional_id'];
@@ -208,6 +205,12 @@ class AdminController extends BotController
         } else {
             $dataUser['first_name'] = $registUser['first_name'];
             $dataUser['last_name'] = $registUser['last_name'];
+        }
+
+        if($registUser['type'] != 'private') {
+            $dataUser['alert_status'] = 0;
+        } else {
+            $dataUser['alert_status'] = 1;
         }
 
         $telegramUser = TelegramUser::create($dataUser);
@@ -316,7 +319,8 @@ class AdminController extends BotController
             $reqData1->text = 'Akses telah diizinkan.';
             
             $response = Request::sendMessage($reqData1->build());
-            UserController::whenRegistApproved($telegramUser);
+            // UserController::whenRegistApproved($telegramUser);
+            UserController::whenRegistApproved($registData['id']);
             return $response;
         }
         

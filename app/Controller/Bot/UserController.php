@@ -227,7 +227,7 @@ class UserController extends BotController
             } else {
                 $conversation->groupDescription = $messageText;
             }
-            
+
             $conversation->nextStep();
             $conversation->commit();
             $messageText = '';
@@ -739,38 +739,44 @@ class UserController extends BotController
         $reqData->text = ( UserText::getRegistSuccessText($conversation) )->get();
         $response = Request::sendMessage($reqData->build());
         AdminController::whenRegistUser($registration['id']);
+
+        $conversation->done();
         
         return $response;
     }
 
-    public static function whenRegistApproved($telegramUser)
-    {
+    public static function whenRegistApproved($registId)
+    {   
+        $telegramUser = TelegramUser::findByRegistId($registId);
         if(!$telegramUser) {
             return Request::emptyResponse();
         }
 
-        $conversation = new Conversation('regist', null, $telegramUser['chat_id']);
-        if($conversation->isExists()) {
-            $conversation->done();
+        $request = BotController::request('Registration/TextApproved');
+        $request->params->chatId = $telegramUser['chat_id'];
+        $request->setIsPrivate($telegramUser['type'] == 'private', false);
+
+        if($request->getData('is_private')) {
+            if($telegramUser['level'] == 'witel' || $telegramUser['level'] == 'pic') {
+                $group = TelegramUser::findWitelGroup($telegramUser['witel_id']);
+            } elseif($telegramUser['level'] == 'regional') {
+                $group = TelegramUser::findRegionalGroup($telegramUser['regional_id']);
+            }
+            
+            if(isset($group, $group['username'])) {
+                $request->setAlertingGroup($group['username'], false);
+            }
         }
 
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $telegramUser['chat_id'];
-        $reqData->text = UserText::getRegistApprovedText($telegramUser['created_at'])->get();
+        $request->setApprovedAt($telegramUser['created_at']);
 
-        return Request::sendMessage($reqData->build());
+        return $request->send();
     }
 
     public static function whenRegistRejected($registData)
     {
         if(!$registData) {
             return Request::emptyResponse();
-        }
-
-        $conversation = new Conversation('regist', null, $registData['chat_id']);
-        if($conversation->isExists()) {
-            $conversation->done();
         }
 
         $reqData = New RequestData();
