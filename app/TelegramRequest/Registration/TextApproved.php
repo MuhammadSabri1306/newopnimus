@@ -30,10 +30,9 @@ class TextApproved extends TelegramRequest
             ->addText('Proses pendaftaran anda telah mendapat persetujuan Admin.')
             ->addText(' Dengan ini, lokasi-lokasi yang memiliki RTU Osase akan memberi informasi lengkap mengenai Network Element anda.');
 
-        if($isPrivate && $groupTitle) {
-            $groupTitleText = $groupTitle;
+        if($groupTitle) {
             $text->addText(" Apabila ada alarm atau RTU yang down akan langsung dilaporkan ke grup ")
-                ->addBold($groupTitleText)
+                ->addBold($groupTitle)
                 ->addText(' atau anda dapat menghubungi Admin untuk koordinasi penambahan pada grup.');
         } elseif(!$isPrivate) {
             $text->addText(' Apabila ada alarm atau RTU yang down akan langsung dilaporkan ke grup ini.');

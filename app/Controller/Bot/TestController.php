@@ -325,23 +325,29 @@ class TestController extends BotController
         return $response;
     }
 
-    public static function whenRegistApproved(string $chatType)
+    public static function whenRegistApproved($telegramUserId = 70)
     {
-        $telegramUserId = 26;
         $chatId = static::$command->getMessage()->getChat()->getId();
+        
         $telegramUser = TelegramUser::find($telegramUserId);
+        BotController::sendDebugMessage([ 'telegram_user' => $telegramUser ]);
 
         $request = BotController::request('Registration/TextApproved');
         $request->params->chatId = $chatId;
-        $request->setIsPrivate($chatType == 'private', false);
-        if($request->getData('is_private')) {
-            $request->setAlertingGroup($telegramUser['username'], false);
-        }
-        $request->setApprovedAt($telegramUser['created_at']);
 
-        $approvedAt = $request->getData('approved_at', null);
-        $isPrivate = $request->getData('is_private', true);
-        $groupTitle = $request->getData('group_title', null);
+        $request->setIsPrivate($telegramUser['type'] == 'private', false);
+
+        if(!$telegramUser['is_pic'] && $telegramUser['level'] == 'witel') {
+            $group = TelegramUser::findAlertWitelGroup($telegramUser['witel_id']);
+        } elseif(!$telegramUser['is_pic'] && $telegramUser['level'] == 'regional') {
+            $group = TelegramUser::findAlertRegionalGroup($telegramUser['regional_id']);
+        }
+        
+        if(isset($group, $group['username']) && $telegramUser['id'] != $group['id']) {
+            $request->setAlertingGroup($group['username'], false);
+        }
+
+        $request->setApprovedAt($telegramUser['created_at']);
 
         $response = $request->send();
         if(!$response->isOk()) {

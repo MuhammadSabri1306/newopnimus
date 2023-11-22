@@ -15,8 +15,10 @@ use App\Model\TelegramAdmin;
 use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
+use App\Model\RtuLocation;
 use App\Model\PicLocation;
 use App\BuiltMessageText\AdminText;
+use App\Core\Exception\TelegramResponseException;
 
 
 class AdminController extends BotController
@@ -32,17 +34,17 @@ class AdminController extends BotController
         $admins = TelegramAdmin::getByUserArea($registData['data']);
         if(!$registData || count($admins) < 1) return;
 
-        $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
+        $request = BotController::request('Registration/SelectAdminApproval');
+        $request->setRegistrationData($registData);
+        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
             $inlineKeyboardData['approve']['callback_data'] = 'admin.user_approval.approve:'.$registId;
             $inlineKeyboardData['reject']['callback_data'] = 'admin.user_approval.reject:'.$registId;
             return $inlineKeyboardData;
         });
 
-        $btnApprovalReq->text = AdminText::getUserApprovalText($registData)->get();
-        
         foreach($admins as $admin) {
-            $btnApprovalReq->chatId = $admin['chat_id'];
-            Request::sendMessage($btnApprovalReq->build());
+            $request->params->chatId = $admin['chat_id'];
+            $request->send();
         }
     }
 
@@ -83,17 +85,29 @@ class AdminController extends BotController
         $admins = TelegramAdmin::getByUserArea($apprData, 'request_level');
         if(count($admins) < 1) return;
 
-        $btnApprovalReq = AdminController::getBtnApproval(function($inlineKeyboardData) use ($registId) {
+        $request = BotController::request('Registration/SelectAdminPicApproval');
+
+        $regional = Regional::find($apprvData['regional_id']);
+        $request->setRegional($regional);
+
+        $witel = Witel::find($apprvData['witel_id']);
+        $request->setWitel($witel);
+
+        $locations = RtuLocation::getByIds($apprvData->locations);
+        $request->setLocations($locations);
+
+        $request->setRegistrationData($apprData);
+        $request->buildText();
+
+        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
             $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
             $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
             return $inlineKeyboardData;
         });
 
-        $btnApprovalReq->text = AdminText::getPicApprovalText($apprData)->get();
-
         foreach($admins as $admin) {
-            $btnApprovalReq->chatId = $admin['chat_id'];
-            Request::sendMessage($btnApprovalReq->build());
+            $request->params->chatId = $admin['chat_id'];
+            $request->send();
         }
     }
 
@@ -207,10 +221,19 @@ class AdminController extends BotController
             $dataUser['last_name'] = $registUser['last_name'];
         }
 
-        if($registUser['type'] != 'private') {
-            $dataUser['alert_status'] = 0;
-        } else {
+        if($registUser['is_pic']) {
             $dataUser['alert_status'] = 1;
+        } elseif($registUser['type'] == 'private') {
+            $dataUser['alert_status'] = 0;
+        } elseif($registUser['level'] == 'witel') {
+            $group = TelegramUser::findAlertWitelGroup($registUser['witel_id']);
+            $dataUser['alert_status'] = $group ? 0 : 1;
+        } elseif($registUser['level'] == 'regional') {
+            $group = TelegramUser::findAlertRegionalGroup($registUser['regional_id']);
+            $dataUser['alert_status'] = $group ? 0 : 1;
+        } elseif($registUser['level'] == 'nasional') {
+            $group = TelegramUser::findAlertNasionalGroup();
+            $dataUser['alert_status'] = $group ? 0 : 1;
         }
 
         $telegramUser = TelegramUser::create($dataUser);
@@ -235,19 +258,21 @@ class AdminController extends BotController
         $dataUser = [];
         $dataPersonal = [];
         $registData = $registration['data'];
+        $registration['data']['is_pic'] = 1;
 
         if(!$registData['has_regist']) {
             $telegramUser = AdminController::saveRegisteringUser($registration);
         } else {
             $telegramUser = TelegramUser::find($registData['telegram_user_id']);
+            if($telegramUser) {
+                TelegramUser::update($telegramUser['id'], [
+                    'is_pic' => 1,
+                    'pic_regist_id' => $registration['id']
+                ]);
+            }
         }
 
         if(!$telegramUser) return null;
-
-        TelegramUser::update($telegramUser['id'], [
-            'is_pic' => 1,
-            'pic_regist_id' => $registration['id']
-        ]);
 
         $savedLocs = PicLocation::getByUser($telegramUser['id']);
         $savedLocIds = array_column($savedLocs, 'location_id');

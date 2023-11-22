@@ -74,18 +74,26 @@ class TelegramUser extends Model
         });
     }
 
-    public static function findWitelGroup($witelId)
+    public static function findAlertWitelGroup($witelId)
     {
         return TelegramUser::query(function ($db, $table) use ($witelId) {
-            $group = $db->queryFirstRow("SELECT * FROM $table WHERE level='witel' AND witel_id=%i", $witelId);
+            $group = $db->queryFirstRow("SELECT * FROM $table WHERE alert_status=1 AND level='witel' AND witel_id=%i", $witelId);
             return $group ?? null;
         });
     }
 
-    public static function findRegionalGroup($regionalId)
+    public static function findAlertRegionalGroup($regionalId)
     {
         return TelegramUser::query(function ($db, $table) use ($regionalId) {
-            $group = $db->queryFirstRow("SELECT * FROM $table WHERE level='regional' AND regional_id=%i", $regionalId);
+            $group = $db->queryFirstRow("SELECT * FROM $table WHERE alert_status=1 AND level='regional' AND regional_id=%i", $regionalId);
+            return $group ?? null;
+        });
+    }
+
+    public static function findAlertNasionalGroup()
+    {
+        return TelegramUser::query(function ($db, $table) {
+            $group = $db->queryFirstRow("SELECT * FROM $table WHERE alert_status=1 AND level='nasional'");
             return $group ?? null;
         });
     }
