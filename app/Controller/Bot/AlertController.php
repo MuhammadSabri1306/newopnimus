@@ -11,6 +11,8 @@ use App\Core\TelegramText;
 
 use App\Controller\BotController;
 use App\Model\TelegramUser;
+use App\Model\Regional;
+use App\Model\Witel;
 
 class AlertController extends BotController
 {
@@ -20,17 +22,20 @@ class AlertController extends BotController
         $chatId = $message->getChat()->getId();
         $messageText = strtolower(trim($message->getText(true)));
 
-        $reqData = new RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
-
         $telgUser = TelegramUser::findByChatId($chatId);
         if(!$telgUser) {
-            
-            $reqData->text = TelegramText::create('Anda belum terdaftar sebagai pengguna ')
-                ->addBold('Opnimus')->addText('.')
-                ->get();
-            return Request::sendMessage($reqData->build());
+
+            $request = BotController::request('Error/TextUserUnidentified');
+            $request->params->chatId = $chatId;
+            return $request->send();
+
+        }
+
+        if($telgUser['type'] == 'private' && !$telgUser['is_pic']) {
+
+            $request = BotController::request('AlertStatus/TextFeatureNotProvided');
+            $request->params->chatId = $chatId;
+            return $request->send();
 
         }
 
@@ -41,12 +46,43 @@ class AlertController extends BotController
             $alertStatus = 0;
         }
 
-        if(is_null($alertStatus)) {
+        if($alertStatus === null) {
 
-            $reqData->text = TelegramText::create('Format: ')
-                ->addCode('/alert [ON/OFF]')
-                ->get();
-            return Request::sendMessage($reqData->build());
+            $request = BotController::request('AlertStatus/TextIncompatibleFormat');
+            $request->params->chatId = $chatId;
+            return $request->send();
+
+        } elseif($alertStatus == 1 && !$telgUser['is_pic']) {
+
+            $alertGroup = null;
+            if($telgUser['level'] == 'witel') {
+                $alertGroup = TelegramUser::findAlertWitelGroup($telgUser['witel_id']);
+            } elseif($telgUser['level'] == 'regional') {
+                $alertGroup = TelegramUser::findAlertRegionalGroup($telgUser['regional_id']);
+            } elseif($telgUser['level'] == 'nasional') {
+                $alertGroup = TelegramUser::findAlertNasionalGroup();
+            }
+
+            if($alertGroup) {
+
+                $request = BotController::request('AlertStatus/TextAlertGroupHasExists');
+                $request->params->chatId = $chatId;
+                $request->setGroupTitle($alertGroup['username']);
+
+                if($alertGroup['level'] == 'witel') {
+                    $witel = Witel::find($alertGroup['witel_id']);
+                    $request->setLevelName($witel['witel_name']);
+                } elseif($alertGroup['level'] == 'regional') {
+                    $regional = Regional::find($alertGroup['regional_id']);
+                    $request->setLevelName($regional['name']);
+                } elseif($alertGroup['level'] == 'nasional') {
+                    $request->setLevelName('NASIONAL');
+                }
+
+                $request->buildText();
+                return $request->send();
+
+            }
 
         }
 
@@ -54,11 +90,8 @@ class AlertController extends BotController
             'alert_status' => $alertStatus
         ]);
 
-        if($alertStatus) {
-            $reqData->text = 'Berhasil menyalakan Alarm kembali.';
-        } else {
-            $reqData->text = 'Berhasil mematikan Alarm.';
-        }
-        return Request::sendMessage($reqData->build());
+        $request = BotController::request('AlertStatus/TextSwitchSuccess', [ $alertStatus ]);
+        $request->params->chatId = $chatId;
+        return $request->send();
     }
 }

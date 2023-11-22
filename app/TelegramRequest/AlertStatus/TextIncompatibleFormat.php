@@ -1,12 +1,12 @@
 <?php
-namespace App\TelegramRequest\Error;
+namespace App\TelegramRequest\AlertStatus;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
 use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 
-class TextUserUnidentified extends TelegramRequest
+class TextIncompatibleFormat extends TelegramRequest
 {
     public function __construct()
     {
@@ -17,8 +17,8 @@ class TextUserUnidentified extends TelegramRequest
 
     public function getText()
     {
-        return TelegramText::create('Anda belum terdaftar sebagai pengguna OPNIMUS.')->newLine()
-            ->addText('Anda dapat mengetikkan perintah /start untuk melakukan registrasi sebagai pengguna.');
+        return TelegramText::create('Format perintah tidak sesuai. Silahkan gunakan format berikut.')->newLine()
+            ->addCode('/alert [ON/OFF]');
     }
 
     public function send(): ServerResponse
