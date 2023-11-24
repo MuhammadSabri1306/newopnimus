@@ -69,7 +69,7 @@ class TestController extends BotController
         return Request::sendMessage($reqData->build());
     }
 
-    public static function adminRegistApproval($registId = null)
+    public static function adminRegistApproval($type, $registId = null)
     {
         $message = TestController::$command->getMessage();
         
@@ -77,9 +77,9 @@ class TestController extends BotController
         $reqData->chatId = $message->getChat()->getId();
         $reqData->parseMode = 'markdown';
         
-        if(is_null($registId)) {
+        if(is_null($registId) || !in_array($type, [ 'user', 'pic', 'excalert' ])) {
             $reqData->text = TelegramText::create('Format:')
-                ->addCode('/test adminregistapproval [registration_id]')
+                ->addCode('/test adminregistapproval [type] [registration_id]')
                 ->get();
             return Request::sendMessage($reqData->build());
         }
@@ -87,7 +87,13 @@ class TestController extends BotController
         $reqData->text = 'Test Regist Approval Admin, registId:'.$registId;
         $response = Request::sendMessage($reqData->build());
 
-        AdminController::whenRegistUser($registId);
+        if($type == 'user') {
+            AdminController::whenRegistUser($registId);
+        } elseif($type == 'pic') {
+            AdminController::whenRegistPic($registId);
+        } elseif($type == 'excalert') {
+            AdminController::whenRequestAlertExclusion($registId);
+        }
         return $response;
     }
 

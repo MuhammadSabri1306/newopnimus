@@ -1,5 +1,5 @@
 <?php
-namespace App\TelegramRequest\Registration;
+namespace App\TelegramRequest\AlertStatus;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
@@ -7,13 +7,13 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 
-class SelectAdminApproval extends TelegramRequest
+class SelectAdminExclusionApproval extends TelegramRequest
 {
     public function __construct()
     {
         parent::__construct();
         $this->params->parseMode = 'markdown';
-        $this->buildText();
+        $this->params->text = $this->getText()->get();
     }
 
     public function getText()
@@ -26,62 +26,61 @@ class SelectAdminApproval extends TelegramRequest
             return TelegramText::create();
         }
 
-        $registration = (object) $registration;
-        $userData = isset($registration->data) ? (object) $registration->data : null;
-        $isPrivateChat = $userData->type == 'private';
+        $group = !isset($registration['data'], $registration['data']['request_group']) ? null
+            : (object) $registration['data']['request_group'];
+        $reqDescr = !isset($registration['data'], $registration['data']['description']) ? ''
+            : $registration['data']['description'];
+        $existsGroups = !isset($registration['data'], $registration['data']['alerted_groups']) ? []
+            : $registration['data']['alerted_groups'];
 
         $text = TelegramText::create()
-            ->startBold()->addText('Registrasi User OPNIMUS')->endBold()->newLine(2)
-            ->addText('Terdapat permintaan registrasi '.($isPrivateChat ? 'User' : 'Grup').' dengan data berikut.')->newLine(2)
+            ->addBold('Pengajuan Alerting Opnimus')->newLine(2)
+            ->addText('Terdapat permintaan penambahan Alerting grup dengan data berikut.')->newLine(2)
             ->startCode();
 
-        if($isPrivateChat) {
-            $text->addText("Nama Pengguna   : $userData->full_name")->newLine();
-            $text->addText("No. Handphone   : $userData->telp")->newLine();
-        } else {
-            $text->addText("Nama Grup       : $userData->username")->newLine();
-        }
+        $text->addText("Nama Grup       : $group->username")->newLine();
+        $text->addText('Level           : '.ucfirst($group->level))->newLine();
         
-        $text->addText('Level           : '.ucfirst($userData->level))->newLine();
-        
-        if($userData->level == 'regional' || $userData->level == 'witel') {
+        if(in_array($group->level, [ 'regional', 'witel' ]) && $regional) {
             $text->addText('Regional        : '.$regional['name'])->newLine();
         }
-        
-        if($userData->level == 'witel') {
+
+        if($group->level == 'witel' && $witel) {
             $text->addText('Witel           : '.$witel['witel_name'])->newLine();
         }
         
-        if(!$isPrivateChat) {
-            $text->addText("Deskripsi Grup  : $userData->group_description")->newLine();
-        } else {
-            $text->addText("NIK             : $userData->nik")->newLine();
-            $text->addText('Status Karyawan : '.($userData->is_organik ? 'Organik' : 'Non Organik'))->newLine();
-            $text->addText("Nama Instansi   : $userData->instansi")->newLine();
-            $text->addText("Unit Kerja      : $userData->unit")->newLine();
+        $text->addText("Deskripsi Grup  : $group->group_description")->newLine();
+        $text->endCode();
+
+        if($reqDescr) {
+            $text->newLine()->addText('Alasan pengajuan:')->newLine()->addText($reqDescr);
         }
 
-        $text->endCode();
+        if(count($existsGroups) > 0) {
+            $text->newLine(2)->addText('Berikut grup yang telah menerima Alarm.');
+            foreach($existsGroups as $item) {
+                $text->newLine()->addText(' - '.$item['username']);
+            }
+        }
+
         return $text;
     }
 
     public function setRegistrationData($registration)
     {
         $this->setData('registration', $registration);
+        $this->params->text = $this->getText()->get();
     }
 
     public function setRegional($regional)
     {
         $this->setData('regional', $regional);
+        $this->params->text = $this->getText()->get();
     }
 
     public function setWitel($witel)
     {
         $this->setData('witel', $witel);
-    }
-
-    public function buildText()
-    {
         $this->params->text = $this->getText()->get();
     }
 

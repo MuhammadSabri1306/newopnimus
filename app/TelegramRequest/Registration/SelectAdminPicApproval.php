@@ -36,12 +36,10 @@ class SelectAdminPicApproval extends TelegramRequest
             ->addText('Level           : '.ucfirst($apprvData->level))->newLine();
         
         if($apprvData->level == 'regional' || $apprvData->level == 'witel') {
-            $regional = Regional::find($apprvData->regional_id);
             $text->addText('Regional        : '.$regional['name'])->newLine();
         }
         
         if($apprvData->level == 'witel') {
-            $witel = Witel::find($apprvData->witel_id);
             $text->addText('Witel           : '.$witel['witel_name'])->newLine();
         }
 

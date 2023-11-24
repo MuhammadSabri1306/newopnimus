@@ -9,6 +9,7 @@ use Longman\TelegramBot\Request;
 
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\PicController;
+use App\Controller\Bot\AlertController;
 
 class GenericmessageCommand extends SystemCommand
 {
@@ -85,6 +86,12 @@ class GenericmessageCommand extends SystemCommand
         $registPicConversation = PicController::getPicRegistConversation();
         if($registPicConversation->isExists()) {
             return 'setpic';
+        }
+
+        AlertController::$command = $this;
+        $alertExclConversation = AlertController::getAlertExclusionConversation();
+        if($alertExclConversation->isExists()) {
+            return 'request_alert';
         }
 
         return '';

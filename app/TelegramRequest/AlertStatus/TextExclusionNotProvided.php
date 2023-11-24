@@ -6,7 +6,7 @@ use Longman\TelegramBot\Entities\ServerResponse;
 use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 
-class TextFeatureNotProvided extends TelegramRequest
+class TextExclusionNotProvided extends TelegramRequest
 {
     public function __construct()
     {
@@ -17,8 +17,9 @@ class TextFeatureNotProvided extends TelegramRequest
 
     public function getText()
     {
-        return TelegramText::create('Fitur')->addBold(' Alerting Opnimus ')->addText('hanya tersedia untuk')
-            ->addBold(' Grup ')->addText('dan')->addBold(' User PIC')->addText('. Terima kasih.');
+        return TelegramText::create('Pengajuan penambahan')
+            ->addBold(' Alerting Opnimus ')
+            ->addText('hanya tersedia untuk grup.');
     }
 
     public function send(): ServerResponse

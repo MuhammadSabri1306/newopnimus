@@ -18,16 +18,6 @@ class Model
 
     public static function query(callable $callback)
     {
-        Model::setErrorHandler(function($hash) {
-            global $appConfig;
-            $errorMessage = $hash['error'];
-
-            $reqData = new RequestData();
-            $reqData->text = $errorMessage;
-            $reqData->chatId = $appConfig->userTesting->chatId;
-            Request::sendMessage($reqData->build());
-        });
-
         if (is_callable($callback)) {
 
             // $backtrace = debug_backtrace(DEBUG_BACKTRACE_PROVIDE_OBJECT, 2);

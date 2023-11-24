@@ -9,6 +9,8 @@ use App\Core\TelegramText;
 use App\Core\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
+use App\Controller\Bot\PicController;
+use App\Controller\Bot\AlertController;
 use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
 use App\Model\TelegramAdmin;
@@ -26,6 +28,7 @@ class AdminController extends BotController
     protected static $callbacks = [
         'admin.user_approval' => 'onUserApproval',
         'admin.pic_approval' => 'onPicApproval',
+        'admin.alert_exclusion' => 'onAlertExclusionApproval',
     ];
 
     public static function whenRegistUser($registId)
@@ -36,9 +39,89 @@ class AdminController extends BotController
 
         $request = BotController::request('Registration/SelectAdminApproval');
         $request->setRegistrationData($registData);
+        
+        if(in_array($registData['data']['level'], [ 'regional', 'witel' ])) {
+            $regional = Regional::find($registData['data']['regional_id']);
+            $request->setRegional($regional);
+        }
+
+        if($registData['data']['level'] == 'witel') {
+            $witel = Witel::find($registData['data']['witel_id']);
+            $request->setWitel($witel);
+        }
+
+        $request->buildText();
         $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
             $inlineKeyboardData['approve']['callback_data'] = 'admin.user_approval.approve:'.$registId;
             $inlineKeyboardData['reject']['callback_data'] = 'admin.user_approval.reject:'.$registId;
+            return $inlineKeyboardData;
+        });
+
+        foreach($admins as $admin) {
+            $request->params->chatId = $admin['chat_id'];
+            $request->send();
+        }
+    }
+
+    public static function whenRegistPic($registId)
+    {
+        $registData = Registration::find($registId);
+        if(!$registData) return null;
+
+        $apprData = AdminController::buildPicApprvData($registData);
+        $admins = TelegramAdmin::getByUserArea($apprData, 'request_level');
+        if(count($admins) < 1) return;
+
+        $request = BotController::request('Registration/SelectAdminPicApproval');
+        $request->setRegistrationData($apprData);
+
+        $regional = Regional::find($apprvData['regional_id']);
+        $request->setRegional($regional);
+
+        $witel = Witel::find($apprvData['witel_id']);
+        $request->setWitel($witel);
+
+        $locations = RtuLocation::getByIds($apprvData->locations);
+        $request->setLocations($locations);
+
+        $request->buildText();
+        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
+            $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
+            $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
+            return $inlineKeyboardData;
+        });
+
+        foreach($admins as $admin) {
+            $request->params->chatId = $admin['chat_id'];
+            $request->send();
+        }
+    }
+
+    public static function whenRequestAlertExclusion($registId)
+    {
+        $registration = Registration::find($registId);
+        // $admins = TelegramAdmin::getSuperAdmin();
+        $admins = [TelegramAdmin::findByChatId('1931357638')];
+        if(!$registration || count($admins) < 1) {
+            return;
+        }
+
+        $request = BotController::request('AlertStatus/SelectAdminExclusionApproval');
+        $request->setRegistrationData($registration);
+
+        if(in_array($registration['data']['request_group']['level'], [ 'regional', 'witel' ])) {
+            $regional = Regional::find($registration['data']['request_group']['regional_id']);
+            $request->setRegional($regional);
+        }
+
+        if($registration['data']['request_group']['level'] == 'witel') {
+            $witel = Witel::find($registration['data']['request_group']['witel_id']);
+            $request->setWitel($witel);
+        }
+
+        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
+            $inlineKeyboardData['approve']['callback_data'] = 'admin.alert_exclusion.approve:'.$registId;
+            $inlineKeyboardData['reject']['callback_data'] = 'admin.alert_exclusion.reject:'.$registId;
             return $inlineKeyboardData;
         });
 
@@ -74,41 +157,6 @@ class AdminController extends BotController
         }
 
         return $apprData;
-    }
-
-    public static function whenRegistPic($registId)
-    {
-        $registData = Registration::find($registId);
-        if(!$registData) return null;
-
-        $apprData = AdminController::buildPicApprvData($registData);
-        $admins = TelegramAdmin::getByUserArea($apprData, 'request_level');
-        if(count($admins) < 1) return;
-
-        $request = BotController::request('Registration/SelectAdminPicApproval');
-
-        $regional = Regional::find($apprvData['regional_id']);
-        $request->setRegional($regional);
-
-        $witel = Witel::find($apprvData['witel_id']);
-        $request->setWitel($witel);
-
-        $locations = RtuLocation::getByIds($apprvData->locations);
-        $request->setLocations($locations);
-
-        $request->setRegistrationData($apprData);
-        $request->buildText();
-
-        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
-            $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
-            $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
-            return $inlineKeyboardData;
-        });
-
-        foreach($admins as $admin) {
-            $request->params->chatId = $admin['chat_id'];
-            $request->send();
-        }
     }
 
     public static function getBtnApproval(callable $callInKeyboard): RequestData
@@ -157,7 +205,7 @@ class AdminController extends BotController
         }
 
         $updateText = AdminText::getUserApprovalText($registData);
-        $registStatus = Registration::getStatus($registData['id']);        
+        $registStatus = Registration::getStatus($registData['id']);
         $statusText = $registStatus['status'] == 'approved' ? 'disetujui' : 'ditolak';
 
         if(isset($registStatus['updated_by'])) {
@@ -412,5 +460,81 @@ class AdminController extends BotController
         Request::sendMessage($reqData1->build());
         
         return PicController::whenRegistRejected($registData);
+    }
+
+    public static function onAlertExclusionApproval($callbackData, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $messageText = $message->getText(true);
+        $chatId = $message->getChat()->getId();
+
+        list($callbackAnswer, $registId) = explode(':', $callbackData);
+        $registration = Registration::find($registId);
+
+        if(!$registration) {
+
+            $request = BotController::request('Registration/TextNotFound');
+            $request->params->chatId = $chatId;
+            $request->params->messageId = $messageId;
+            return $request->sendUpdate();
+
+        }
+
+        if($registration['status'] != 'unprocessed') {
+
+            $registStatus = Registration::getStatus($registration['id']);
+            $request = BotController::request('Registration/TextDoneReviewed');
+            $request->setStatusText($registStatus['status'] == 'approved' ? 'disetujui' : 'ditolak');
+            $request->setAdminData($registStatus['updated_by']);
+            $request->params->chatId = $chatId;
+            $request->params->messageId = $messageId;
+            return $request->sendUpdate();
+
+        }
+
+        $request = BotController::request('TextAnswerSelect', [
+            $messageText,
+            $callbackAnswer == 'approve' ? 'Izinkan' : 'Tolak'
+        ]);
+        $request->params->chatId = $chatId;
+        $request->params->messageId = $messageId;
+        $response = $request->send();
+        if(!$response->isOk()) {
+            return $response;
+        }
+
+        $admin = TelegramAdmin::findByChatId($chatId);
+
+        if($callbackAnswer != 'approve') {
+
+            Registration::update($registration['id'], [ 'status' => 'rejected' ], $admin['id']);
+            $request = BotController::request('TextDefault');
+            $request->setText(fn($text) => $text->addText('Permintaan')->addBold(' Penambahan Alerting ')->addText('ditolak.'));
+            $request->params->chatId = $chatId;
+            $response = $request->send();
+
+            AlertController::whenRequestExclusionReviewed(false, $registration['id']);
+            return $response;
+            
+        }
+
+        Registration::update($registration['id'], [ 'status' => 'approved' ], $admin['id']);
+        
+        $telgUserId = $registration['data']['request_group']['id'];
+        TelegramUser::update($telgUserId, [ 'alert_status' => 1 ]);
+        
+        $telgUser = TelegramUser::find($telgUserId);
+        if(!$telgUser || $telgUser['alert_status'] != 1) {
+            throw new \Exception('Data telegram_user.alert_status is not updated, id:'.$telgUserId);
+        }
+
+        $request = BotController::request('TextDefault');
+        $request->setText(fn($text) => $text->addText('Pengajuan')->addBold(' Penambahan Alerting ')->addText('disetujui.'));
+        $request->params->chatId = $chatId;
+        $response = $request->send();
+
+        AlertController::whenRequestExclusionReviewed(true, $registration['id']);
+        return $response;
     }
 }

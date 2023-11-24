@@ -7,9 +7,10 @@ use Longman\TelegramBot\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
-use App\Controller\Bot\PicController; // on dev
+use App\Controller\Bot\PicController;
 use App\Controller\Bot\PortController;
 use App\Controller\Bot\RtuController;
+use App\Controller\Bot\AlertController;
 use App\Controller\Bot\TestController;
 
 useHelper('telegram-callback');
@@ -79,24 +80,29 @@ class CallbackqueryCommand extends SystemCommand
                 }
                 
             }
-            
+
             UserController::$command = $this;
             if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
                 return $callbackQuery->answer();
             }
-    
+
             AdminController::$command = $this;
             if(BotController::catchCallback(AdminController::class, $callbackData, $callbackQuery)) {
                 return $callbackQuery->answer();
             }
-    
+
             PicController::$command = $this;
             if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
                 return $callbackQuery->answer();
             }
-    
+
             PortController::$command = $this;
             if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
+                return $callbackQuery->answer();
+            }
+
+            AlertController::$command = $this;
+            if(BotController::catchCallback(AlertController::class, $callbackData, $callbackQuery)) {
                 return $callbackQuery->answer();
             }
     

@@ -41,9 +41,10 @@ class TelegramAdmin extends Model
                 ];
 
                 $admins = $db->query($query, $params);
-                if(count($admins) < 1) return [];
-                if($admins[0]['level'] == 'nasional') return $admins;
-                return array_filter($admins, fn($item) => $item['level'] == 'regional');
+                // if(count($admins) < 1) return [];
+                // if($admins[0]['level'] == 'nasional') return $admins;
+                // return array_filter($admins, fn($item) => $item['level'] == 'regional');
+                return $admins;
             }
 
             $witelId = isset($user[$witelKey]) ? $user[$witelKey] : null;
@@ -67,6 +68,14 @@ class TelegramAdmin extends Model
             }
             
             return [];
+        });
+    }
+
+    public static function getSuperAdmin()
+    {
+        return TelegramAdmin::query(function ($db, $table) {
+            $admins = $db->query("SELECT * FROM $table WHERE is_super_admin=1");
+            return $admins ?? [];
         });
     }
 }
