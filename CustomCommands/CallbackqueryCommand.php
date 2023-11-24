@@ -4,6 +4,8 @@ namespace Longman\TelegramBot\Commands\SystemCommands;
 use Longman\TelegramBot\Commands\SystemCommand;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Conversation;
+
+use App\Core\CallbackData;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
@@ -51,76 +53,94 @@ class CallbackqueryCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        try {
+        $callbackQuery = $this->getCallbackQuery();
+        $callbackData  = $callbackQuery->getData();
+        $decodedCallbackData = decodeCallbackData($callbackData);
+        
+        $fromUserId = null;
+        if($callbackQuery->getFrom() && $callbackQuery->getFrom()->getId()) {
+            $fromUserId = $callbackQuery->getFrom()->getId();
+        }
 
-            $callbackQuery = $this->getCallbackQuery();
-            $callbackData  = $callbackQuery->getData();
-            $decodedCallbackData = decodeCallbackData($callbackData);
-    
-            if($decodedCallbackData) {
-    
-                if($methodName = $this->isCallbackOf(UserController::class, $decodedCallbackData)) {
-                    $this->callHandler(
-                        UserController::class,
-                        $methodName,
-                        $callbackQuery,
-                        $decodedCallbackData
-                    );
-                    return $callbackQuery->answer();
-                }
-    
-                if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
-                    $this->callHandler(
-                        RtuController::class,
-                        $methodName,
-                        $callbackQuery,
-                        $decodedCallbackData
-                    );
-                    return $callbackQuery->answer();
-                }
-                
+        $decCallbackData = CallbackData::decode($callbackData);
+        if($decCallbackData instanceof CallbackData) {
+            
+            $hasAccess = !$fromUserId || $decCallbackData->hasAccess($fromUserId);
+            if(!$hasAccess) {
+                return $callbackQuery->answer([
+                    'text'       => 'Anda tidak memiliki akses!',
+                    'show_alert' => true,
+                    'cache_time' => 10,
+                ]);
             }
 
-            UserController::$command = $this;
-            if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
+            if($methodName = $decCallbackData->isCallbackOf(TestController::$callbacks)) {
+                TestController::$command = $this;
+                TestController::$methodName($decCallbackData->value, $callbackQuery);
                 return $callbackQuery->answer();
             }
 
-            AdminController::$command = $this;
-            if(BotController::catchCallback(AdminController::class, $callbackData, $callbackQuery)) {
+        }
+
+        if($decodedCallbackData) {
+
+            if($methodName = $this->isCallbackOf(UserController::class, $decodedCallbackData)) {
+                $this->callHandler(
+                    UserController::class,
+                    $methodName,
+                    $callbackQuery,
+                    $decodedCallbackData
+                );
                 return $callbackQuery->answer();
             }
 
-            PicController::$command = $this;
-            if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
+            if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
+                $this->callHandler(
+                    RtuController::class,
+                    $methodName,
+                    $callbackQuery,
+                    $decodedCallbackData
+                );
                 return $callbackQuery->answer();
             }
+            
+        }
 
-            PortController::$command = $this;
-            if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
-                return $callbackQuery->answer();
-            }
-
-            AlertController::$command = $this;
-            if(BotController::catchCallback(AlertController::class, $callbackData, $callbackQuery)) {
-                return $callbackQuery->answer();
-            }
-    
-            TestController::$command = $this;
-            if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
-                return $callbackQuery->answer();
-            }
-    
-            return $callbackQuery->answer([
-                'text'       => 'Content of the callback data: ' . $callbackData,
-                'show_alert' => true,
-                'cache_time' => 10,
-            ]);
-
-        } catch(\Throwable $err) {
-            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        UserController::$command = $this;
+        if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
             return $callbackQuery->answer();
         }
+
+        AdminController::$command = $this;
+        if(BotController::catchCallback(AdminController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        PicController::$command = $this;
+        if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        PortController::$command = $this;
+        if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        AlertController::$command = $this;
+        if(BotController::catchCallback(AlertController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        TestController::$command = $this;
+        if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
+            return $callbackQuery->answer();
+        }
+
+        return $callbackQuery->answer([
+            'text'       => 'Content of the callback data: ' . $callbackData,
+            'show_alert' => true,
+            'cache_time' => 10,
+        ]);
     }
 
     private function isCallbackOf($controller, $decodedCallbackData)

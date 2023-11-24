@@ -13,6 +13,7 @@ use Goat1000\SVGGraph\SVGGraph;
 
 use App\Core\RequestData;
 use App\Core\TelegramText;
+use App\Core\CallbackData;
 use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
 use App\ApiRequest\NewosaseApi;
@@ -20,8 +21,8 @@ use App\Model\TelegramUser;
 
 class TestController extends BotController
 {
-    protected static $callbacks = [
-        'test.inkeyboard_json' => 'onSelectInKeyboardJson',
+    public static $callbacks = [
+        'test.inkeyboard_encode' => 'onSelectInKeyboard',
     ];
 
     public static function run()
@@ -32,7 +33,7 @@ class TestController extends BotController
         $modulKey = array_shift($params);
 
         switch($modulKey) {
-            case 'inkeyboardjson': return TestController::inKeyboardJson(...$params); break;
+            case 'inkeyboard': return TestController::inKeyboard(...$params); break;
             case 'adminregistapproval': return TestController::adminRegistApproval(...$params); break;
             case 'errorlog': return TestController::errorLog(...$params); break;
             case 'errorresponse': return TestController::throwErrorResponse(...$params); break;
@@ -43,30 +44,41 @@ class TestController extends BotController
         }
     }
 
-    public static function inKeyboardJson()
+    public static function inKeyboard()
     {
         $message = TestController::$command->getMessage();
         
         $reqData = new RequestData();
         $reqData->chatId = $message->getChat()->getId();
-        $reqData->text = 'Test Inline Keyboard data berupa JSON.';
+        $reqData->text = 'Test Inline Keyboard data.';
 
-        function encodeKeyboardData($name, $data) {
-            $dataJson = json_encode($data);
-            return "$name.$dataJson";
-        }
+        $callbackData1 = 'satu';
+        $callbackData2 = [ 13, 4, 5 ];
+        $callbackData3 = [ 'id' => 3, 'n' => '3' ];
 
-        $callbackData1 = [ 'id' => 1, 'name' => 'callback data 1' ];
-        $callbackData2 = [ 'id' => 2, 'name' => 'callback data 2' ];
-        $callbackData3 = [ 'id' => 3, 'name' => 'callback data 3' ];
+        $callbackData = new CallbackData('test.inkeyboard_encode');
+        $callbackData->limitAccess($reqData->chatId);
 
         $reqData->replyMarkup = new InlineKeyboard([
-            ['text' => 'Callback 1', 'callback_data' => encodeKeyboardData('test.inkeyboard_json', $callbackData1)],
-            ['text' => 'Callback 2', 'callback_data' => encodeKeyboardData('test.inkeyboard_json', $callbackData2)],
-            ['text' => 'Callback 3', 'callback_data' => encodeKeyboardData('test.inkeyboard_json', $callbackData3)],
+            ['text' => 'Callback 1', 'callback_data' => $callbackData->createEncodedData($callbackData1)],
+            ['text' => 'Callback 2', 'callback_data' => $callbackData->createEncodedData($callbackData2)],
+            ['text' => 'Callback 3', 'callback_data' => $callbackData->createEncodedData($callbackData3)],
         ]);
 
         return Request::sendMessage($reqData->build());
+    }
+
+    public static function onSelectInKeyboard($callbackData, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
+
+        $response = static::$command->replyToChat('Running.');
+        BotController::sendDebugMessage([
+            'chat_id' => $chatId,
+            'data' => $callbackData
+        ]);
+        return $response;
     }
 
     public static function adminRegistApproval($type, $registId = null)
@@ -95,25 +107,6 @@ class TestController extends BotController
             AdminController::whenRequestAlertExclusion($registId);
         }
         return $response;
-    }
-
-    public static function onSelectInKeyboardJson($callbackData, $callbackQuery)
-    {
-        $message = $callbackQuery->getMessage();
-        $callbackData = json_decode($callbackData);
-        
-        $reqData = new RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->text = TelegramText::create()
-            ->addBold('Data Callback')->newLine(1)
-            ->startCode()
-            ->addText("ID   : $callbackData->id")->newLine()
-            ->addText("NAME : $callbackData->name")
-            ->endCode()
-            ->get();
-
-        return Request::sendMessage($reqData->build());
     }
 
     public static function errorLog()
