@@ -80,6 +80,12 @@ class CallbackqueryCommand extends SystemCommand
                 return $callbackQuery->answer();
             }
 
+            if($methodName = $decCallbackData->isCallbackOf(PortController::$callbacks)) {
+                PortController::$command = $this;
+                PortController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
         }
 
         if($decodedCallbackData) {

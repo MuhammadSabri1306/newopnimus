@@ -6,6 +6,7 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use Longman\TelegramBot\ChatAction;
 
 use App\Core\RequestData;
+use App\Core\CallbackData;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\PortText;
 use App\Controller\BotController;
@@ -19,18 +20,19 @@ use App\Request\RequestInKeyboard;
 
 class PortController extends BotController
 {
-    protected static $callbacks = [
-        'port.select_regional' => 'onSelectRegional',
-        'port.select_witel' => 'onSelectWitel',
-        'port.select_location' => 'onSelectLocation',
-        'port.select_rtu' => 'onSelectRtu',
-        'port.select_port' => 'onSelectPort',
+    public static $callbacks = [
+        'port.reg' => 'onSelectRegional',
+        'port.wit' => 'onSelectWitel',
+        'port.loc' => 'onSelectLocation',
+        'port.rtu' => 'onSelectRtu',
+        'port.port' => 'onSelectPort',
     ];
 
     public static function checkPort()
     {
         $message = PortController::$command->getMessage();
         $messageText = trim($message->getText(true));
+        $userChatId = $message->getFrom()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
@@ -77,7 +79,7 @@ class PortController extends BotController
                 return Request::sendMessage($reqData->build());
             }
             
-            $btnPortRequest = PortController::getBtnPortList($rtuSname, $ports);
+            $btnPortRequest = PortController::getBtnPortList($rtuSname, $ports, $userChatId);
             $btnPortRequest->chatId = $reqData->chatId;
             return Request::sendMessage($btnPortRequest->build());
 
@@ -91,9 +93,11 @@ class PortController extends BotController
                 ->endItalic()
                 ->get();
 
+            $callbackData = new CallbackData('port.reg');
+            $callbackData->limitAccess($userChatId);
             return RequestInKeyboard::regionalList(
                 $reqData,
-                fn($regional) => 'port.select_regional.'.$regional['id']
+                fn($regional) => $callbackData->createEncodedData($regional['id'])
             );
 
         }
@@ -106,10 +110,12 @@ class PortController extends BotController
                 ->endItalic()
                 ->get();
 
+            $callbackData = new CallbackData('port.wit');
+            $callbackData->limitAccess($userChatId);
             return RequestInKeyboard::witelList(
                 $user['regional_id'],
                 $reqData,
-                fn($witel) => 'port.select_witel.'.$witel['id']
+                fn($witel) => $callbackData->createEncodedData($witel['id'])
             );
 
         }
@@ -121,16 +127,18 @@ class PortController extends BotController
                 ->addText('* Anda juga dapat memilih RTU dan Port dengan mengetikan perintah /cekport [Kode RTU] [No. Port], contoh: /cekport RTU00-D7-BAL A-12')
                 ->endItalic()->get();
 
+            $callbackData = new CallbackData('port.loc');
+            $callbackData->limitAccess($userChatId);
             return RequestInKeyboard::locationList(
                 $user['witel_id'],
                 $reqData,
-                fn($loc) => 'port.select_location.'.$loc['id']
+                fn($loc) => $callbackData->createEncodedData($loc['id'])
             );
 
         }
     }
 
-    public static function getBtnPortList($rtuSname, $portsData)
+    public static function getBtnPortList($rtuSname, $portsData, $userChatId)
     {
         $ports = array_map(function($port) {
 
@@ -160,7 +168,7 @@ class PortController extends BotController
 
             array_push($result[$lastIndex], [
                 'text' => $port['title'],
-                'callback_data' => 'port.select_port.'.$port['key']
+                'callback_data' => 'port.port.'.$port['key']
             ]);
 
             return $result;
@@ -175,49 +183,57 @@ class PortController extends BotController
 
     public static function onSelectRegional($regionalId, $callbackQuery)
     {
-        $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
-        $user = $callbackQuery->getFrom();
-        $regional = Regional::find($regionalId);
+        $userChatId = $callbackQuery->getFrom()->getId();
+        $reqData = New RequestData();
+        // $regional = Regional::find($regionalId);
 
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $message->getChat()->getId();
         $reqData->messageId = $message->getMessageId();
-        $reqData->text = PortText::getRegionalInKeyboardText()->newLine(2)
-            ->addBold('=> ')->addText($regional['name'])
-            ->get();
-        Request::editMessageText($reqData->build());
+        // $reqData->text = PortText::getRegionalInKeyboardText()->newLine(2)
+        //     ->addBold('=> ')->addText($regional['name'])
+        //     ->get();
+        // Request::editMessageText($reqData->build());
+        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
         $reqData1->text = PortText::getWitelInKeyboardText()->get();
+
+        $callbackData = new CallbackData('port.wit');
+        $callbackData->limitAccess($userChatId);
         return RequestInKeyboard::witelList(
             $regionalId,
             $reqData1,
-            fn($witel) => 'port.select_witel.'.$witel['id']
+            fn($witel) => $callbackData->createEncodedData($witel['id'])
         );
     }
 
     public static function onSelectWitel($witelId, $callbackQuery)
     {
-        $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
-        $user = $callbackQuery->getFrom();
-        $witel = Witel::find($witelId);
+        $userChatId = $callbackQuery->getFrom()->getId();
+        $reqData = New RequestData();
+        // $witel = Witel::find($witelId);
 
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $message->getChat()->getId();
         $reqData->messageId = $message->getMessageId();
-        $reqData->text = PortText::getWitelInKeyboardText()->newLine(2)
-            ->addBold('=> ')->addText($witel['witel_name'])
-            ->get();
-        Request::editMessageText($reqData->build());
+        // $reqData->text = PortText::getWitelInKeyboardText()->newLine(2)
+        //     ->addBold('=> ')->addText($witel['witel_name'])
+        //     ->get();
+        // Request::editMessageText($reqData->build());
+        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
         $reqData1->text = PortText::getLocationInKeyboardText()->get();
+
+        $callbackData = new CallbackData('port.wit');
+        $callbackData->limitAccess($userChatId);
         return RequestInKeyboard::locationList(
             $witelId,
             $reqData1,
-            fn($loc) => 'port.select_location.'.$loc['id']
+            fn($loc) => $callbackData->createEncodedData($loc['id'])
         );
     }
 
@@ -225,23 +241,26 @@ class PortController extends BotController
     {
         $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
-        $user = $callbackQuery->getFrom();
-        $location = RtuLocation::find($locationId);
+        $userChatId = $callbackQuery->getFrom()->getId();
+        // $location = RtuLocation::find($locationId);
         $rtus = RtuList::getSnameOrderedByLocation($locationId);
 
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $message->getChat()->getId();
         $reqData->messageId = $message->getMessageId();
-        $reqData->text = PortText::getLocationInKeyboardText()->newLine(2)
-            ->addBold('=> ')->addText($location['location_sname'])
-            ->get();
+        // $reqData->text = PortText::getLocationInKeyboardText()->newLine(2)
+        //     ->addBold('=> ')->addText($location['location_sname'])
+        //     ->get();
 
-        Request::editMessageText($reqData->build());
+        // Request::editMessageText($reqData->build());
+        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
         $reqData->text = PortText::getRtuInKeyboardText()->get();
-
-        $inlineKeyboardData = array_reduce($rtus, function($result, $rtu) {
+        
+        $callbackData = new CallbackData('port.rtu');
+        $callbackData->limitAccess($userChatId);
+        $inlineKeyboardData = array_reduce($rtus, function($result, $rtu) use ($callbackData) {
             $lastIndex = count($result) - 1;
             
             if($lastIndex < 0 || count($result[$lastIndex]) == 3) {
@@ -251,7 +270,7 @@ class PortController extends BotController
 
             array_push($result[$lastIndex], [
                 'text' => $rtu['sname'],
-                'callback_data' => 'port.select_rtu.'.$rtu['id']
+                'callback_data' => $callbackData->createEncodedData($rtu['id'])
             ]);
 
             return $result;
@@ -264,7 +283,7 @@ class PortController extends BotController
     public static function onSelectRtu($rtuId, $callbackQuery)
     {   
         $message = $callbackQuery->getMessage();
-        $user = $callbackQuery->getFrom();
+        $userChatId = $message->getFrom()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
@@ -272,11 +291,12 @@ class PortController extends BotController
         $reqData->messageId = $message->getMessageId();
 
         $rtu = RtuList::find($rtuId);
-        $reqData->text = PortText::getRtuInKeyboardText()->newLine(2)
-            ->addBold('=> ')->addText($rtu['sname'])
-            ->get();
+        // $reqData->text = PortText::getRtuInKeyboardText()->newLine(2)
+        //     ->addBold('=> ')->addText($rtu['sname'])
+        //     ->get();
 
-        Request::editMessageText($reqData->build());
+        // Request::editMessageText($reqData->build());
+        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
         $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtu) {
@@ -294,7 +314,7 @@ class PortController extends BotController
             return Request::sendMessage($reqData1->build());
         }
         
-        $btnPortRequest = PortController::getBtnPortList($rtu['sname'], $ports);
+        $btnPortRequest = PortController::getBtnPortList($rtu['sname'], $ports, $userChatId);
         $btnPortRequest->chatId = $reqData->chatId;
         return Request::sendMessage($btnPortRequest->build());
     }
@@ -312,12 +332,13 @@ class PortController extends BotController
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $message->getChat()->getId();
         $reqData->messageId = $message->getMessageId();
-        $reqData->text = PortText::getPortInKeyboardText()->newLine(2)
-            ->addBold('=> ')
-            ->addText(isset($noPort) ? $noPort : 'ALL PORT')
-            ->get();
+        // $reqData->text = PortText::getPortInKeyboardText()->newLine(2)
+        //     ->addBold('=> ')
+        //     ->addText(isset($noPort) ? $noPort : 'ALL PORT')
+        //     ->get();
             
-        Request::editMessageText($reqData->build());
+        // Request::editMessageText($reqData->build());
+        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         if(!isset($noPort)) {
             return PortController::sendTextAllPort($rtuSname, $reqData->chatId);
