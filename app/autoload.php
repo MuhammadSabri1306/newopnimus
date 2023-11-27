@@ -13,6 +13,7 @@ spl_autoload_register(function ($className) {
         'App\\ApiRequest\\' => "$baseDir/ApiRequest/",
         'App\\Request\\' => "$baseDir/Request/",
         'MuhammadSabri1306\\MyBotLogger\\' => "$baseDir/../my-bot-logger/php/",
+        'MuhammadSabri1306\\PhpChartSvg\\' => "$baseDir/../MuhammadSabri1306/php-chart-svg/",
     ];
 
     // Exclude the Helper namespace
