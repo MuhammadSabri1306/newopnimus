@@ -78,4 +78,15 @@ class TelegramAdmin extends Model
             return $admins ?? [];
         });
     }
+
+    public static function create(array $data)
+    {
+        $data['created_at'] = date('Y-m-d H:i:s');
+
+        return TelegramAdmin::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            $id = $db->insertId();
+            return $id ? TelegramAdmin::find($id) : null;
+        });
+    }
 }

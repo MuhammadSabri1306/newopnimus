@@ -88,6 +88,11 @@ class Conversation
         $this->userId = $userId;
     }
 
+    public function getId()
+    {
+        return $this->id;
+    }
+
     public function create()
     {
         $currDatetime = date('Y-m-d H:i:s');

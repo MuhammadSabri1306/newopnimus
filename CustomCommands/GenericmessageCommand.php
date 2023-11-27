@@ -10,6 +10,7 @@ use Longman\TelegramBot\Request;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\PicController;
 use App\Controller\Bot\AlertController;
+use App\Controller\Bot\AdminController;
 
 class GenericmessageCommand extends SystemCommand
 {
@@ -92,6 +93,12 @@ class GenericmessageCommand extends SystemCommand
         $alertExclConversation = AlertController::getAlertExclusionConversation();
         if($alertExclConversation->isExists()) {
             return 'request_alert';
+        }
+
+        AdminController::$command = $this;
+        $registAdminConversation = AdminController::getRegistConversation();
+        if($registAdminConversation->isExists()) {
+            return 'request_admin';
         }
 
         return '';

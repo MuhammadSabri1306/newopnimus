@@ -61,7 +61,7 @@ class CallbackData
             $data['u'] = $this->userId;
         }
 
-        if(is_string($value) || is_array($value)) {
+        if(is_string($value) || is_numeric($value) || is_array($value)) {
             $data['v'] = $value;
         }
 

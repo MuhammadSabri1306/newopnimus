@@ -86,6 +86,12 @@ class CallbackqueryCommand extends SystemCommand
                 return $callbackQuery->answer();
             }
 
+            if($methodName = $decCallbackData->isCallbackOf(AdminController::$callbacks)) {
+                AdminController::$command = $this;
+                AdminController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
         }
 
         if($decodedCallbackData) {

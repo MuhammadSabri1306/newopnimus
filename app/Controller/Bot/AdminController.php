@@ -20,16 +20,39 @@ use App\Model\Witel;
 use App\Model\RtuLocation;
 use App\Model\PicLocation;
 use App\BuiltMessageText\AdminText;
-use App\Core\Exception\TelegramResponseException;
+use App\Core\CallbackData;
 
 
 class AdminController extends BotController
 {
-    protected static $callbacks = [
+    public static $callbacks = [
         'admin.user_approval' => 'onUserApproval',
         'admin.pic_approval' => 'onPicApproval',
         'admin.alert_exclusion' => 'onAlertExclusionApproval',
+        'admin.adminaprv' => 'onAdminApproval',
+        'admin.start' => 'onRegistration',
+        'admin.level' => 'onSelectLevel',
+        'admin.reg' => 'onSelectRegional',
+        'admin.wit' => 'onSelectWitel',
+        'admin.organik' => 'onSelectOrganikStatus',
     ];
+
+    public static function getRegistConversation()
+    {
+        if($command = AdminController::$command) {
+            if($command->getMessage()) {
+                $chatId = AdminController::$command->getMessage()->getChat()->getId();
+                $userId = AdminController::$command->getMessage()->getFrom()->getId();
+                return new Conversation('regist_admin', $userId, $chatId);
+            } elseif($command->getCallbackQuery()) {
+                $chatId = AdminController::$command->getCallbackQuery()->getMessage()->getChat()->getId();
+                $userId = AdminController::$command->getCallbackQuery()->getFrom()->getId();
+                return new Conversation('regist_admin', $userId, $chatId);
+            }
+        }
+
+        return null;
+    }
 
     public static function whenRegistUser($registId)
     {
@@ -122,6 +145,38 @@ class AdminController extends BotController
         $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
             $inlineKeyboardData['approve']['callback_data'] = 'admin.alert_exclusion.approve:'.$registId;
             $inlineKeyboardData['reject']['callback_data'] = 'admin.alert_exclusion.reject:'.$registId;
+            return $inlineKeyboardData;
+        });
+
+        foreach($admins as $admin) {
+            $request->params->chatId = $admin['chat_id'];
+            $request->send();
+        }
+    }
+
+    public static function whenRegistAdmin($registration)
+    {
+        $admins = TelegramAdmin::getByUserArea($registration['data']);
+        if(count($admins) < 1) return;
+
+        $request = BotController::request('RegistrationAdmin/SelectAdminApproval');
+        $request->setRegistrationData($registration);
+        
+        if(in_array($registration['data']['level'], [ 'regional', 'witel' ])) {
+            $regional = Regional::find($registration['data']['regional_id']);
+            $request->setRegional($regional);
+        }
+
+        if($registration['data']['level'] == 'witel') {
+            $witel = Witel::find($registration['data']['witel_id']);
+            $request->setWitel($witel);
+        }
+
+        $callbackData = new CallbackData('admin.adminaprv');
+        $registId = $registration['id'];
+        $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData, $registId) {
+            $inlineKeyboardData['approve']['callback_data'] = $callbackData->createEncodedData([ 'r'=> $registId, 'a' => 1 ]);
+            $inlineKeyboardData['reject']['callback_data'] = $callbackData->createEncodedData([ 'r'=> $registId, 'a' => 0 ]);
             return $inlineKeyboardData;
         });
 
@@ -536,5 +591,395 @@ class AdminController extends BotController
 
         AlertController::whenRequestExclusionReviewed(true, $registration['id']);
         return $response;
+    }
+
+    public static function onAdminApproval($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+        
+        $registration = Registration::find($callbackValue['r']);
+        if(!$registration) {
+
+            $request = BotController::request('Registration/TextNotFound');
+            $request->params->chatId = $chatId;
+            $request->params->messageId = $messageId;
+            return $request->sendUpdate();
+
+        }
+
+        if($registration['status'] != 'unprocessed') {
+
+            $registStatus = Registration::getStatus($registration['id']);
+            $request = BotController::request('Registration/TextDoneReviewed');
+            $request->setStatusText($registStatus['status'] == 'approved' ? 'disetujui' : 'ditolak');
+            $request->setAdminData($registStatus['updated_by']);
+            $request->params->chatId = $chatId;
+            $request->params->messageId = $messageId;
+            return $request->sendUpdate();
+
+        }
+
+        $admin = TelegramAdmin::findByChatId($chatId);
+        if($callbackValue['a'] == 0) {
+
+            Registration::update($registration['id'], [ 'status' => 'rejected' ], $admin['id']);
+            $registration = Registration::find($registration['id']);
+            $reviewDate = $registration['updated_at'];
+
+            $request = BotController::request('TextDefault');
+            $request->setText(fn($text) => $text->addText('Pengajuan')->addBold(' Admin ')->addText('ditolak.'));
+            $request->params->chatId = $chatId;
+            $response = $request->send();
+
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $registration['chat_id'];
+            $request->setText(function($text) use ($reviewDate) {
+                return $text->addBold('Pengajuan status Admin ditolak.')->newLine()
+                    ->addItalic($reviewDate)->newLine(2)
+                    ->addText('Mohon maaf, permintaan anda tidak mendapat persetujuan. ')
+                    ->addText('Anda dapat berkoordinasi dengan Admin untuk mendapatkan informasi terkait.')->newLine()
+                    ->addText('Terima kasih.');
+            });
+            $request->send();
+
+            return $response;
+
+        }
+
+        $registData = $registration['data'];
+        $registData['regist_id'] = $registration['id'];
+        $admin = TelegramAdmin::create($registData);
+        if(!$admin) {
+            throw new \Exception('Admin registration data not saved, regist id:'.$registration['id']);
+        }
+
+        Registration::update($registration['id'], [ 'status' => 'approved' ], $admin['id']);
+        $registration = Registration::find($registration['id']);
+        $reviewDate = $registration['updated_at'];
+
+        $request = BotController::request('TextDefault');
+        $request->setText(fn($text) => $text->addText('Pengajuan')->addBold(' Admin ')->addText('disetujui.'));
+        $request->params->chatId = $chatId;
+        $response = $request->send();
+
+        $request = BotController::request('TextDefault');
+        $request->params->chatId = $registration['chat_id'];
+        $request->setText(function($text) use ($reviewDate) {
+            return $text->addBold('Pengajuan status Admin disetujui.')->newLine()
+                ->addItalic($reviewDate)->newLine(2)
+                ->addText('Permintaan status anda sebagai Admin telah mendapat persetujuan, terima kasih.');
+        });
+        $request->send();
+
+        return $response;
+    }
+
+    public static function registration()
+    {
+        $message = AdminController::$command->getMessage();
+        if($message->getChat()->getType() != 'private') {
+            return Request::emptyResponse();
+        }
+
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+        if(TelegramAdmin::findByChatId($chatId)) {
+
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(function($text) {
+                return $text->addText('Anda telah terdaftar sebagai admin.');
+            });
+            return $request->send();
+
+        }
+
+        if(Registration::findUnprocessedByChatId($chatId)) {
+
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Pengajuan anda telah dikirim ke Admin untuk ditinjau, terima kasih.'));
+            return $request->send();
+
+        }
+        
+        $conversation = AdminController::getRegistConversation();
+        if(!$conversation->isExists() || $conversation->getStep() < 3) {
+
+            if($conversation->isExists()) {
+                $conversation->setStep(0);
+                $conversation->commit();
+            }
+
+            $request = BotController::request('RegistrationAdmin/SelectRegistContinue');
+            $request->params->chatId = $chatId;
+
+            $callbackData = new CallbackData('admin.start');
+            $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
+                $inlineKeyboardData['continue']['callback_data'] = $callbackData->createEncodedData('continue');
+                $inlineKeyboardData['cancel']['callback_data'] = $callbackData->createEncodedData('cancel');
+                return $inlineKeyboardData;
+            });
+
+            return $request->send();
+
+        }
+
+        if($conversation->getStep() >= 3) {
+
+            $messageText = trim($message->getText(true));
+            if(empty($messageText)) {
+                $request = BotController::request('TextDefault');
+                $request->params->chatId = $chatId;
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
+                return $request->send();
+            }
+
+            $conversation->nik = $messageText;
+            $conversation->nextStep();
+            $conversation->commit();
+            $messageText = '';
+
+        }
+
+        $conversation->done();
+        $registAdmin = [
+            'request_type' => 'admin',
+            'chat_id' => $conversation->chatId,
+            'user_id' => $conversation->chatId,
+            'data' => []
+        ];
+
+        $registAdmin['data']['chat_id'] = $conversation->chatId;
+        $registAdmin['data']['username'] = $conversation->username;
+        $registAdmin['data']['first_name'] = $conversation->firstName;
+        $registAdmin['data']['last_name'] = $conversation->lastName;
+        $registAdmin['data']['is_organik'] = $conversation->isOrganik;
+        $registAdmin['data']['nik'] = $conversation->nik;
+        $registAdmin['data']['level'] = $conversation->level;
+
+        if($conversation->level == 'regional' || $conversation->level == 'witel') {
+            $registAdmin['data']['regional_id'] = $conversation->regionalId;
+        }
+
+        if($conversation->level == 'witel') {
+            $registAdmin['data']['witel_id'] = $conversation->witelId;
+        }
+
+        $registration = Registration::create($registAdmin);
+        if(!$registration) {
+            throw new \Exception('Admin registration data not saved, conversation id:'.$conversation->getId());
+        }
+
+        $request = BotController::request('TextDefault');
+        $request->params->chatId = $chatId;
+        $request->setText(fn($text) => $text->addText('Pengajuan anda telah dikirim ke Admin untuk ditinjau, terima kasih.'));
+        $response = $request->send();
+
+        AdminController::whenRegistAdmin($registration);
+        return $response;
+    }
+
+    public static function onRegistration($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $user = $callbackQuery->getFrom();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+
+        if($callbackValue != 'continue') {
+
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(function($text) {
+                return $text->addText('Pengajuan Admin dibatalkan.');
+            });
+            return $request->send();
+
+        }
+
+        $conversation = AdminController::getRegistConversation();
+        if(!$conversation->isExists()) {
+            $conversation->create();
+        }
+
+        $conversation->chatId = $chatId;
+        $conversation->username = $user->getUsername();
+        $conversation->firstName = $user->getFirstName();
+        $conversation->lastName = $user->getLastName();
+        $conversation->nextStep();
+        $conversation->commit();
+
+        $request = BotController::request('RegistrationAdmin/SelectLevel');
+        $request->params->chatId = $chatId;
+
+        $callbackData = new CallbackData('admin.level');
+        $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
+            $inlineKeyboardData['nasional']['callback_data'] = $callbackData->createEncodedData('nasional');
+            $inlineKeyboardData['regional']['callback_data'] = $callbackData->createEncodedData('regional');
+            $inlineKeyboardData['witel']['callback_data'] = $callbackData->createEncodedData('witel');
+            return $inlineKeyboardData;
+        });
+
+        return $request->send();
+    }
+
+    public static function onSelectLevel($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+
+        $conversation = AdminController::getRegistConversation();
+        if(!$conversation->isExists()) {
+            return Request::emptyResponse();
+        }
+
+        $conversation->level = $callbackValue;
+        $conversation->nextStep();
+        $conversation->commit();
+
+        if($callbackValue == 'nasional') {
+
+            $request = BotController::request('RegistrationAdmin/SelectIsOrganik');
+            $request->params->chatId = $chatId;
+            
+            $callbackData = new CallbackData('admin.organik');
+            $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
+                $inlineKeyboardData['yes']['callback_data'] = $callbackData->createEncodedData(1);
+                $inlineKeyboardData['no']['callback_data'] = $callbackData->createEncodedData(0);
+                return $inlineKeyboardData;
+            });
+
+            return $request->send();
+
+        }
+
+        $regionals = Regional::getSnameOrdered();
+        $request = BotController::request('Area/SelectRegional');
+        $request->params->chatId = $chatId;
+        $request->setData('regionals', $regionals);
+        
+        $callbackData = new CallbackData('admin.reg');
+        $request->setInKeyboard(function($inlineKeyboardItem, $regional) use ($callbackData) {
+            $inlineKeyboardItem['callback_data'] = $callbackData->createEncodedData($regional['id']);
+            return $inlineKeyboardItem;
+        });
+
+        return $request->send();
+    }
+
+    public static function onSelectRegional($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+
+        $conversation = AdminController::getRegistConversation();
+        if(!$conversation->isExists()) {
+            return Request::emptyResponse();
+        }
+
+        $conversation->regionalId = $callbackValue;
+        if($conversation->level != 'witel') {
+            
+            $conversation->nextStep();
+            $conversation->commit();
+            $request = BotController::request('RegistrationAdmin/SelectIsOrganik');
+            $request->params->chatId = $chatId;
+            
+            $callbackData = new CallbackData('admin.organik');
+            $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
+                $inlineKeyboardData['yes']['callback_data'] = $callbackData->createEncodedData(1);
+                $inlineKeyboardData['no']['callback_data'] = $callbackData->createEncodedData(0);
+                return $inlineKeyboardData;
+            });
+            
+            return $request->send();
+            
+        }
+        
+        $conversation->commit();
+        $request = BotController::request('Area/SelectWitel');
+        $request->params->chatId = $chatId;
+        $request->setData('witels', Witel::getNameOrdered($conversation->regionalId));
+        
+        $callbackData = new CallbackData('admin.wit');
+        $request->setInKeyboard(function($inlineKeyboardItem, $witel) use ($callbackData) {
+            $inlineKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+            return $inlineKeyboardItem;
+        });
+
+        return $request->send();
+    }
+
+    public static function onSelectWitel($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+        
+        $conversation = AdminController::getRegistConversation();
+        if(!$conversation->isExists()) {
+            return Request::emptyResponse();
+        }
+
+        $conversation->witelId = $callbackValue;
+        $conversation->nextStep();
+        $conversation->commit();
+
+        $request = BotController::request('RegistrationAdmin/SelectIsOrganik');
+        $request->params->chatId = $chatId;
+        
+        $callbackData = new CallbackData('admin.organik');
+        $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
+            $inlineKeyboardData['yes']['callback_data'] = $callbackData->createEncodedData(1);
+            $inlineKeyboardData['no']['callback_data'] = $callbackData->createEncodedData(0);
+            return $inlineKeyboardData;
+        });
+
+        return $request->send();
+    }
+
+    public static function onSelectOrganikStatus($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+        
+        $conversation = AdminController::getRegistConversation();
+        if(!$conversation->isExists()) {
+            return Request::emptyResponse();
+        }
+
+        $test = [$conversation->witelId];
+        $conversation->isOrganik = $callbackValue;
+        $conversation->nextStep();
+        $conversation->commit();
+
+        $request = BotController::request('TextDefault');
+        $request->params->chatId = $chatId;
+        $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
+        return $request->send();
     }
 }
