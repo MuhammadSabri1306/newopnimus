@@ -14,10 +14,25 @@ use Goat1000\SVGGraph\SVGGraph;
 use App\Core\RequestData;
 use App\Core\TelegramText;
 use App\Core\CallbackData;
+use App\Core\TelegramTextSplitter;
 use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
 use App\ApiRequest\NewosaseApi;
 use App\Model\TelegramUser;
+
+class TestSplitter
+{
+    use TelegramTextSplitter;
+
+    public $text;
+
+    public function split()
+    {
+        $text = $this->text;
+        $textArr = $this->splitText($text, 30);
+        return $textArr;
+    }
+}
 
 class TestController extends BotController
 {
@@ -40,6 +55,7 @@ class TestController extends BotController
             case 'cmdexec': return TestController::executeCommandLine(...$params); break;
             case 'chart': return TestController::createChart(...$params); break;
             case 'registapproved': return TestController::whenRegistApproved(...$params); break;
+            case 'longmessage': return TestController::longMessage(...$params); break;
             default: return TestController::$command->replyToChat('This is TEST Command.');
         }
     }
@@ -353,5 +369,33 @@ class TestController extends BotController
             static::sendErrorMessage();
         }
         return $response;
+    }
+
+    public static function longMessage()
+    {
+        $message = static::$command->getMessage();
+        require __DIR__.'/../../../test/test-long-message/message-2.php';
+
+        $reqData = new RequestData();
+        $reqData->chatId = $message->getChat()->getId();
+        $reqData->parseMode = 'markdown';
+
+        $case = new TestSplitter();
+        $case->text = $messageText;
+        $messageTextList = $case->split();
+
+        $errorResponses = [];
+        foreach($messageTextList as $messageTextItem) {
+
+            $reqData->text = $messageTextItem;
+            $response = Request::sendMessage($reqData->build());
+            if(!$response->isOk()) {
+                array_push($errorResponses, $response);
+            }
+
+        }
+
+        BotController::sendDebugMessage($errorResponses);
+        return Request::emptyResponse();
     }
 }

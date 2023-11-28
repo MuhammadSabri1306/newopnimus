@@ -43,7 +43,7 @@ class AlarmCommand extends UserCommand
     public function execute(): ServerResponse
     {
         AlarmController::$command = $this;
-        $response = AlarmController::checkExistAlarm();
+        $response = AlarmController::checkExistAlarmV2();
         return $response;
     }
 }

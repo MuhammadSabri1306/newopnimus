@@ -109,4 +109,15 @@ class NewosaseApi extends RestClient
 
         return $data;
     }
+
+    public function getBuiltUrl()
+    {
+        $url = $this->getBaseUrl();
+        if(!isset($this->request['query']) || empty($this->request['query'])) {
+            return $url;
+        }
+
+        $urlParams = urldecode(http_build_query($data, '', '&'));
+        return "$url?$urlParams";
+    }
 }

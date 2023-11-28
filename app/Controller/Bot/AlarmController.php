@@ -5,8 +5,11 @@ use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
 use App\Core\RequestData;
 use App\Core\TelegramText;
+use App\Core\CallbackData;
 use App\Controller\BotController;
 use App\Model\TelegramUser;
+use App\Model\Regional;
+use App\Model\Witel;
 use App\Model\RtuPortStatus;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\AlarmText;
@@ -15,8 +18,10 @@ use App\Request\RequestInKeyboard;
 
 class AlarmController extends BotController
 {
-    protected static $callbacks = [
-        'alarm.select_regional' => 'onSelectRegional'
+    public static $callbacks = [
+        'alarm.select_regional' => 'onSelectRegional',
+        'alarm.reg' => 'onSelectRegionalV2',
+        'alarm.wit' => 'onSelectWitel'
     ];
 
     public static function checkExistAlarm()
@@ -102,5 +107,171 @@ class AlarmController extends BotController
         $regionalAlarmText = AlarmText::regionalAlarmText1($regionalId, $ports)->getSplittedByLine(30);
         $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $regionalAlarmText);
         return BotController::sendMessageList($reqData->duplicate('parseMode', 'chatId'), $textList);
+    }
+
+    public static function checkExistAlarmV2()
+    {
+        $message = AlarmController::$command->getMessage();
+        $chatId = $message->getChat()->getId();
+
+        $user = TelegramUser::findByChatId($chatId);
+        if(!$user) {
+            
+            $request = BotController::request('Error/TextUserUnidentified');
+            $request->params->chatId = $chatId;
+            return $request->send();
+
+        }
+
+        if($user['level'] == 'nasional') {
+            
+            $request = BotController::request('Area/SelectRegional');
+            $request->params->chatId = $chatId;
+            $request->setData('regionals', Regional::getSnameOrdered());
+
+            $callbackData = new CallbackData('alarm.reg');
+            $request->setInKeyboard(function($inlineKeyboardItem, $regional) use ($callbackData) {
+                $inlineKeyboardItem['callback_data'] = $callbackData->createEncodedData($regional['id']);
+                return $inlineKeyboardItem;
+            });
+
+            return $request->send();
+
+        }
+
+        if($user['level'] == 'regional') {
+
+            $request = BotController::request('Area/SelectWitel');
+            $request->params->chatId = $chatId;
+            $request->setData('witels', Witel::getNameOrdered($user['regional_id']));
+            
+            $callbackData = new CallbackData('alarm.wit');
+            $request->setInKeyboard(function($inlineKeyboardItem, $witel) use ($callbackData) {
+                $inlineKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+                return $inlineKeyboardItem;
+            });
+
+            return $request->send();
+
+        }
+
+        $request = BotController::request('Action/Typing');
+        $request->params->chatId = $chatId;
+        $request->send();
+
+        $newosaseApi = new NewosaseApi();
+        $newosaseApi->request['query'] = [ 'isAlert' => 1 ];
+        if($user['level'] == 'regional') {
+            $newosaseApi->request['query']['regionalId'] = $user['regional_id'];
+        } elseif($user['level'] == 'witel') {
+            $newosaseApi->request['query']['witelId'] = $user['witel_id'];
+        }
+
+        $fetResp = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
+        if(!$fetResp) {
+            
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Terjadi masalah saat menghubungi server.'));
+            return $request->send();
+
+        }
+
+        $ports = array_filter($fetResp->result->payload, function($port) {
+            return $port->no_port != 'many';
+        });
+
+        if(!$ports || count($ports) < 1) {
+
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+            return $request->send();
+
+        }
+        
+        if($user['level'] == 'witel') {
+            
+            $request = BotController::request('Alarm/ListTextPortWitel');
+            $request->params->chatId = $chatId;
+            $request->setWitel(Witel::find($user['witel_id']));
+            $request->setPorts($ports);
+            return $request->sendList();
+
+        }
+        
+        // PIC
+        return Request::emptyMessage();
+    }
+
+    public static function onSelectRegionalV2($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+
+        $request = BotController::request('Area/SelectWitel');
+        $request->params->chatId = $chatId;
+        $request->setData('witels', Witel::getNameOrdered($callbackValue));
+        
+        $callbackData = new CallbackData('alarm.wit');
+        $request->setInKeyboard(function($inlineKeyboardItem, $witel) use ($callbackData) {
+            $inlineKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+            return $inlineKeyboardItem;
+        });
+
+        return $request->send();
+    }
+
+    public static function onSelectWitel($callbackValue, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
+
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
+
+        $request = BotController::request('Action/Typing');
+        $request->params->chatId = $chatId;
+        $request->send();
+
+        $newosaseApi = new NewosaseApi();
+        $newosaseApi->request['query'] = [
+            'isAlert' => 1,
+            'witelId' => $callbackValue
+        ];
+
+        $fetResp = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
+        if(!$fetResp) {
+
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Terjadi masalah saat menghubungi server.'));
+            return $request->send();
+
+        }
+
+        $ports = array_filter($fetResp->result->payload, function($port) {
+            return $port->no_port != 'many';
+        });
+
+        if(!$ports || count($ports) < 1) {
+            
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+            return $request->send();
+
+        }
+
+        $request = BotController::request('Alarm/ListTextPortWitel');
+        $request->params->chatId = $chatId;
+        $request->setWitel(Witel::find($callbackValue));
+        $request->setPorts($ports);
+        return $request->sendList();
     }
 }

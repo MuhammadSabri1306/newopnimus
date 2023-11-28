@@ -9,6 +9,7 @@ use App\Core\CallbackData;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
+use App\Controller\Bot\AlarmController;
 use App\Controller\Bot\PicController;
 use App\Controller\Bot\PortController;
 use App\Controller\Bot\RtuController;
@@ -89,6 +90,12 @@ class CallbackqueryCommand extends SystemCommand
             if($methodName = $decCallbackData->isCallbackOf(AdminController::$callbacks)) {
                 AdminController::$command = $this;
                 AdminController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
+            if($methodName = $decCallbackData->isCallbackOf(AlarmController::$callbacks)) {
+                AlarmController::$command = $this;
+                AlarmController::$methodName($decCallbackData->value, $callbackQuery);
                 return $callbackQuery->answer();
             }
 
