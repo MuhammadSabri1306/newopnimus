@@ -11,6 +11,7 @@ trait TelegramTextSplitter
     {
         $result = '';
         $index = $startIndex;
+        $endIndex = min([ count($textArr) - 1, $endIndex ]);
 
         while($index < $endIndex) {
             if($index == $startIndex) {
@@ -21,10 +22,11 @@ trait TelegramTextSplitter
             $index++;
         }
 
-        if($textArr[$endIndex] != $codeMark) {
+        if($startIndex <= $endIndex && $textArr[$endIndex] != $codeMark) {
             $result .= PHP_EOL.$textArr[$index];
             $index++;
         }
+
 
         return [ 'result_text' => $result, 'next_index' => $index ];
     }
@@ -74,7 +76,7 @@ trait TelegramTextSplitter
         $results = [];
 
         $startIndex = 0;
-        $endIndex = min([ $maxLines, $textArrLength ]) - 1;
+        $endIndex = $maxLines - 1;
         $loop = true;
 
         do {
@@ -86,7 +88,7 @@ trait TelegramTextSplitter
                 array_push($results, $result);
 
                 $startIndex = $joinText['next_index'];
-                $endIndex = min([ ($maxLines + $joinText['next_index']), ($textArrLength - 1) ]);
+                $endIndex = $maxLines + $joinText['next_index'];
                 $loop = $endIndex > $startIndex;
 
             } else {

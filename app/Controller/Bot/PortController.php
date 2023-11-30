@@ -372,28 +372,39 @@ class PortController extends BotController
 
     public static function sendTextAllPort($rtuSname, $chatId)
     {
-        $reqData = new RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
+        $request = BotController::request('Action/Typing');
+        $request->params->chatId = $chatId;
+        $request->send();
 
-        $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtuSname) {
-            $newosaseApi->request['query'] = [ 'searchRtuSname' => $rtuSname ];
-            return $newosaseApi;
-        }, $reqData->duplicate('chatId'));
+        $newosaseApi = new NewosaseApi();
+        $newosaseApi->request['query'] = [ 'searchRtuSname' => $rtuSname ];
+        $fetchResponse = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
+        if(!$fetchResponse || !is_array($fetchResponse->result->payload)) {
+            
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Terjadi masalah saat menghubungi server.'));
+            return $request->send();
 
-        if(!$ports) {
-            $reqData->text = 'Terjadi masalah saat menghubungi server.';
-            return Request::sendMessage($reqData->build());
         }
+
+        $ports = array_filter($fetchResponse->result->payload, function($port) {
+            return $port->no_port != 'many';
+        });
 
         if(count($ports) < 1) {
-            $reqData->text = 'Data Port tidak dapat ditemukan.';
-            return Request::sendMessage($reqData->build());
-        }
 
-        $answerText = PortText::getAllPortsText($ports)->getSplittedByLine(30);
-        $textList = array_map(fn($textItem) => htmlspecialchars($textItem), $answerText);
-        return BotController::sendMessageList($reqData, $textList, true);
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+            return $request->send();
+
+        }
+        
+        $request = BotController::request('Port/ListTextCheckPort');
+        $request->params->chatId = $chatId;
+        $request->setPorts($ports);
+        return $request->sendList();
     }
 
     public static function sendTextDetailPort($rtuSname, $identifierType, $identifierKey, $chatId)

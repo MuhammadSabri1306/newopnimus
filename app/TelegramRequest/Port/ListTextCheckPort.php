@@ -1,5 +1,5 @@
 <?php
-namespace App\TelegramRequest\Alarm;
+namespace App\TelegramRequest\Port;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
@@ -7,11 +7,10 @@ use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 use App\Core\TelegramTextSplitter;
 
-useHelper('area');
 useHelper('number');
 useHelper('date');
 
-class ListTextPortWitel extends TelegramRequest
+class ListTextCheckPort extends TelegramRequest
 {
     use TelegramTextSplitter;
 
@@ -24,38 +23,33 @@ class ListTextPortWitel extends TelegramRequest
 
     public function getText()
     {
-        $alarms = $this->getData('alarms', []);
-        $witel = $this->getData('witel', null);
+        $groupedPorts = $this->getData('ports', []);
+        $firstPort = $this->getData('first_port', null);
         $currDateTime = date('Y-m-d H:i:s');
 
-        if(!$witel) {
+        if(count($groupedPorts) < 1 || !$firstPort) {
             return TelegramText::create();
         }
 
-        $text = TelegramText::create('Status alarm OSASE di ')
-            ->addBold($witel['witel_name'])
-            ->addText(" pada $currDateTime WIB adalah:");
+        $text = TelegramText::create()
+            ->addText('🧾Berikut daftar Port yang terdapat pada ')
+            ->addBold("$firstPort->rtu_sname ($firstPort->location) $firstPort->witel $firstPort->regional")
+            ->addText(':')->newLine(2)
+            ->addItalic("Data Diambil pada: $currDateTime WIB");
 
-        if(empty($alarms)) {
-            $text->newLine(2)->addSpace(4)->addItalic('Belum ada Port RTU berstatus sebagai alarm');
-            return $text;
-        }
-
-        foreach($alarms as $rtu) {
+        foreach($groupedPorts as $portName => $portList) {
             $text->newLine(2)
-                ->addBold("⛽️$rtu->rtu_sname ($rtu->location) :")
+                ->addBold($portName)
                 ->startCode();
-
-            foreach($rtu->ports as $port) {
-
-                $portStatusTitle = $this->formatPortStatus($port);
-                $portName = $this->formatPortName($port);
+            
+            foreach($portList as $port) {
+                $portIcon = $this->formatIcon($port->severity->name);
                 $portValue = $this->formatPortValue($port);
-                $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
+                $portStatus = $port->severity->name;
 
                 $text->newLine()
-                    ->addSpace(2)
-                    ->addText("$portStatusTitle: $portName ($portValue) selama $duration");
+                    ->addSpace()
+                    ->addText("$portIcon ($port->no_port) $port->description ($portValue) status $portStatus");
             }
 
             $text->endCode();
@@ -64,23 +58,15 @@ class ListTextPortWitel extends TelegramRequest
         return $text;
     }
 
-    protected function formatPortName($port)
+    protected function formatIcon(string $severityName)
     {
-        return $port->port_name ?? $port->no_port;
-    }
-
-    protected function formatPortStatus($port)
-    {
-        $portName = $this->formatPortName($port);
-        if($portName == 'Status PLN') return '⚡️ PLN OFF';
-        if($portName == 'Status DEG') return '🔆 GENSET ON';
-
-        $statusKey = strtoupper($port->severity->name);
-        if($statusKey == 'OFF') return '‼️'.$statusKey;
-        if($statusKey == 'CRITICAL') return '❗️'.$statusKey;
-        if($statusKey == 'WARNING') return '⚠️'.$statusKey;
-        if($statusKey == 'SENSOR BROKEN') return '❌'.$statusKey;
-        return $statusKey;
+        $statusKey = strtoupper($severityName);
+        if($statusKey == 'NORMAL') return '✅';
+        if($statusKey == 'OFF') return '‼️';
+        if($statusKey == 'CRITICAL') return '❗️';
+        if($statusKey == 'WARNING') return '⚠️';
+        if($statusKey == 'SENSOR BROKEN') return '❌';
+        return '';
     }
 
     protected function formatPortValue($port)
@@ -94,7 +80,7 @@ class ListTextPortWitel extends TelegramRequest
         if($portUnitKey == 'OPEN/CLOSE') {
             return boolval($port->value) ? 'OPEN' : 'CLOSE';
         }
-
+        
         if(is_null($port->value)) {
             return 'null';
         }
@@ -112,19 +98,22 @@ class ListTextPortWitel extends TelegramRequest
         return "$value $unit";
     }
 
-    public function setPorts($ports)
+    public function setPorts(array $ports)
     {
-        if(is_array($ports) && count($ports) > 0) {
-            $alarms = groupNewosaseRtuPort($ports);
-            $this->setData('alarms', $alarms);
+        if(count($ports) > 0) {
+            $groupedPorts = array_reduce($ports, function($group, $port) {
+    
+                $key = $port->port_name ?? "PORT $port->no_port";
+                if(!isset($group[$key])) $group[$key] = [];
+                array_push($group[$key], $port);
+                return $group;
+    
+            }, []);
+    
+            $this->setData('ports', $groupedPorts);
+            $this->setData('first_port', $ports[0]);
             $this->params->text = $this->getText()->get();
         }
-    }
-
-    public function setWitel($witel)
-    {
-        $this->setData('witel', $witel);
-        $this->params->text = $this->getText()->get();
     }
 
     public function send(): ServerResponse
