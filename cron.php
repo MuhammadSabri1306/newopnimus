@@ -20,9 +20,11 @@ $commands = [
     "/echo I'm a bot!",
 ];
 
-require __DIR__.'/app/bootstrap.php';
-
 try {
+    
+    require_once __DIR__.'/app/bootstrap.php';
+    $config = \App\Config\BotConfig::buildArray();
+    
     // Create Telegram API object
     $telegram = new Longman\TelegramBot\Telegram($config['api_key'], $config['bot_username']);
 

@@ -4,7 +4,7 @@ namespace App\Core;
 use Longman\TelegramBot\Entities\CallbackQuery;
 use Longman\TelegramBot\Entities\Update;
 
-class Telegram extends Longman\TelegramBot\Telegram
+class Telegram extends \Longman\TelegramBot\Telegram
 {
     public function executeCommandFromCallbackquery (string $_command, CallbackQuery $_callback_query)
     {

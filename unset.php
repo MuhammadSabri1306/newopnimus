@@ -14,7 +14,8 @@
  * This file is used to unset / delete the webhook.
  */
 
-require __DIR__.'/app/bootstrap.php';
+require_once __DIR__.'/app/bootstrap.php';
+$config = \App\Config\BotConfig::buildArray();
 
 try {
     // Create Telegram API object

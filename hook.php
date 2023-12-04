@@ -17,12 +17,18 @@
  * This is perfectly normal and expected, because the hook URL has to be reached only by the Telegram servers.
  */
 
-require __DIR__.'/app/Core/Telegram';
-
 try {
 
+    // load app
+    require_once __DIR__.'/app/bootstrap.php';
+    $config = \App\Config\BotConfig::buildArray();
+
+    \MuhammadSabri1306\MyBotLogger\Logger::$botToken = \App\Config\BotConfig::$BOT_TOKEN;
+    \MuhammadSabri1306\MyBotLogger\Logger::$botUsername = \App\Config\BotConfig::$BOT_USERNAME;
+    \MuhammadSabri1306\MyBotLogger\Logger::$chatId = \App\Config\AppConfig::$LOG_CHAT_ID;
+
     // Create Telegram API object
-    $telegram = new Telegram($config['api_key'], $config['bot_username']);
+    $telegram = new App\Core\Telegram($config['api_key'], $config['bot_username']);
 
     // Enable admin users
     $telegram->enableAdmins($config['admins']);
@@ -59,16 +65,11 @@ try {
     // Requests Limiter (tries to prevent reaching Telegram API limits)
     $telegram->enableLimiter($config['limiter']);
 
-    // load app
-    require __DIR__.'/app/bootstrap.php';
-
     // Handle telegram webhook request
     $telegram->handle();
 
-} catch (Longman\TelegramBot\Exception\TelegramException $e) {
-    // Log telegram errors
-    // Longman\TelegramBot\TelegramLog::error($e);
-
-    // Uncomment this to output any errors (ONLY FOR DEVELOPMENT!)
-    // echo $e;
+} catch (\Throwable $err) {
+    \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+    // testHook($err->getMessage());
+    // echo $err;
 }

@@ -43,9 +43,7 @@ class BotController extends Controller
 
     public static function sendDebugMessage($data, array $config = [])
     {
-        global $appConfig;
-
-        $chatId = isset($config['chatId']) ? $config['chatId'] : $appConfig->userTesting->chatId;
+        $chatId = isset($config['chatId']) ? $config['chatId'] : \App\Config\AppConfig::$DEV_CHAT_ID;
         $isCode = isset($config['isCode']) ? $config['isCode'] : true;
         $toJson = isset($config['toJson']) ? $config['toJson'] : true;
 

@@ -1,5 +1,5 @@
 <?php
-// error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
+error_reporting(E_ERROR | E_WARNING | E_PARSE | E_NOTICE);
 
 /**
  * This file is part of the PHP Telegram Bot example-bot package.
@@ -18,19 +18,21 @@
  * https://github.com/php-telegram-bot/telegram-bot-manager#set-extra-bot-parameters
  */
 
-require __DIR__.'/app/bootstrap.php';
-
 try {
 
-    \MuhammadSabri1306\MyBotLogger\Logger::$botToken = $config['api_key'];
-    \MuhammadSabri1306\MyBotLogger\Logger::$botUsername = $config['bot_username'];
-    \MuhammadSabri1306\MyBotLogger\Logger::$chatId = '-4092116808';
+    require_once __DIR__.'/app/bootstrap.php';
+    $config = \App\Config\BotConfig::buildArray();
 
+    \MuhammadSabri1306\MyBotLogger\Logger::$botToken = \App\Config\BotConfig::$BOT_TOKEN;
+    \MuhammadSabri1306\MyBotLogger\Logger::$botUsername = \App\Config\BotConfig::$BOT_USERNAME;
+    \MuhammadSabri1306\MyBotLogger\Logger::$chatId = \App\Config\AppConfig::$LOG_CHAT_ID;
+
+    // $config = \App\Config\BotConfig::buildArray();
     $bot = new TelegramBot\TelegramBotManager\BotManager($config);
-    
+
+    // testHook(['manager.php', $config['commands']['paths']]);
     // Run the bot!
     $bot->run();
-
 
     // Handling error response from all controllers
     // $telegramResponse = $bot->getTelegram()->getLastCommandResponse();
@@ -42,6 +44,7 @@ try {
 
 } catch(\Throwable $err) {
 
+    echo $err;
     $chatIdExists = true;
     if($err instanceof \App\Core\Exception\TelegramResponseException) {
 

@@ -3,6 +3,8 @@ namespace App\Core;
 
 use Longman\TelegramBot\Request;
 use App\Core\RequestData;
+use MeekroDB;
+use App\Config\AppConfig;
 
 class Model
 {
@@ -24,7 +26,9 @@ class Model
             // $modelClass = $backtrace[1]['class'];
             $modelClass = get_called_class();
 
-            $db = new DB();
+            $dbConfig = $modelClass::$database ?? AppConfig::$DATABASE->default;
+            $db = new MeekroDB($dbConfig->host, $dbConfig->username, $dbConfig->password, $dbConfig->name);
+
             if(is_callable(Model::$errorHandler)) {
                 $db->addHook('run_failed', Model::$errorHandler);
             }

@@ -18,7 +18,13 @@ function dd(...$vars) {
     die();
 }
 
-function dd_json($vars) {
+function dd_json($var, ...$vars) {
     header('Content-Type: application/json; charset=utf-8');
-    echo json_encode($vars, JSON_INVALID_UTF8_IGNORE);
+    if(count($vars) < 1) {
+        echo json_encode($var, JSON_INVALID_UTF8_IGNORE);
+        die();
+    }
+
+    echo json_encode([$var, ...$vars], JSON_INVALID_UTF8_IGNORE);
+    die();
 }

@@ -1,6 +1,7 @@
 <?php
 require __DIR__.'/../app/bootstrap.php';
 
+use App\Config\AppConfig;
 use App\Controller\BotController;
 use App\Model\TelegramUser;
 use App\Model\Regional;
@@ -11,7 +12,7 @@ use App\ApiRequest\NewosaseApi;
 
 useHelper('telegram-callback');
 
-$chatId = $appConfig->userTesting->chatId;
+$chatId = AppConfig::$DEV_CHAT_ID;
 $user = TelegramUser::findByChatId($chatId);
 
 $request = BotController::request('Area/SelectLocation');
