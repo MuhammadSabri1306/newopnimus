@@ -23,6 +23,11 @@ class SelectWitel extends TelegramRequest
             ->addText('.');
     }
 
+    public function setWitels($witels)
+    {
+        $this->setData('witels', $witels);
+    }
+
     public function updateText()
     {}
 

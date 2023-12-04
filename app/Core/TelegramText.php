@@ -20,6 +20,12 @@ class TelegramText
         return $this->message;
     }
 
+    public function clear()
+    {
+        $this->message = '';
+        return $this;
+    }
+
     public function getSplittedByLine($maxLine = 10)
     {
         $blockMarks = ['```', '\\*', '___', '~~'];

@@ -23,6 +23,11 @@ class SelectRegional extends TelegramRequest
             ->addText('.');
     }
 
+    public function setRegionals($regionals)
+    {
+        $this->setData('regionals', $regionals);
+    }
+
     public function setInKeyboard(callable $callButton)
     {
         $inlineKeyboardData = array_map(function($regional) use ($callButton) {

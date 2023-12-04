@@ -184,12 +184,13 @@ class PortController extends BotController
     public static function onSelectRegional($regionalId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
         $userChatId = $callbackQuery->getFrom()->getId();
         $reqData = New RequestData();
         // $regional = Regional::find($regionalId);
 
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
         // $reqData->text = PortText::getRegionalInKeyboardText()->newLine(2)
         //     ->addBold('=> ')->addText($regional['name'])

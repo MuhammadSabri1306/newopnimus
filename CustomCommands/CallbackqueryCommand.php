@@ -99,6 +99,12 @@ class CallbackqueryCommand extends SystemCommand
                 return $callbackQuery->answer();
             }
 
+            if($methodName = $decCallbackData->isCallbackOf(UserController::$callbacks)) {
+                UserController::$command = $this;
+                UserController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
         }
 
         if($decodedCallbackData) {
@@ -123,11 +129,6 @@ class CallbackqueryCommand extends SystemCommand
                 return $callbackQuery->answer();
             }
             
-        }
-
-        UserController::$command = $this;
-        if(BotController::catchCallback(UserController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
         }
 
         AdminController::$command = $this;

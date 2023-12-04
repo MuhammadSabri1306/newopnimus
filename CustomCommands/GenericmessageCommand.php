@@ -7,6 +7,7 @@ use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
 use Longman\TelegramBot\Request;
 
+use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\PicController;
 use App\Controller\Bot\AlertController;
@@ -54,53 +55,34 @@ class GenericmessageCommand extends SystemCommand
     public function execute(): ServerResponse
     {
         $message = $this->getMessage();
+        $chatId = $message->getChat()->getId();
+        $userId = $message->getFrom()->getId();
 
-        // If a conversation is busy, execute the conversation command after handling the message.
-        $conversation = new Conversation(
-            $message->getFrom()->getId(),
-            $message->getChat()->getId()
-        );
-
-        // Fetch conversation command if it exists and execute it.
-        if ($conversation->exists() && $command = $conversation->getCommand()) {
-            return $this->telegram->executeCommand($command);
-        }
-
-        $command =$this->getConversationCommand();
-        if($command != '') {
+        $activeConv = \App\Model\Conversation::findActive($chatId, $userId);
+        $command = $activeConv ? $this->getConversationCommand($activeConv) : null;
+        if($command) {
             return $this->telegram->executeCommand($command);
         }
 
         return Request::emptyResponse();
     }
 
-    private function getConversationCommand()
+    private function getConversationCommand($activeConversation)
     {
-        // App\Core\Conversation
-        UserController::$command = $this;
-        $registConversation = UserController::getRegistConversation();
-        if($registConversation->isExists()) {
-            return 'start';
+        $conversationList = [
+            'regist' => 'start',
+            'regist_pic' => 'setpic',
+            'regist_admin' => 'request_admin',
+            'alert_exclusion' => 'request_alert',
+            'alert_exclusion' => 'request_alert',
+        ];
+
+        foreach($conversationList as $conversationName => $command) {
+            if($conversationName == $activeConversation['name']) {
+                return $command;
+            }
         }
 
-        PicController::$command = $this;
-        $registPicConversation = PicController::getPicRegistConversation();
-        if($registPicConversation->isExists()) {
-            return 'setpic';
-        }
-
-        AlertController::$command = $this;
-        $alertExclConversation = AlertController::getAlertExclusionConversation();
-        if($alertExclConversation->isExists()) {
-            return 'request_alert';
-        }
-
-        AdminController::$command = $this;
-        $registAdminConversation = AdminController::getRegistConversation();
-        if($registAdminConversation->isExists()) {
-            return 'request_admin';
-        }
-
-        return '';
+        return null;
     }
 }
