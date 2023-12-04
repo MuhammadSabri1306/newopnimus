@@ -1,8 +1,6 @@
 composer.phar
 composer.lock
-vendor/**
-!vendor/**/
+vendor
 !vendor/autoload.php
-config.php
-!app/config.php
 test/test.php
+.env
