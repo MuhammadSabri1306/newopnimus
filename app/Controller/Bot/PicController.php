@@ -266,6 +266,7 @@ class PicController extends BotController
     public static function onSetStart($callbackValue, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
         $user = $callbackQuery->getFrom();
 
@@ -274,26 +275,9 @@ class PicController extends BotController
         $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
-        $telgUser = TelegramUser::findByChatId($reqData->chatId);
-        if($telgUser) {
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
 
-            $reqData->text = PicText::picStatus($telgUser)->newLine(2)
-                ->startBold()->addText('=> ')->endBold()
-                ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan')
-                ->get();
-
-        } else {
-
-            $touRequest = BotController::getRequest('Registration/Tou', [ $chatId, true ]);
-            $touApprovalText = $touRequest->getRequestData('btnApproval')->text;
-            $reqData->text = TelegramText::create($touApprovalText)->newLine(2)
-                ->startBold()->addText('=> ')->endBold()
-                ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan')
-                ->get();
-
-        }
-
-        $request = Request::editMessageText($reqData->build());
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
 
         if($callbackValue == 'cancel') {
@@ -307,6 +291,7 @@ class PicController extends BotController
             $conversation->locations = [];
         }
 
+        $telgUser = TelegramUser::findByChatId($chatId);
         $conversation->hasRegist = $telgUser ? true : false;
         if(!$conversation->hasRegist) {
 
@@ -401,26 +386,23 @@ class PicController extends BotController
     public static function onSetRegional($selectedRegId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
-        $reqData->messageId = $message->getMessageId();
+        $reqData->messageId = $messageId;
 
-        $regional = Regional::find($selectedRegId);
-        $reqData->text = TelegramText::create('Silahkan pilih Regional.')->newLine(2)
-            ->startBold()->addText('=> ')->endBold()
-            ->addText($regional['name'])
-            ->get();
-
-        $request = Request::editMessageText($reqData->build());
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
         
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
             return Request::emptyMessage();
         }
         
+        $regional = Regional::find($selectedRegId);
         $conversation->regionalId = $regional['id'];
         $conversation->nextStep();
         $conversation->commit();
@@ -437,26 +419,23 @@ class PicController extends BotController
     public static function onSetWitel($selectedWitelId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
-        $reqData->messageId = $message->getMessageId();
+        $reqData->messageId = $messageId;
 
-        $witel = Witel::find($selectedWitelId);
-        $reqData->text = TelegramText::create('Silahkan pilih Witel.')->newLine(2)
-            ->startBold()->addText('=> ')->endBold()
-            ->addText($witel['witel_name'])
-            ->get();
-
-        $request = Request::editMessageText($reqData->build());
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
         
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
             return Request::emptyMessage();
         }
         
+        $witel = Witel::find($selectedWitelId);
         $conversation->witelId = $witel['id'];
         $conversation->nextStep();
         $conversation->commit();
@@ -477,20 +456,17 @@ class PicController extends BotController
     public static function onAddLocation($selectedLocId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
-        $reqData->messageId = $message->getMessageId();
+        $reqData->messageId = $messageId;
 
         $location = RtuLocation::find($selectedLocId);
-        $reqData->text = TelegramText::create('Silahkan pilih Lokasi.')->newLine(2)
-            ->startBold()->addText('=> ')->endBold()
-            ->addText($location['location_sname'])
-            ->get();
-
-        $request = Request::editMessageText($reqData->build());
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
         
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
@@ -510,20 +486,16 @@ class PicController extends BotController
     public static function onRemoveLocation($selectedLocId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
-        $reqData->messageId = $message->getMessageId();
+        $reqData->messageId = $messageId;
 
-        $location = RtuLocation::find($selectedLocId);
-        $reqData->text = TelegramText::create('Silahkan pilih Lokasi yang ingin dihapus.')->newLine(2)
-            ->startBold()->addText('=> ')->endBold()
-            ->addText($location['location_sname'])
-            ->get();
-
-        $request = Request::editMessageText($reqData->build());
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
         
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
@@ -549,6 +521,7 @@ class PicController extends BotController
     public static function onUpdateLocation($callbackValue, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
+        $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
 
         $conversation = PicController::getPicRegistConversation();
@@ -560,16 +533,10 @@ class PicController extends BotController
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
-        $reqData->messageId = $message->getMessageId();
+        $reqData->messageId = $messageId;
 
-        $srcRequest = BotController::getRequest('Registration/PicSetLocation', [ $chatId, $conversation->locations ]);
-        $btnText = $callbackValue == 'next' ? 'Lanjutkan'
-            : ($callbackValue == 'add' ? 'Tambah' : 'Hapus');
-        $reqData->text = $srcRequest->getText()->newLine(2)
-            ->addBold('=> ')->addText($btnText)
-            ->get();
-            
-        $request = Request::editMessageText($reqData->build());
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
 
         if($callbackValue == 'add') {
 
@@ -620,16 +587,15 @@ class PicController extends BotController
         $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
         $user = $callbackQuery->getUser();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
 
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->messageId = $message->getMessageId();
+        $reqData->chatId = $chatId;
+        $reqData->messageId = $messageId;
 
-        $updateText = TelegramText::create('Apakah anda berstatus sebagai karyawan organik?')->newLine(2)
-            ->startBold()->addText('=> ')->endBold()->addText(ucfirst($callbackData));
-
-        $reqData->text = $updateText->get();
-        Request::editMessageText($reqData->build());
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request->send();
 
         $conversation = PicController::getPicRegistConversation();
         if(!$conversation->isExists()) {
@@ -650,24 +616,21 @@ class PicController extends BotController
         $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
         $user = $callbackQuery->getUser();
+        $messageId = $message->getMessageId();
+        $chatId = $message->getChat()->getId();
 
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->messageId = $message->getMessageId();
+        $reqData->chatId = $chatId;
+        $reqData->messageId = $messageId;
 
-        $telgUser = TelegramUser::findByChatId($reqData->chatId);
-        $srcRequest = BotController::getRequest('Registration/PicReset', [ $reqData->chatId, $telgUser ]);
+        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $response = $request->send();
 
-        $updateText = $srcRequest->getText()->newLine(2)
-            ->startBold()->addText('=> ')->endBold()
-            ->addText($callbackValue == 'continue' ? 'Lanjutkan' : 'Batalkan');
-        $reqData->text = $updateText->get();
-
-        $response = Request::editMessageText($reqData->build());
         if($callbackValue != 'continue') {
             return $response;
         }
 
+        $telgUser = TelegramUser::findByChatId($reqData->chatId);
         PicLocation::deleteByUserId($telgUser['id']);
         TelegramUser::update($telgUser['id'], [ 'is_pic' => 0 ]);
         

@@ -14,6 +14,7 @@ use App\Controller\Bot\PicController;
 use App\Controller\Bot\PortController;
 use App\Controller\Bot\RtuController;
 use App\Controller\Bot\AlertController;
+use App\Controller\Bot\StatisticController;
 use App\Controller\Bot\TestController;
 
 useHelper('telegram-callback');
@@ -102,6 +103,12 @@ class CallbackqueryCommand extends SystemCommand
             if($methodName = $decCallbackData->isCallbackOf(UserController::$callbacks)) {
                 UserController::$command = $this;
                 UserController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
+            if($methodName = $decCallbackData->isCallbackOf(StatisticController::$callbacks)) {
+                StatisticController::$command = $this;
+                StatisticController::$methodName($decCallbackData->value, $callbackQuery);
                 return $callbackQuery->answer();
             }
 
