@@ -28,14 +28,15 @@ class SelectWitel extends TelegramRequest
         $this->setData('witels', $witels);
     }
 
-    public function updateText()
-    {}
-
     public function setInKeyboard(callable $callButton)
     {
         $inlineKeyboardData = array_map(function($witel) use ($callButton) {
 
-            $item = $callButton([ 'text' => $witel['witel_name'], 'callback_data' => null ], $witel);
+            $title = '';
+            if(isset($witel['title'])) $title = $witel['title'];
+            elseif(isset($witel['witel_name'])) $title = $witel['witel_name'];
+
+            $item = $callButton([ 'text' => $title, 'callback_data' => null ], $witel);
             return [ $item ];
 
         }, $this->getData('witels', []));
