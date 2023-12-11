@@ -49,22 +49,21 @@ class TextDailyWitel extends TelegramRequest
             
         $text->newLine(2)
             ->addText('🌟')->addBold('DETAIL RTU DOWN HARI INI')->newLine(2)
-            ->addSpace()->addText("🌇$witelName")->startCode();
+            ->addSpace()->addText("🌇$witelName");
         
-        foreach($alarmRtus as $index => $rtu) {
+        foreach($alarmRtus as $rtu) {
 
             $rtuSname = $rtu['rtu_sname'];
             $locName = $rtu['location_name'];
             $openCount = $rtu['count'].'x';
             $lastOpenedAt = $rtu['last_opened_at'];
 
-            if($index > 0) $text->newLine();
-            $text->addSpace(2)->addText("- $rtuSname $locName: DOWN $openCount")->newLine()
-                ->addSpace(4)->addText("(Last down $lastOpenedAt)");
+            $text->newLine()->addSpace(8)->addText("- $rtuSname $locName: DOWN $openCount")->newLine()
+                ->addSpace(10)->addItalic("(Last down $lastOpenedAt)");
                 
         }
 
-        $text->endCode()->newLine(2)
+        $text->newLine(2)
             ->addText('🎚')->addBold('TOP 10 ALARM PORT HARI INI:')->startCode();
 
         $maxAlarmPortsIndex = min([ count($alarmPorts), 10 ]);
