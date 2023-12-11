@@ -85,6 +85,7 @@ class PortText
 
     public static function getDetailPortText($port)
     {
+        $portName = $port->port_name ?? $port->description;
         $portUnit = htmlspecialchars($port->units);
         $portStatus = $port->severity->name;
 
@@ -100,7 +101,7 @@ class PortText
             ->addText(':')->newLine(2)
             ->startItalic()->addText('Data Diambil pada: '.date('Y-m-d H:i:s').' WIB')->endItalic()->newLine(2)
             ->startCode()
-            ->addText("Nama Port : $port->port_name")->newLine()
+            ->addText("Nama Port : $portName")->newLine()
             ->addText('Tipe Port : -')->newLine()
             ->addText('Jenis Port: -')->newLine()
             ->addText("Satuan    : $portUnit")->newLine()

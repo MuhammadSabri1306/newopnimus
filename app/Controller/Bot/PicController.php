@@ -207,13 +207,37 @@ class PicController extends BotController
             $reqData->chatId = $chatId;
 
             if($registration['data']['has_regist']) {
-                $telgPersUser = TelegramPersonalUser::findByUserId($registration['data']['telegram_user_id']);
-                $reqData->text = PicText::registSuccess($telgPersUser, $locations)->get();
+
+                $request = BotController::request('Registration/TextPicUpdateOnReview');
+                $request->params->chatId = $chatId;
+                $request->setLocations($locations);
+                
+                $telgUserId = $registration['data']['telegram_user_id'];
+                $telgPersUser = TelegramPersonalUser::findByUserId($telgUserId);
+                $request->setTelegramPersonalUser($telgPersUser);
+
+                return $request->send();
+
             } else {
-                $reqData->text = UserText::registPicSuccess($registration, $locations)->get();
+                
+                $request = BotController::request('Registration/TextPicOnReview');
+                $request->params->chatId = $chatId;
+                $request->setRegistration($registration);
+                $request->setLocations($locations);
+
+                if(isset($registration['data']['regional_id'])) {
+                    $regional = Regional::find($registration['data']['regional_id']);
+                    $request->setRegional($regional);
+                }
+
+                if(isset($registration['data']['witel_id'])) {
+                    $witel = Witel::find($registration['data']['witel_id']);
+                    $request->setWitel($witel);
+                }
+
+                return $request->send();
+
             }
-            
-            return Request::sendMessage($reqData->build());
 
         }
 
@@ -674,8 +698,15 @@ class PicController extends BotController
             $registData['data']['nik'] = $conversation->nik;
             $registData['data']['regional_id'] = $conversation->regionalId;
             $registData['data']['witel_id'] = $conversation->witelId;
+            $registration = Registration::create($registData);
 
-            $reqData->text = UserText::registPicSuccess($registData, $picLocs)->get();
+            $request = BotController::request('Registration/TextPicOnReview');
+            $request->params->chatId = $chatId;
+            $request->setRegistration($registration);
+            $request->setRegional(Regional::find($conversation->regionalId));
+            $request->setWitel(Witel::find($conversation->witelId));
+            $request->setLocations($picLocs);
+            $response = $request->send();
 
         } else {
 
@@ -685,23 +716,23 @@ class PicController extends BotController
             $registData['data']['telegram_user_id'] = $conversation->telegramUserId;
             $registData['chat_id'] = $telgUser['chat_id'];
             $registData['user_id'] = $telgUser['user_id'];
+            $registration = Registration::create($registData);
 
-            $reqData->text = PicText::registSuccess($telgPersUser, $picLocs)->get();
+            $request = BotController::request('Registration/TextPicUpdateOnReview');
+            $request->params->chatId = $chatId;
+            $request->setTelegramPersonalUser($telgPersUser);
+            $request->setLocations($picLocs);
+
+            $response = $request->send();
             
         }
 
-        $registration = Registration::create($registData);
         if(!$registration) {
-            $reqData->text = 'Terdapat error saat akan menyimpan data anda. Silahkan coba beberapa saat lagi.';
-            return Request::sendMessage($reqData->build());
+            return $response;
         }
 
-        $response = Request::sendMessage($reqData->build());
-        if(!$response->isOk()) {
-            return BotController::sendDebugMessage($response);
-        }
+        $conversation->done();
         AdminController::whenRegistPic($registration['id']);
-        
         return $response;
     }
 
@@ -709,11 +740,6 @@ class PicController extends BotController
     {
         if(!$telegramUser) {
             return Request::emptyResponse();
-        }
-
-        $conversation = new Conversation('regist_pic', null, $telegramUser['chat_id']);
-        if($conversation->isExists()) {
-            $conversation->done();
         }
 
         $reqData = New RequestData();
@@ -728,11 +754,6 @@ class PicController extends BotController
     {
         if(!$registData) {
             return Request::emptyResponse();
-        }
-
-        $conversation = new Conversation('regist_pic', null, $registData['chat_id']);
-        if($conversation->isExists()) {
-            $conversation->done();
         }
 
         $reqData = New RequestData();

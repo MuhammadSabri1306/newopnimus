@@ -60,7 +60,24 @@ class UserController extends BotController
         $chatId = $message->getChat()->getId();
 
         if(!TelegramUser::exists($chatId)) {
-            return null;
+
+            $registration = Registration::findByChatId($chatId);
+            if(!$registration) {
+                return null;
+            }
+
+            $request = BotController::request('Registration/TextOnReview');
+            $request->params->chatId = $chatId;
+            $request->setRegistration($registration);
+            if($registration['data']['level'] == 'regional' || $registration['data']['level'] == 'witel') {
+                $request->setRegional(Regional::find($registration['data']['regional_id']));
+            }
+            if($registration['data']['level'] == 'witel') {
+                $request->setWitel(Witel::find($registration['data']['witel_id']));
+            }
+
+            return $request->send();
+
         }
 
         $fullName = ($chatType == 'group' || $chatType == 'supergroup') ? 'Grup '.$message->getChat()->getTitle()
@@ -662,12 +679,19 @@ class UserController extends BotController
             return Request::sendMessage($reqData->build());
         }
 
-        $reqData->text = ( UserText::getRegistSuccessText($conversation) )->get();
-        $response = Request::sendMessage($reqData->build());
-        AdminController::whenRegistUser($registration['id']);
+        $request = BotController::request('Registration/TextOnReview');
+        $request->params->chatId = $conversation->chatId;
+        $request->setRegistration($registration);
+        if($conversation->level == 'regional' || $conversation->level == 'witel') {
+            $request->setRegional(Regional::find($conversation->regionalId));
+        }
+        if($conversation->level == 'witel') {
+            $request->setWitel(Witel::find($conversation->witelId));
+        }
 
+        $response = $request->send();
+        AdminController::whenRegistUser($registration['id']);
         $conversation->done();
-        
         return $response;
     }
 

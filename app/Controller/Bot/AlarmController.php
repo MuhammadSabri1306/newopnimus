@@ -10,7 +10,6 @@ use App\Controller\BotController;
 use App\Model\TelegramUser;
 use App\Model\Regional;
 use App\Model\Witel;
-use App\Model\RtuPortStatus;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\AlarmText;
 use App\ApiRequest\NewosaseApi;
