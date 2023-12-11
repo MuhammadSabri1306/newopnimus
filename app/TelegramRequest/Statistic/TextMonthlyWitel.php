@@ -5,12 +5,15 @@ use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
 use App\Core\TelegramRequest;
 use App\Core\TelegramText;
+use App\Core\TelegramTextSplitter;
 use App\Helper\ArrayHelper;
 use App\Helper\DateHelper;
 use App\Helper\NumberHelper;
 
 class TextMonthlyWitel extends TelegramRequest
 {
+    use TelegramTextSplitter;
+
     public function __construct()
     {
         parent::__construct();
@@ -60,7 +63,7 @@ class TextMonthlyWitel extends TelegramRequest
 
             $text->newLine()
                 ->addSpace(8)->addText("- $rtuSname $locName: DOWN $openCount")->newLine()
-                ->addSpace(10)->addText("(Last down $lastOpenedAt)");
+                ->addSpace(10)->addItalic("(Last down $lastOpenedAt)");
                 
         }
 
@@ -188,6 +191,41 @@ class TextMonthlyWitel extends TelegramRequest
 
     public function send(): ServerResponse
     {
-        return Request::sendMessage($this->params->build());
+        $alarmRtus = $this->getData('alarm_rtus', []);
+        $alarmRtusCount = count($alarmRtus);
+
+        if($alarmRtusCount <= 15) {
+            return Request::sendMessage($this->params->build());
+        }
+        return $this->sendList();
+    }
+
+    public function sendList(callable $beforeSend = null): ServerResponse
+    {
+        $text = $this->params->text;
+        $messageTextList = $this->splitText($text, 50);
+
+        $params = $this->params;
+        $serverResponse = Request::emptyResponse();
+
+        foreach($messageTextList as $messageText) {
+
+            if(is_callable($beforeSend)) {
+                $beforeSend();
+            }
+
+            $params->text = $messageText;
+            try {
+
+                $response = Request::sendMessage($params->build());
+                $serverResponse = $response;
+
+            } catch(\Throwable $err) {
+                \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+            }
+
+        }
+
+        return $serverResponse;
     }
 }
