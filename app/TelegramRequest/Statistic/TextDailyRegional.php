@@ -55,18 +55,18 @@ class TextDailyRegional extends TelegramRequest
         
         foreach($alarmRtus as $witelName => $alarmRtusItem) {
 
-            $text->newLine(2)->addSpace()->addText("🌇 $witelName");
-            foreach($alarmRtusItem as $rtu) {
-    
+            $text->newLine(2)->addSpace()->addText("🌇 $witelName")->startCode();
+            foreach($alarmRtusItem as $index => $rtu) {
                 $rtuSname = $rtu['rtu_sname'];
                 $locName = $rtu['location_name'];
                 $openCount = $rtu['count'].'x';
                 $lastOpenedAt = $rtu['last_opened_at'];
     
-                $text->newLine()->addSpace(8)->addText("- $rtuSname $locName: DOWN $openCount")->newLine()
-                    ->addSpace(10)->addItalic("(Last down $lastOpenedAt)");
-                    
+                if($index > 0) $text->newLine();
+                $text->addSpace(2)->addText("- $rtuSname $locName: DOWN $openCount")->newLine()
+                    ->addSpace(4)->addText("(Last down $lastOpenedAt)");
             }
+            $text->endCode();
 
         }
 
