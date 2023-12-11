@@ -98,13 +98,13 @@ class AdminController extends BotController
         $request = BotController::request('Registration/SelectAdminPicApproval');
         $request->setRegistrationData($apprData);
 
-        $regional = Regional::find($apprvData['regional_id']);
+        $regional = Regional::find($apprData['regional_id']);
         $request->setRegional($regional);
 
-        $witel = Witel::find($apprvData['witel_id']);
+        $witel = Witel::find($apprData['witel_id']);
         $request->setWitel($witel);
 
-        $locations = RtuLocation::getByIds($apprvData->locations);
+        $locations = RtuLocation::getByIds($apprData['locations']);
         $request->setLocations($locations);
 
         $request->buildText();

@@ -340,7 +340,14 @@ class PicController extends BotController
         
         $conversation->telegramUserId = $telgUser['id'];
         if($telgUser['is_pic']) {
+
             $conversation->locations = array_column($telgUser['locations'], 'location_id');
+            $conversation->commit();
+
+            if(count($conversation->locations) >= 3) {
+                return PicController::askLocations($chatId, $conversation->locations);
+            }
+
         }
 
         if($telgUser['level'] == 'nasional') {

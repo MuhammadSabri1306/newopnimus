@@ -27,23 +27,15 @@ class SelectAdminPicApproval extends TelegramRequest
             return TelegramText::create();
         }
 
+        $apprvData = (object) $registData;
+
         $text = TelegramText::create()
             ->addBold('Registrasi PIC OPNIMUS')->newLine(2)
             ->addText('Terdapat permintaan registrasi User untuk ')->addBold('menjadi PIC')->addText(' sesuai data berikut.')->newLine(2)
             ->startCode()
             ->addText("Nama Pengguna   : $apprvData->full_name")->newLine()
             ->addText("No. Handphone   : $apprvData->telp")->newLine()
-            ->addText('Level           : '.ucfirst($apprvData->level))->newLine();
-        
-        if($apprvData->level == 'regional' || $apprvData->level == 'witel') {
-            $text->addText('Regional        : '.$regional['name'])->newLine();
-        }
-        
-        if($apprvData->level == 'witel') {
-            $text->addText('Witel           : '.$witel['witel_name'])->newLine();
-        }
-
-        $text->addText("NIK             : $apprvData->nik")->newLine()
+            ->addText("NIK             : $apprvData->nik")->newLine()
             ->addText('Status Karyawan : '.($apprvData->is_organik ? 'Organik' : 'Non Organik'))->newLine()
             ->addText("Nama Instansi   : $apprvData->instansi")->newLine()
             ->addText("Unit Kerja      : $apprvData->unit")
