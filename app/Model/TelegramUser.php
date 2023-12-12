@@ -17,6 +17,12 @@ class TelegramUser extends Model
         return $count > 0; 
     }
 
+    public static function chatIdExists($chatId)
+    {
+        $count = static::query(fn($db, $table) => $db->queryFirstField("SELECT COUNT(*) FROM $table WHERE chat_id=%s", $chatId));
+        return $count > 0; 
+    }
+
     public static function create(array $data)
     {
         $data['created_at'] = date('Y-m-d H:i:s');

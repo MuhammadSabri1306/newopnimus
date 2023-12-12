@@ -3,21 +3,15 @@ namespace App\Core;
 
 class Controller
 {
-    // public static function run($controller, $method, $params = [])
-    // {
-    //     if (class_exists($controller)) {
-    //         $instance = new $controller();
-    //         if (method_exists($instance, $method)) {
-    //             return call_user_func_array([$instance, $method], $params);
-    //         }
-    //     }
-
-    //     $err = [
-    //         'message' => 'Controller or method not found.',
-    //         'controller' => $controller,
-    //         'method' => $method,
-    //         'params' => $params
-    //     ];
-    //     dd($err);
-    // }
+    protected static function callModules($moduleName, $params = [])
+    {
+        $reflector = new \ReflectionClass(static::class);
+        $classPath = $reflector->getFileName();
+        
+        $modulePath = str_replace('.php', '/', $classPath) . "$moduleName.php";
+        if(count($params) > 0) extract($params);
+        $result = require $modulePath;
+        
+        return $result;
+    }
 }

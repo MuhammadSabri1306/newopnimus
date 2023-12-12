@@ -45,21 +45,25 @@ class Collumns
 
     public function __get(string $key)
     {
+        return $this->get($key);
+    }
+
+    public function get(string $key = null)
+    {
+        if(!$key) {
+            $collumns = [];
+            foreach($this->collumns as $key => $collumn) {
+                $collumns[$key] = $collumn['tableAlias'] ? $collumn['tableAlias'].'.'.$collumn['field'] : $collumn['field'];
+            }
+            return $collumns;
+        }
+
         if(!array_key_exists($key, $this->collumns)) {
             return null;
         }
 
         $collumn = $this->collumns[$key];
         return $collumn['tableAlias'] ? $collumn['tableAlias'].'.'.$collumn['field'] : $collumn['field'];
-    }
-
-    public function getAll()
-    {
-        $collumns = [];
-        foreach($this->collumns as $key => $collumn) {
-            $collumns[$key] = $collumn['tableAlias'] ? $collumn['tableAlias'].'.'.$collumn['field'] : $collumn['field'];
-        }
-        return $collumns;
     }
 
     public function getQuery()

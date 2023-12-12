@@ -17,8 +17,12 @@ class TextIncompatibleFormat extends TelegramRequest
 
     public function getText()
     {
-        return TelegramText::create('Format perintah tidak sesuai. Silahkan gunakan format berikut.')->newLine()
-            ->addCode('/alert [ON/OFF]');
+        return TelegramText::create('Format perintah tidak sesuai. Silahkan gunakan format berikut.')
+            ->addCode('/alert [ON/OFF/STATUS]')->newLine(2)
+            ->addItalic('Keterangan:')->newLine()
+            ->addItalic(' - [ON] Menyalakan Alert,')->newLine()
+            ->addItalic(' - [OFF] Mematikan Alert,')->newLine()
+            ->addItalic(' - [STATUS] Info status Alert saat ini.');
     }
 
     public function send(): ServerResponse
