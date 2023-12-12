@@ -172,10 +172,9 @@ class PortController extends BotController
         }, $portsData);
 
         $callbackData->limitAccess($userChatId);
-        $portData = [ 'r' => $rtuSname ];
         array_push($ports, [
-            'title' => 'ALL PORT',
-            'callback_data' => $callbackData->createEncodedData($portData)
+            'text' => 'ALL PORT',
+            'callback_data' => $callbackData->createEncodedData($rtuSname)
         ]);
 
         $inlineKeyboardData = array_reduce($ports, function($result, $port) {
@@ -293,7 +292,7 @@ class PortController extends BotController
     public static function onSelectRtu($rtuId, $callbackQuery)
     {   
         $message = $callbackQuery->getMessage();
-        $userChatId = $message->getFrom()->getId();
+        $userChatId = $callbackQuery->getFrom()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
@@ -301,11 +300,6 @@ class PortController extends BotController
         $reqData->messageId = $message->getMessageId();
 
         $rtu = RtuList::find($rtuId);
-        // $reqData->text = PortText::getRtuInKeyboardText()->newLine(2)
-        //     ->addBold('=> ')->addText($rtu['sname'])
-        //     ->get();
-
-        // Request::editMessageText($reqData->build());
         Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
