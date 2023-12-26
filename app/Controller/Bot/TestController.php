@@ -333,7 +333,7 @@ class TestController extends BotController
                 new InputMediaDocument([ 'media' => 'attach:file1.svg' ])
             ],
             'file1.svg' => $svgImg
-            // 'file1.png' => new \CURLFile('https://juarayya.ngrok.io/newopnimus/test/test-create-chart-2-2.png')
+            // 'file1.png' => new \CURLFile('https://juarayya.ap.ngrok.io/newopnimus/test/test-create-chart-2-2.png')
             // 'file1.webp' => new \CURLFile('https://densus.telkom.co.id/assets/img/Gepee-logo.webp')
         ]);
         BotController::sendDebugMessage($response);

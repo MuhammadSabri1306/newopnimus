@@ -2,11 +2,13 @@
 namespace App\ApiRequest;
 
 use App\Core\RestClient;
-use App\Core\DB;
+use App\Config\AppConfig;
 
 class NewosaseApi extends RestClient
 {
     private $useAuth = false;
+    private $db;
+    private $table;
 
     public function __construct()
     {
@@ -15,6 +17,10 @@ class NewosaseApi extends RestClient
         $this->request['headers'] = [
             'Accept' => 'application/json'
         ];
+
+        $dbConfig = AppConfig::$DATABASE->default;
+        $this->db = new \MeekroDB($dbConfig->host, $dbConfig->username, $dbConfig->password, $dbConfig->name);
+        $this->table = AppConfig::$OSASEAPI_DBTABLE;
     }
 
     public function setupAuth()
@@ -51,17 +57,13 @@ class NewosaseApi extends RestClient
 
     public function getToken()
     {
-        $db = new DB();
-        $tableName = \App\Config\AppConfig::$OSASEAPI_DBTABLE;
-        return $db->queryFirstRow("SELECT * FROM $tableName WHERE category=%s ORDER BY updated_at LIMIT 1", 'jwt_token');
+        return $this->db->queryFirstRow("SELECT * FROM $this->table WHERE category=%s ORDER BY updated_at LIMIT 1", 'jwt_token');
     }
 
     public function createToken($token)
     {
-        $db = new DB();
-        $tableName = \App\Config\AppConfig::$OSASEAPI_DBTABLE;
         $currDateTime = date('Y-m-d H:i:s');
-        $db->insert($tableName, [
+        $this->db->insert($this->table, [
             'category' => 'jwt_token',
             'generated_token' => $token,
             'created_at' => $currDateTime,
@@ -73,14 +75,12 @@ class NewosaseApi extends RestClient
 
     public function updateToken($id, $token)
     {
-        $tableName = \App\Config\AppConfig::$OSASEAPI_DBTABLE;
         $data = [
             'generated_token' => $token,
             'updated_at' => date('Y-m-d H:i:s'),
         ];
 
-        $db = new DB();
-        $db->update($tableName, $data, "id=%i", $id);
+        $this->db->update($this->table, $data, "id=%i", $id);
         return $this->getToken();
     }
 

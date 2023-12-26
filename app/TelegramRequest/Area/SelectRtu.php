@@ -23,6 +23,11 @@ class SelectRtu extends TelegramRequest
             ->addText('.');
     }
 
+    public function setRtus($rtus)
+    {
+        if(is_array($rtus)) $this->setData('rtus', $rtus);
+    }
+
     public function setInKeyboard(callable $callButton)
     {
         $inlineKeyboardData = array_reduce($this->getData('rtus', []), function($result, $rtu) use ($callButton) {

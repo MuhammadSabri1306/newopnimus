@@ -6,6 +6,11 @@ use App\Core\Model;
 class RtuList extends Model
 {
     public static $table = 'rtu_list';
+
+    public static function isUUID($id)
+    {
+        return is_string($id) && preg_match('/\D/', $id);
+    }
     
     public static function getAll()
     {
@@ -33,5 +38,28 @@ class RtuList extends Model
         return RtuList::query(function ($db, $table) use ($locationId) {
             return $db->query("SELECT * FROM $table WHERE location_id=%i ORDER BY sname", $locationId);
         });
+    }
+
+    public static function create(array $data)
+    {
+        $data['timestamp'] = date('Y-m-d H:i:s');
+        return RtuList::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            $id = $db->insertId();
+            return $id ? RtuList::find($id) : null;
+        });
+    }
+
+    public static function update($id, array $data)
+    {
+        if(static::isUUID($id)) {
+            return RtuList::query(function ($db, $table) use ($id, $data) {
+                return $db->update($table, $data, "uuid=%s", $id);
+            });
+        } else {
+            return RtuList::query(function ($db, $table) use ($id, $data) {
+                return $db->update($table, $data, "id=%i", $id);
+            });
+        }
     }
 }

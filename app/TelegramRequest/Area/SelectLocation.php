@@ -23,9 +23,16 @@ class SelectLocation extends TelegramRequest
             ->addText('.');
     }
 
-    public function setInKeyboard(callable $callButton)
+    public function setLocations($locs)
     {
-        $inlineKeyboardData = array_reduce(
+        if(is_array($locs)) {
+            $this->setData('locations', $locs);
+        }
+    }
+
+    public function setInKeyboard(callable $callButton, callable $updateList = null)
+    {
+        $inKeyboardData = array_reduce(
             $this->getData('locations', []),
             function($result, $loc) use ($callButton) {            
             
@@ -43,7 +50,11 @@ class SelectLocation extends TelegramRequest
             []
         );
 
-        $this->params->replyMarkup = new InlineKeyboard(...$inlineKeyboardData);
+        if(is_callable($updateList)) {
+            $inKeyboardData = $updateList($inKeyboardData);
+        }
+
+        $this->params->replyMarkup = new InlineKeyboard(...$inKeyboardData);
     }
 
     public function send(): ServerResponse

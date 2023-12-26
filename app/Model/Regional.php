@@ -33,4 +33,21 @@ class Regional extends Model
 
         return $regional;
     }
+
+    public static function create(array $data)
+    {
+        $data['timestamp'] = date('Y-m-d H:i:s');
+        return Regional::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            $id = $db->insertId();
+            return $id ? Regional::find($id) : null;
+        });
+    }
+
+    public static function update($id, array $data)
+    {
+        return Regional::query(function ($db, $table) use ($id, $data) {
+            return $db->update($table, $data, "id=%i", $id);
+        });
+    }
 }

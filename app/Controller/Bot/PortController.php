@@ -26,6 +26,11 @@ class PortController extends BotController
         'port.loc' => 'onSelectLocation',
         'port.rtu' => 'onSelectRtu',
         'port.port' => 'onSelectPort',
+
+        'portlog.reg' => 'onSelectRegionalLog',
+        'portlog.wit' => 'onSelectWitelLog',
+        'portlog.loc' => 'onSelectLocationLog',
+        'portlog.rtu' => 'onSelectRtuLog',
     ];
 
     public static function checkPort()
@@ -141,6 +146,11 @@ class PortController extends BotController
             );
 
         }
+    }
+
+    public static function checkLog()
+    {
+        return static::callModules('check-log');
     }
 
     public static function getBtnPortList($rtuSname, $portsData, $userChatId)
@@ -442,5 +452,25 @@ class PortController extends BotController
         $answerText = PortText::getDetailPortText($ports[0]);
         $reqData->text = $answerText->get();
         return Request::sendMessage($reqData->build());
+    }
+
+    public static function onSelectRtuLog($rtuSname, $callbackQuery)
+    {   
+        return static::callModules('on-select-rtu-log', compact('rtuSname', 'callbackQuery'));
+    }
+
+    public static function onSelectLocationLog($locId, $callbackQuery)
+    {   
+        return static::callModules('on-select-loc-log', compact('locId', 'callbackQuery'));
+    }
+
+    public static function onSelectWitelLog($witelId, $callbackQuery)
+    {   
+        return static::callModules('on-select-witel-log', compact('witelId', 'callbackQuery'));
+    }
+
+    public static function onSelectRegionalLog($regionalId, $callbackQuery)
+    {   
+        return static::callModules('on-select-regional-log', compact('regionalId', 'callbackQuery'));
     }
 }

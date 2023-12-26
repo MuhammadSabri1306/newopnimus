@@ -7,7 +7,7 @@ use App\Core\TelegramRequest;
 
 class DeleteMessage extends TelegramRequest
 {
-    public function __construct($messageId, $chatId)
+    public function __construct($messageId = null, $chatId = null)
     {
         parent::__construct();
         $this->params->messageId = $messageId;

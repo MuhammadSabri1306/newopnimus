@@ -10,7 +10,6 @@ class BotConfig
     public static $BOT_USERNAME = null;
     public static $HOOK_URL = null;
     public static $PRIVATE_KEY = null;
-    public static $COMMANDS_PATH = null;
 
     public static $MYSQL_HOST = null;
     public static $MYSQL_PORT = null;
@@ -25,7 +24,6 @@ class BotConfig
         static::$BOT_USERNAME = Helper::env('BOT_USERNAME');
         static::$HOOK_URL = Helper::env('BOT_HOOK_URL');
         static::$PRIVATE_KEY = Helper::env('BOT_PRIVATE_KEY');
-        static::$COMMANDS_PATH = Helper::env('BOT_COMMANDS_PATH');
         static::$MYSQL_HOST = Helper::env('MYSQL_BOT_HOST');
         static::$MYSQL_PORT = Helper::env('MYSQL_BOT_PORT');
         static::$MYSQL_USERNAME = Helper::env('MYSQL_BOT_USERNAME');
@@ -106,7 +104,10 @@ class BotConfig
                 // Define all paths for your custom commands
                 // DO NOT PUT THE COMMAND FOLDER THERE. IT WILL NOT WORK. 
                 // Copy each needed Commandfile into the CustomCommand folder and uncommend the Line 49 below
-                'paths'   => [ __DIR__ . '/../..' . static::$COMMANDS_PATH ],
+                'paths'   => [
+                    __DIR__ . '/../../CustomCommands',
+                    __DIR__ . '/../../AdminCommands',
+                ],
 
                 // Here you can set any command-specific parameters
                 'configs' => [

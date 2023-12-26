@@ -13,7 +13,6 @@ $dotenv->required('BOT_TOKEN')->notEmpty();
 $dotenv->required('BOT_USERNAME')->notEmpty();
 $dotenv->required('BOT_HOOK_URL')->notEmpty();
 $dotenv->required('BOT_PRIVATE_KEY')->notEmpty();
-$dotenv->required('BOT_COMMANDS_PATH')->notEmpty();
 
 $dotenv->required('MYSQL_DEFAULT_HOST')->notEmpty();
 $dotenv->ifPresent('MYSQL_DEFAULT_PORT')->isInteger();

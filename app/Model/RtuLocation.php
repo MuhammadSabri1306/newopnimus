@@ -42,4 +42,21 @@ class RtuLocation extends Model
             return $db->query($query, $locIds, ['id', ...$locIds]);
         });
     }
+
+    public static function create(array $data)
+    {
+        $data['timestamp'] = date('Y-m-d H:i:s');
+        return RtuLocation::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            $id = $db->insertId();
+            return $id ? RtuLocation::find($id) : null;
+        });
+    }
+
+    public static function update($id, array $data)
+    {
+        return RtuLocation::query(function ($db, $table) use ($id, $data) {
+            return $db->update($table, $data, "id=%i", $id);
+        });
+    }
 }

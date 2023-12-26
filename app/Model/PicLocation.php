@@ -2,6 +2,7 @@
 namespace App\Model;
 
 use App\Core\Model;
+use App\Model\RtuLocation;
 
 class PicLocation extends Model
 {

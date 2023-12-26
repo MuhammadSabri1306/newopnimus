@@ -156,6 +156,21 @@ class AlarmPortStatus extends Model
         return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
     }
 
+    public static function getCurrDayByRtu($rtuSname)
+    {
+        $dateTime = new \DateTime();
+        $dateTime->setTime(0, 0, 0);
+        $dateTimeStr = $dateTime->format('Y-m-d H:i:s');
+
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->rtu_sname=%i_rtuSname AND $colls->opened_at>=%s_openedAt";
+        $params = [ 'rtuSname' => $rtuSname, 'openedAt' => $dateTimeStr ];
+
+        return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
+    }
+
     public static function find($id)
     {
         $pattern = static::getQueryPattern();

@@ -1,7 +1,7 @@
 <?php
 namespace App\Core;
 
-use App\Core\DB;
+use App\Config\AppConfig;
 
 class Conversation
 {
@@ -25,7 +25,9 @@ class Conversation
         $this->userId = $userId;
         $this->chatId = $chatId;
 
-        $this->db = new DB();
+        $dbConfig = AppConfig::$DATABASE->default;
+        $this->db = new \MeekroDB($dbConfig->host, $dbConfig->username, $dbConfig->password, $dbConfig->name);
+
         $defaultCall = function($db, $params) {
             return $db->queryFirstRow(
                 "SELECT * FROM $this->tableName WHERE status='active' AND name=%s_name AND chat_id=%i_chatid",
