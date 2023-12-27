@@ -19,6 +19,15 @@ class TextLogTable extends TelegramRequest
         $this->params->text = $this->getText()->get();
     }
 
+    protected static function getFixedChars(string $textStr, int $minChar): string
+    {
+        $textStrLength = strlen($textStr);
+        if($textStrLength >= $minChar) return $textStr;
+        return TelegramText::create($textStr)
+            ->addSpace($minChar - $textStrLength)
+            ->get();
+    }
+
     public function getText()
     {
         $isLevelRtu = $this->getData('level', 'rtu') == 'rtu';
@@ -42,15 +51,9 @@ class TextLogTable extends TelegramRequest
             ->newLine()
             ->startCode();
 
-        $getFixedChar = function(string $textStr, int $minChar): string {
-            $textStrLength = strlen($textStr);
-            if($textStrLength >= $minChar) return $textStr;
-            return TelegramText::create($textStr)->addSpace($minChar - $textStrLength)->get();
-        };
-
-        $text->addText( $getFixedChar('No', 2) )
-            ->addText(' | ')->addText( $getFixedChar('Waktu', 16) );
-        if(!$isLevelRtu) $text->addText(' | ')->addText( $getFixedChar('RTU', 14) );
+        $text->addText( static::getFixedChars('No', 2) )
+            ->addText(' | ')->addText( static::getFixedChars('Waktu', 16) );
+        if(!$isLevelRtu) $text->addText(' | ')->addText( static::getFixedChars('RTU', 14) );
         $text->addText(' | ')->addText('Alarm');
             
         foreach($alarmPorts as $index => $alarm) {
@@ -63,9 +66,9 @@ class TextLogTable extends TelegramRequest
             if($this->isBinerPort($alarm['port_unit'])) $alarmPortValue = $this->formatBinerPortValue($alarm['port_value'], 'ON', 'OFF');
             else $alarmPortValue = $this->formatPortValue($alarm['port_value'], $alarm['port_unit']);
 
-            $text->newLine()->addText( $getFixedChar("$no", 2) )
-                ->addText(' | ')->addText( $getFixedChar($alarmDate, 16) );
-            if(!$isLevelRtu) $text->addText(' | ')->addText( $getFixedChar($alarm['rtu_sname'], 16) );
+            $text->newLine()->addText( static::getFixedChars("$no", 2) )
+                ->addText(' | ')->addText( static::getFixedChars($alarmDate, 16) );
+            if(!$isLevelRtu) $text->addText(' | ')->addText( static::getFixedChars($alarm['rtu_sname'], 14) );
             $text->addText(' | ')->addText("$alarmPortSeverity $alarmPortName $alarmPortValue");
 
         }

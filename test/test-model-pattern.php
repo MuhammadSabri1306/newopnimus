@@ -6,7 +6,7 @@ use App\Model\AlarmPortStatus;
 // $test1 = AlarmPortStatus::find(10826);
 
 AlarmPortStatus::useDefaultJoinPattern();
-$test = AlarmPortStatus::getWitelCurrDay(43);
+$test = AlarmPortStatus::getCurrDayByWitelDesc(43);
 dd(implode(', ', array_map(fn($item) => "'$item'", array_keys($test[0]))));
-// $test = AlarmPortStatus::getWitelCurrMonth(43);
+// $test = AlarmPortStatus::getCurrMonthByWitel(43);
 dd($test);

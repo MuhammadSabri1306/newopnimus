@@ -4,6 +4,7 @@ namespace App\Core\TelegramRequest;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
 use App\Core\TelegramText;
+use App\Helper\NumberHelper;
 
 trait PortFormat
 {

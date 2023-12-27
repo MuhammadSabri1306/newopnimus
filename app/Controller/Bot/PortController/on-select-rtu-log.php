@@ -17,10 +17,11 @@ if($rtu = RtuList::findBySname($rtuSname)) {
 }
 
 AlarmPortStatus::useDefaultJoinPattern();
-$alarmPorts = AlarmPortStatus::getCurrDayByRtu($rtuSname);
+$alarmPorts = AlarmPortStatus::getCurrDayByRtuDesc($rtuSname);
 
 $request = static::request('Port/TextLogTable');
 $request->params->chatId = $chatId;
+$request->setLevel('rtu');
 $request->setRtuSname($rtuSname);
 $request->setLocationName( isset($loc['location_name']) ? $loc['location_name'] : null );
 $request->setWitelName( isset($witel['witel_name']) ? $witel['witel_name'] : null );

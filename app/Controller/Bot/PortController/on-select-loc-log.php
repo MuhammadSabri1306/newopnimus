@@ -23,7 +23,7 @@ if(is_string($locId) && substr($locId, 0, 1) == 'w') {
     $request->setWitelName( $witel['witel_name'] ?? null );
 
     AlarmPortStatus::useDefaultJoinPattern();
-    $alarmPorts = AlarmPortStatus::getWitelCurrDay($witelId);
+    $alarmPorts = AlarmPortStatus::getCurrDayByWitelDesc($witelId);
     $request->setAlarmPorts($alarmPorts);
 
     return $request->send();

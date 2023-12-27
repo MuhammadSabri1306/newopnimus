@@ -92,7 +92,7 @@ class AlarmPortStatus extends Model
         return AlarmPortStatus::query(fn($db) => $db->query($query) ?? []);
     }
 
-    public static function getRegionalCurrDay($regionalId)
+    public static function getCurrDayByRegional($regionalId)
     {
         $dateTime = new \DateTime();
         $dateTime->setTime(0, 0, 0);
@@ -109,7 +109,7 @@ class AlarmPortStatus extends Model
         return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
     }
 
-    public static function getWitelCurrDay($witelId)
+    public static function getCurrDayByWitel($witelId)
     {
         $dateTime = new \DateTime();
         $dateTime->setTime(0, 0, 0);
@@ -124,7 +124,22 @@ class AlarmPortStatus extends Model
         return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
     }
 
-    public static function getRegionalCurrMonth($regionalId)
+    public static function getCurrDayByWitelDesc($witelId)
+    {
+        $dateTime = new \DateTime();
+        $dateTime->setTime(0, 0, 0);
+        $dateTimeStr = $dateTime->format('Y-m-d H:i:s');
+
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->witel_id=%i_witelId AND $colls->opened_at>=%s_openedAt ORDER BY $colls->opened_at DESC";
+        $params = [ 'witelId' => $witelId, 'openedAt' => $dateTimeStr ];
+
+        return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
+    }
+
+    public static function getCurrMonthByRegional($regionalId)
     {
         $dateTime = new \DateTime();
         $dateTime->modify('first day of this month');
@@ -140,7 +155,7 @@ class AlarmPortStatus extends Model
         return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
     }
 
-    public static function getWitelCurrMonth($witelId)
+    public static function getCurrMonthByWitel($witelId)
     {
         $dateTime = new \DateTime();
         $dateTime->modify('first day of this month');
@@ -156,6 +171,22 @@ class AlarmPortStatus extends Model
         return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
     }
 
+    public static function getCurrMonthByWitelDesc($witelId)
+    {
+        $dateTime = new \DateTime();
+        $dateTime->modify('first day of this month');
+        $dateTime->setTime(0, 0, 0);
+        $dateTimeStr = $dateTime->format('Y-m-d H:i:s');
+
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+        
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->witel_id=%i_witelId AND $colls->opened_at>=%s_openedAt ORDER BY $colls->opened_at DESC";
+        $params = [ 'witelId' => $witelId, 'openedAt' => $dateTimeStr ];
+
+        return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
+    }
+
     public static function getCurrDayByRtu($rtuSname)
     {
         $dateTime = new \DateTime();
@@ -165,7 +196,54 @@ class AlarmPortStatus extends Model
         $pattern = static::getQueryPattern();
         $colls = $pattern->collumns;
 
-        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->rtu_sname=%i_rtuSname AND $colls->opened_at>=%s_openedAt";
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->rtu_sname=%s_rtuSname AND $colls->opened_at>=%s_openedAt";
+        $params = [ 'rtuSname' => $rtuSname, 'openedAt' => $dateTimeStr ];
+
+        return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
+    }
+
+    public static function getCurrDayByRtuDesc($rtuSname)
+    {
+        $dateTime = new \DateTime();
+        $dateTime->setTime(0, 0, 0);
+        $dateTimeStr = $dateTime->format('Y-m-d H:i:s');
+
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->rtu_sname=%s_rtuSname AND $colls->opened_at>=%s_openedAt ORDER BY $colls->opened_at DESC";
+        $params = [ 'rtuSname' => $rtuSname, 'openedAt' => $dateTimeStr ];
+
+        return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
+    }
+
+    public static function getCurrMonthByRtu($rtuSname)
+    {
+        $dateTime = new \DateTime();
+        $dateTime->modify('first day of this month');
+        $dateTime->setTime(0, 0, 0);
+        $dateTimeStr = $dateTime->format('Y-m-d H:i:s');
+
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->rtu_sname=%s_rtuSname AND $colls->opened_at>=%s_openedAt";
+        $params = [ 'rtuSname' => $rtuSname, 'openedAt' => $dateTimeStr ];
+
+        return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);
+    }
+
+    public static function getCurrMonthByRtuDesc($rtuSname)
+    {
+        $dateTime = new \DateTime();
+        $dateTime->modify('first day of this month');
+        $dateTime->setTime(0, 0, 0);
+        $dateTimeStr = $dateTime->format('Y-m-d H:i:s');
+
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->rtu_sname=%s_rtuSname AND $colls->opened_at>=%s_openedAt ORDER BY $colls->opened_at DESC";
         $params = [ 'rtuSname' => $rtuSname, 'openedAt' => $dateTimeStr ];
 
         return AlarmPortStatus::query(fn($db) => $db->query($query, $params) ?? []);

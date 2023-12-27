@@ -81,7 +81,7 @@ class StatisticController extends BotController
         $request->setWitel(Witel::find($telgUser['witel_id']));
 
         AlarmPortStatus::useDefaultJoinPattern();
-        $request->setAlarms(AlarmPortStatus::getWitelCurrDay($telgUser['witel_id']));
+        $request->setAlarms(AlarmPortStatus::getCurrDayByWitel($telgUser['witel_id']));
         
         return $request->send();
     }
@@ -151,7 +151,7 @@ class StatisticController extends BotController
         $request->setWitel(Witel::find($telgUser['witel_id']));
 
         AlarmPortStatus::useDefaultJoinPattern();
-        $request->setAlarms(AlarmPortStatus::getWitelCurrMonth($telgUser['witel_id']));
+        $request->setAlarms(AlarmPortStatus::getCurrMonthByWitel($telgUser['witel_id']));
         
         return $request->send();
     }
@@ -211,7 +211,7 @@ class StatisticController extends BotController
             if($statCategory == 'month') {
 
                 AlarmPortStatus::useDefaultJoinPattern();
-                $alarms = AlarmPortStatus::getRegionalCurrMonth($regionalId);
+                $alarms = AlarmPortStatus::getCurrMonthByRegional($regionalId);
 
                 $request = BotController::request('Statistic/TextMonthlyRegional');
                 $request->params->chatId = $chatId;
@@ -222,7 +222,7 @@ class StatisticController extends BotController
             } else {
 
                 AlarmPortStatus::useDefaultJoinPattern();
-                $alarms = AlarmPortStatus::getRegionalCurrDay($regionalId);
+                $alarms = AlarmPortStatus::getCurrDayByRegional($regionalId);
 
                 $request = BotController::request('Statistic/TextDailyRegional');
                 $request->params->chatId = $chatId;
@@ -237,7 +237,7 @@ class StatisticController extends BotController
         if($statCategory == 'month') {
 
             AlarmPortStatus::useDefaultJoinPattern();
-            $alarms = AlarmPortStatus::getWitelCurrMonth($witelId);
+            $alarms = AlarmPortStatus::getCurrMonthByWitel($witelId);
 
             $request = BotController::request('Statistic/TextMonthlyWitel');
             $request->params->chatId = $chatId;
@@ -248,7 +248,7 @@ class StatisticController extends BotController
         }
 
         AlarmPortStatus::useDefaultJoinPattern();
-        $alarms = AlarmPortStatus::getWitelCurrDay($witelId);
+        $alarms = AlarmPortStatus::getCurrDayByWitel($witelId);
 
         $request = BotController::request('Statistic/TextDailyWitel');
         $request->params->chatId = $chatId;
