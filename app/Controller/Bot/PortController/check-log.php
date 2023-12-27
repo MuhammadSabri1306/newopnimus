@@ -73,13 +73,16 @@ if($telgUser['level'] == 'witel') {
     $callbackData->limitAccess($fromId);
     $request->setInKeyboard(
         function($inKeyboardItem, $loc) use ($callbackData) {
+            // static::sendDebugMessage()
             $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($loc['id']);
             return $inKeyboardItem;
         },
         function($inKeyboard) use ($callbackData, $witelId) {
             array_unshift($inKeyboard, [
-                'text' => 'Semua Lokasi',
-                'callback_data' => $callbackData->createEncodedData("w$witelId")
+                [
+                    'text' => 'Semua Lokasi',
+                    'callback_data' => $callbackData->createEncodedData("w$witelId")
+                ]
             ]);
             return $inKeyboard;
         }

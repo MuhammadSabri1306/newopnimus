@@ -1,11 +1,8 @@
 <?php
 require __DIR__.'/../app/bootstrap.php';
 
-phpinfo();
-exit();
-
 use App\ApiRequest\NewosaseApi;
-// use Goat1000\SVGGraph\SVGGraph;
+use Goat1000\SVGGraph\SVGGraph;
 // $portId = 33896;
 $portId = 33680;
 
@@ -204,7 +201,7 @@ try {
         'legend_entries' => array_map(fn($item) => $item['title'], $chartData)
     ];
 
-    $graph = new \Goat1000\SVGGraph\SVGGraph($imgWidth, $imgHeight, $settings);
+    $graph = new SVGGraph($imgWidth, $imgHeight, $settings);
     $graph->colours(array_map(function($item) {
         $color = $item['color'];
         return [ "$color:0", "$color:0" ];

@@ -50,8 +50,10 @@ class SelectLocation extends TelegramRequest
             []
         );
 
+        // \App\Controller\BotController::sendDebugMessage($inKeyboardData);
         if(is_callable($updateList)) {
             $inKeyboardData = $updateList($inKeyboardData);
+            // \App\Controller\BotController::sendDebugMessage($inKeyboardData);
         }
 
         $this->params->replyMarkup = new InlineKeyboard(...$inKeyboardData);
