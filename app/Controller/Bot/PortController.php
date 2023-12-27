@@ -4,6 +4,7 @@ namespace App\Controller\Bot;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\InlineKeyboard;
 use Longman\TelegramBot\ChatAction;
+use Goat1000\SVGGraph\SVGGraph;
 
 use App\Core\RequestData;
 use App\Core\CallbackData;
@@ -37,11 +38,12 @@ class PortController extends BotController
     {
         $message = PortController::$command->getMessage();
         $messageText = trim($message->getText(true));
+        $chatId = $message->getChat()->getId();
         $userChatId = $message->getFrom()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
 
         $user = TelegramUser::findByChatId($reqData->chatId);
         if(!$user) {
@@ -67,8 +69,39 @@ class PortController extends BotController
                 'searchRtuSname' => $rtuSname,
                 'searchNoPort' => $noPort
             ];
+            
+            $request = static::request('Action/Typing');
+            $request->params->chatId = $chatId;
+            $request->send();
 
-            return PortController::sendTextDetailPort($newosaseApiParams, $reqData->chatId);
+            $portData = static::getNewosasePortDetail($newosaseApiParams);
+            if(!$portData) {
+                $request = static::request('TextDefault');
+                $request->params->chatId = $chatId;
+                $request->setText(fn($text) => $text->addText('Terjadi masalah saat menghubungi server.'));
+                $request->send();
+            }
+
+            if(!$portData['port']) {
+                $request = static::request('TextDefault');
+                $request->params->chatId = $chatId;
+                $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+                $request->send();
+            }
+
+            $request = static::request('Port/TextDetailPort');
+            $request->params->chatId = $chatId;
+            $request->setPort($portData['port']);
+            $response = $request->send();
+
+            if(!isset($portData['chart'])) {
+                return $response;
+            }
+
+            $request = static::request('PhotoDefault');
+            $request->params->chatId = $chatId;
+            $request->setPhoto($portData['chart']);
+            return $request->send();
 
         }
 
@@ -337,6 +370,7 @@ class PortController extends BotController
     {
         $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
+        $chatId = $message->getChat()->getId();
 
         $dataArr = explode(':', $callbackData);
         $rtuSname = isset($dataArr[0]) ? $dataArr[0] : null;
@@ -344,7 +378,7 @@ class PortController extends BotController
         $portDescr = isset($dataArr[2]) ? $dataArr[2] : null;
 
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
         Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
@@ -367,7 +401,38 @@ class PortController extends BotController
             throw new \Error('Newosase API parameters is empty');
         }
 
-        return PortController::sendTextDetailPort($newosaseApiParams, $reqData->chatId);
+        $request = static::request('Action/Typing');
+        $request->params->chatId = $chatId;
+        $request->send();
+
+        $portData = static::getNewosasePortDetail($newosaseApiParams);
+        if(!$portData) {
+            $request = static::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Terjadi masalah saat menghubungi server.'));
+            $request->send();
+        }
+
+        if(!$portData['port']) {
+            $request = static::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+            $request->send();
+        }
+
+        $request = static::request('Port/TextDetailPort');
+        $request->params->chatId = $chatId;
+        $request->setPort($portData['port']);
+        $response = $request->send();
+
+        if(!isset($portData['chart'])) {
+            return $response;
+        }
+
+        $request = static::request('PhotoDefault');
+        $request->params->chatId = $chatId;
+        $request->setPhoto($portData['chart']);
+        return $request->send();
     }
 
     public static function fetchNewosasePorts(callable $callApi, $reqDataTyping = null)
@@ -430,6 +495,7 @@ class PortController extends BotController
 
     public static function sendTextDetailPort(array $newosaseApiParams, $chatId)
     {
+        BotController::sendDebugMessage($newosaseApiParams);
         $reqData = new RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
@@ -448,10 +514,16 @@ class PortController extends BotController
             $reqData->text = 'Data Port tidak dapat ditemukan.';
             return Request::sendMessage($reqData->build());
         }
-        
-        $answerText = PortText::getDetailPortText($ports[0]);
-        $reqData->text = $answerText->get();
-        return Request::sendMessage($reqData->build());
+
+        $request = static::request('Port/TextDetailPort');
+        $request->params->chatId = $chatId;
+        $request->setPort($ports[0]);
+        return $request->send();
+    }
+
+    public static function getNewosasePortDetail(array $newosaseApiParams)
+    {
+        return static::callModules('get-newosase-port-detail', compact('newosaseApiParams',));
     }
 
     public static function onSelectRtuLog($rtuSname, $callbackQuery)

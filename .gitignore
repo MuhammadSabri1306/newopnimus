@@ -4,3 +4,4 @@ vendor
 !vendor/autoload.php
 test/test.php
 .env
+public/charts/*

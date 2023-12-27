@@ -1,0 +1,14 @@
+{
+  "name": "newopnimus",
+  "version": "1.0.0",
+  "description": "<h1 align=\"center\">\r     PHP Telegram Bot<br>\r \t<br>\r     <img src=\"https://raw.githubusercontent.com/php-telegram-bot/assets/master/logo/512px/logo_plain.png\" title=\"PHP Telegram Bot\" alt=\"PHP Telegram Bot logo\">\r \t<br>\r </h1>",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC"
+}

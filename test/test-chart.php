@@ -1,26 +1,37 @@
 <?php
 require __DIR__.'/../app/bootstrap.php';
 
-use App\ApiRequest\NewosaseApi;
-use Goat1000\SVGGraph\SVGGraph;
-// $portId = 33896;
-$portId = 33680;
+// use App\Controller\Bot\PortController;
+
+// $newosaseApiParams = [
+//     'searchRtuSname' => 'RTU00-D7-BAL',
+//     'searchNoPort' => 'A-03'
+// ];
 
 // try {
-//     $image = new Imagick();
+//     $data = PortController::getNewosasePortDetail($newosaseApiParams);
+//     dd($data);
 // } catch(\Throwable $err) {
 //     echo $err;
 // }
+// exit();
+
+use App\ApiRequest\NewosaseApi;
+use Goat1000\SVGGraph\SVGGraph;
+// $portId = 33680;
+$portId = 33688;
+
 try {
 
     $currDateTime = new \DateTime('now', new \DateTimeZone('Asia/Jakarta'));
+    $currDateTimeStr = $currDateTime->format('Y-m-d H:i:s');
     $currDateTime->setTime(0, 0, 0);
     $currTimestamp = $currDateTime->getTimestamp();
     $endTime = $currTimestamp * 1000;
-    $startTime = ($currTimestamp - (24 * 3600)) * 1000;
+    $startTime = ($currTimestamp - (48 * 3600)) * 1000;
 
-    $endTime = 1699418640693;
-    $startTime = 1699159446693;
+    // $endTime = 1699418640693;
+    // $startTime = 1699159446693;
 
     $newosaseApi = new NewosaseApi();
     $newosaseApi->setupAuth();
@@ -30,7 +41,6 @@ try {
         'timeframe' => 'hour',
         'is_formula' => 0
     ];
-    // dd($newosaseApi->request['query']);
 
     $poolingData = $newosaseApi->sendRequest('GET', "/dashboard-service/operation/chart/pooling/$portId");
     if(!$poolingData) {
@@ -157,6 +167,9 @@ try {
         'back_stroke_width' => 0,
         'back_stroke_colour' => '#eee',
 
+        'graph_title' => 'Data diambil pada ' . $currDateTimeStr,
+        'graph_title_font_size' => 5,
+
         'axis_colour' => '#f4f4f4',
         'axis_text_colour' => '#373d3f',
         'axis_overlap' => 2,
@@ -209,8 +222,17 @@ try {
     
     $graph->values(array_map(fn($item) => $item['data'], $chartData));
     $svgImg = $graph->fetch('MultiLineGraph');
-    
     echo $svgImg;
+
+    // $svgFileName = "checkport_chart_port$portId.svg";
+    // $svgFilePath = __DIR__.'/../public/charts/'.$svgFileName;
+    // file_put_contents($svgFilePath, $svgImg);
+    
+    // $cmd = "node /var/www/html/newopnimus/app/CLI/svg-to-png charts/$svgFileName";
+    // $output = null;
+    // if(exec($cmd, $output)) {
+    //     dd($output);
+    // }
 
 } catch(\Throwable $err) {
     echo $err;
