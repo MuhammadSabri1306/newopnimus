@@ -14,9 +14,10 @@ $chatId = $message->getChat()->getId();
 $messageId = $message->getMessageId();
 
 list($callbackAnswer, $registId) = explode(':', $callbackData);
-$admin = TelegramAdmin::findByChatId($chatId);
-
 $regist = Registration::find($registId);
+
+static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+
 if(!$regist) {
     
     $request = static::request('Registration/TextNotFound');
@@ -26,25 +27,17 @@ if(!$regist) {
 
 }
 
-$apprRequest = static::request('Registration/SelectAdminApproval');
-$apprRequest->setRegistrationData($regist);
+if($regist['status'] != 'unprocessed') {
 
-if(in_array($regist['data']['level'], [ 'regional', 'witel' ])) {
-    $regional = Regional::find($regist['data']['regional_id']);
-    $apprRequest->setRegional($regional);
+    $request = static::request('Registration/TextDoneReviewed');
+    $request->params->chatId = $chatId;
+    $request->setStatusText( $regist['status'] == 'approved' ? 'disetujui' : 'ditolak' );
+    $request->setAdminData( TelegramAdmin::find($regist['updated_by']) );
+    return $request->send();
+
 }
 
-if($regist['data']['level'] == 'witel') {
-    $witel = Witel::find($regist['data']['witel_id']);
-    $apprRequest->setWitel($witel);
-}
-
-$msgTextUpdate = $apprRequest->params->text;
-$answerText = $callbackAnswer == 'approve' ? 'Diizinkan' : 'Ditolak';
-$request = static::request('TextAnswerSelect', [ $msgTextUpdate, $answerText ]);
-$request->params->chatId = $chatId;
-$request->params->messageId = $messageId;
-$request->send();
+throw new \Error('Testing');
 
 if($callbackAnswer != 'approve') {
     

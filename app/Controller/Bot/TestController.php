@@ -20,20 +20,9 @@ use App\Controller\Bot\AdminController;
 use App\Controller\Bot\UserController;
 use App\ApiRequest\NewosaseApi;
 use App\Model\TelegramUser;
-
-class TestSplitter
-{
-    use TelegramTextSplitter;
-
-    public $text;
-
-    public function split()
-    {
-        $text = $this->text;
-        $textArr = $this->splitText($text, 30);
-        return $textArr;
-    }
-}
+use App\Model\Registration;
+use App\Model\Regional;
+use App\Model\Witel;
 
 class TestController extends BotController
 {
@@ -56,8 +45,8 @@ class TestController extends BotController
             case 'cmdexec': return TestController::executeCommandLine(...$params); break;
             case 'chart': return TestController::createChart(...$params); break;
             case 'registapproved': return TestController::whenRegistApproved(...$params); break;
-            case 'longmessage': return TestController::longMessage(...$params); break;
             case 'userapprovedtext': return TestController::userApprovedText(...$params); break;
+            case 'whenregistuser': return TestController::whenRegistUser(...$params); break;
             default: return TestController::$command->replyToChat('This is TEST Command.');
         }
     }
@@ -373,37 +362,36 @@ class TestController extends BotController
         return $response;
     }
 
-    public static function longMessage()
-    {
-        $message = static::$command->getMessage();
-        require __DIR__.'/../../../test/test-long-message/message-2.php';
-
-        $reqData = new RequestData();
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->parseMode = 'markdown';
-
-        $case = new TestSplitter();
-        $case->text = $messageText;
-        $messageTextList = $case->split();
-
-        $errorResponses = [];
-        foreach($messageTextList as $messageTextItem) {
-
-            $reqData->text = $messageTextItem;
-            $response = Request::sendMessage($reqData->build());
-            if(!$response->isOk()) {
-                array_push($errorResponses, $response);
-            }
-
-        }
-
-        BotController::sendDebugMessage($errorResponses);
-        return Request::emptyResponse();
-    }
-
     public static function userApprovedText()
     {
         $response = UserController::whenRegistApproved(120);
         return $response;
+    }
+
+    public static function whenRegistUser($registId)
+    {
+        $registData = Registration::find($registId);
+
+        $request = BotController::request('Registration/SelectAdminApproval');
+        $request->setRegistrationData($registData);
+        
+        if(in_array($registData['data']['level'], [ 'regional', 'witel' ])) {
+            $regional = Regional::find($registData['data']['regional_id']);
+            $request->setRegional($regional);
+        }
+
+        if($registData['data']['level'] == 'witel') {
+            $witel = Witel::find($registData['data']['witel_id']);
+            $request->setWitel($witel);
+        }
+
+        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
+            $inlineKeyboardData['approve']['callback_data'] = 'admin.user_approval.approve:'.$registId;
+            $inlineKeyboardData['reject']['callback_data'] = 'admin.user_approval.reject:'.$registId;
+            return $inlineKeyboardData;
+        });
+
+        $request->params->chatId = \App\Config\AppConfig::$DEV_CHAT_ID;;
+        return $request->send();
     }
 }

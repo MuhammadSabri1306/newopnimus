@@ -611,13 +611,9 @@ class UserController extends BotController
             return Request::emptyResponse();
         }
 
-        if($telegramUser['type'] == 'private') {
-            TelegramPersonalUser::deleteByUserId($telegramUser['id']);
-        }
-        
-        if($telegramUser['is_pic']) {
-            PicLocation::deleteByUserId($telegramUser['id']);
-        }
+        TelegramPersonalUser::deleteByUserId($telegramUser['id']);
+        PicLocation::deleteByUserId($telegramUser['id']);
+        AlertUsers::deleteByUserId($telegramUser['id']);
 
         TelegramUser::delete($telegramUser['id']);
 

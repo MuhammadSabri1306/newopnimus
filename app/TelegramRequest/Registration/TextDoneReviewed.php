@@ -12,7 +12,7 @@ class TextDoneReviewed extends TelegramRequest
     {
         parent::__construct();
         $this->params->parseMode = 'markdown';
-        $this->buildText();
+        $this->params->text = $this->getText()->get();
     }
 
     public function getText()
@@ -42,11 +42,11 @@ class TextDoneReviewed extends TelegramRequest
         }
 
         if($admin['witel_name']) {
-            $text->newLine()->addItalic('- '.$admin['witel_name'].'.');
+            $text->addItalic(' - '.$admin['witel_name'].'.');
         } elseif($admin['regional_name']) {
-            $text->newLine()->addItalic('- '.$admin['regional_name'].'.');
+            $text->addItalic(' - '.$admin['regional_name'].'.');
         } else {
-            $text->newLine()->addItalic('- Level NASIONAL.');
+            $text->addItalic(' - Level NASIONAL.');
         }
 
         return $text;
@@ -55,16 +55,15 @@ class TextDoneReviewed extends TelegramRequest
     public function setStatusText($statusText)
     {
         $this->setData('status_text', $statusText);
+        $this->params->text = $this->getText()->get();
     }
 
     public function setAdminData($admin)
     {
-        $this->setData('admin', $admin);
-    }
-
-    public function buildText()
-    {
-        $this->params->text = $this->getText()->get();
+        if(is_array($admin)) {
+            $this->setData('admin', $admin);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function send(): ServerResponse

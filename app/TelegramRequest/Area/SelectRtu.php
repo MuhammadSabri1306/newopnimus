@@ -38,7 +38,12 @@ class SelectRtu extends TelegramRequest
                 $lastIndex++;
             }
 
-            $item = $callButton([ 'text' => $rtu['sname'], 'callback_data' => null ], $rtu);
+            $item = [
+                'text' => is_string($rtu) ? $rtu : $rtu['sname'],
+                'callback_data' => null
+            ];
+
+            $item = $callButton($item, $rtu);
             array_push($result[$lastIndex], $item);
             return $result;
         }, []);

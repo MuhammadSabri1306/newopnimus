@@ -297,42 +297,10 @@ class PortController extends BotController
 
     public static function onSelectLocation($locationId, $callbackQuery)
     {
-        $reqData = New RequestData();
-        $message = $callbackQuery->getMessage();
-        $userChatId = $callbackQuery->getFrom()->getId();
-        $rtus = RtuList::getSnameOrderedByLocation($locationId);
-
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
-        $reqData->messageId = $message->getMessageId();
-        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
-
-        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-        $reqData1->text = PortText::getRtuInKeyboardText()->get();
-
-        $callbackData = new CallbackData('port.rtu');
-        $callbackData->limitAccess($userChatId);
-        $inlineKeyboardData = array_reduce($rtus, function($result, $rtu) use ($callbackData) {
-            $lastIndex = count($result) - 1;
-            
-            if($lastIndex < 0 || count($result[$lastIndex]) == 3) {
-                array_push($result, []);
-                $lastIndex++;
-            }
-
-            array_push($result[$lastIndex], [
-                'text' => $rtu['sname'],
-                'callback_data' => $callbackData->createEncodedData($rtu['id'])
-            ]);
-
-            return $result;
-        }, []);
-        
-        $reqData1->replyMarkup = new InlineKeyboard(...$inlineKeyboardData);
-        return Request::sendMessage($reqData1->build());
+        return static::callModules('on-select-location', compact('locationId', 'callbackQuery'));
     }
 
-    public static function onSelectRtu($rtuId, $callbackQuery)
+    public static function onSelectRtu($rtuSname, $callbackQuery)
     {   
         $message = $callbackQuery->getMessage();
         $userChatId = $callbackQuery->getFrom()->getId();
@@ -342,12 +310,11 @@ class PortController extends BotController
         $reqData->chatId = $message->getChat()->getId();
         $reqData->messageId = $message->getMessageId();
 
-        $rtu = RtuList::find($rtuId);
         Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
 
         $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-        $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtu) {
-            $newosaseApi->request['query'] = [ 'searchRtuSname' => $rtu['sname'] ];
+        $ports = PortController::fetchNewosasePorts(function($newosaseApi) use ($rtuSname) {
+            $newosaseApi->request['query'] = [ 'searchRtuSname' => $rtuSname ];
             return $newosaseApi;
         }, $reqData->duplicate('chatId'));
         
@@ -361,7 +328,7 @@ class PortController extends BotController
             return Request::sendMessage($reqData1->build());
         }
         
-        $btnPortRequest = PortController::getBtnPortList($rtu['sname'], $ports, $userChatId);
+        $btnPortRequest = PortController::getBtnPortList($rtuSname, $ports, $userChatId);
         $btnPortRequest->chatId = $reqData->chatId;
         return Request::sendMessage($btnPortRequest->build());
     }
@@ -376,6 +343,7 @@ class PortController extends BotController
         $rtuSname = isset($dataArr[0]) ? $dataArr[0] : null;
         $noPort = isset($dataArr[1]) && $dataArr[1] != '0' ? $dataArr[1] : null;
         $portDescr = isset($dataArr[2]) ? $dataArr[2] : null;
+        BotController::sendDebugMessage($callbackData);
 
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
