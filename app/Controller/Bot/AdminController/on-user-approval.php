@@ -37,8 +37,7 @@ if($regist['status'] != 'unprocessed') {
 
 }
 
-throw new \Error('Testing');
-
+$admin = TelegramAdmin::findByChatId($chatId);
 if($callbackAnswer != 'approve') {
     
     Registration::update($regist['id'], [ 'status' => 'rejected' ], $admin['id']);
@@ -113,18 +112,18 @@ if($registUser['type'] == 'private') {
 $useAlert = false;
 if($registUser['is_pic']) {
     $useAlert = true;
-} elseif($registUser['type'] == 'private' && $registUser['level'] == 'witel') {
+} elseif($registUser['type'] != 'private' && $registUser['level'] == 'witel') {
     $useAlert = AlertUsers::findPivot($registUser['level'], $registUser['witel_id']) ? false : true;
-} elseif($registUser['type'] == 'private' && $registUser['level'] == 'regional') {
+} elseif($registUser['type'] != 'private' && $registUser['level'] == 'regional') {
     $useAlert = AlertUsers::findPivot($registUser['level'], $registUser['regional_id']) ? false : true;
-} elseif($registUser['type'] == 'private' && $registUser['level'] == 'nasional') {
+} elseif($registUser['type'] != 'private' && $registUser['level'] == 'nasional') {
     $useAlert = AlertUsers::findPivot($registUser['level']) ? false : true;
 }
 
 if($useAlert) {
 
     $dataAlert = [];
-    $dataAlert['telegram_user_id'] = $telgUser['id'];
+    $dataAlert['id'] = $telgUser['id'];
     $dataAlert['mode_id'] = 1;
     $dataAlert['cron_alert_status'] = 1;
     $dataAlert['user_alert_status'] = 1;
@@ -138,6 +137,7 @@ if($useAlert) {
             $dataAlert['pivot_id'] = $registUser['witel_id'];
         }
     }
+    // static::sendDebugMessage($dataAlert);
 
     AlertUsers::create($dataAlert);
 
