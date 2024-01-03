@@ -1,18 +1,31 @@
 <?php
 namespace App\Core;
 
-class TelegramText
+/*
+ * For Markdown V2 use
+ */
+class TelegramTextV2
 {
     private $message;
     private $maxLength = 4096;
 
     public function __construct(string $text = '') {
-        $this->message = $text;
+        $this->message = '';
+        $this->addText($text);
+    }
+
+    public function escape(string $text)
+    {
+        $escapedChars = ['_', '*', '[', ']', '(', ')', '~', '`', '>', '#', '+', '-', '=', '|', '{', '}', '.', '!'];
+        foreach($escapedChars as $eChar) {
+            $text = str_replace($eChar, "\\$eChar", $text);
+        }
+        return $text;
     }
 
     public static function create(string $text = '')
     {
-        return new TelegramText($text);
+        return new TelegramTextV2($text);
     }
 
     public function get()
@@ -55,8 +68,9 @@ class TelegramText
         return $splittedText;
     }
 
-    public function addText(string $text)
+    public function addText(string $text, $escape = true)
     {
+        if($escape) $text = $this->escape($text);
         $this->message .= $text;
         return $this;
     }
@@ -71,12 +85,12 @@ class TelegramText
 
     public function startBold()
     {
-        return $this->addText('*');
+        return $this->addText('*', false);
     }
 
     public function endBold()
     {
-        return $this->addText('*');
+        return $this->addText('*', false);
     }
 
     public function addBold(string $text)
@@ -86,12 +100,12 @@ class TelegramText
 
     public function startItalic()
     {
-        return $this->addText('___');
+        return $this->addText('_', false);
     }
 
     public function endItalic()
     {
-        return $this->addText('___');
+        return $this->addText('_', false);
     }
 
     public function addItalic(string $text)
@@ -99,14 +113,29 @@ class TelegramText
         return $this->startItalic()->addText($text)->endItalic();
     }
 
+    public function startUnderline()
+    {
+        return $this->addText('__', false);
+    }
+
+    public function endUnderline()
+    {
+        return $this->addText('__', false);
+    }
+
+    public function addUnderline(string $text)
+    {
+        return $this->startUnderline()->addText($text)->endUnderline();
+    }
+
     public function startStrike()
     {
-        return $this->addText('~~');
+        return $this->addText('~', false);
     }
 
     public function endStrike()
     {
-        return $this->addText('~~');
+        return $this->addText('~', false);
     }
 
     public function addStrike(string $text)
@@ -116,17 +145,22 @@ class TelegramText
 
     public function startCode()
     {
-        return $this->addText('```')->newLine();
+        return $this->addText('```', false)->newLine();
     }
 
     public function endCode()
     {
-        return $this->addText('```');
+        return $this->addText('```', false);
     }
 
     public function addCode(string $text)
     {
         return $this->startCode()->addText($text)->endCode();
+    }
+
+    public function startQuote(string $text = '')
+    {
+        return $this->addText(">$text", false);
     }
 
     public function addTabspace()
@@ -142,24 +176,16 @@ class TelegramText
         return $this;
     }
 
-    public function addMention($user, $text = null)
+    public function addLink($url, $text)
     {
-        // user id
-        if($text) {
-            return $this->addText("[$text](tg://user?id=$user)");
-        }
-
-        // username
-        return $this->addText("@$user");
+        return $this->addText('[', false)
+            ->addText($text)
+            ->addText(']', false)
+            ->addText("($url)", false);
     }
 
-    public function addMentionByName($userId, $name)
+    public function addMention($userId, $name)
     {
-        return $this->addText("[$name](tg://user?id=$userId)");
-    }
-
-    public function addMentionByUsername($userId, $username)
-    {
-        return $this->addText("[$username](tg://user?id=$userId)");
+        return $this->addLink("tg://user?id=$userId", $name);
     }
 }

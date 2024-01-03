@@ -13,7 +13,7 @@ class SelectAdminApproval extends TelegramRequest
     {
         parent::__construct();
         $this->params->parseMode = 'markdown';
-        $this->buildText();
+        $this->params->text = $this->getText()->get();
     }
 
     public function getText()
@@ -68,20 +68,18 @@ class SelectAdminApproval extends TelegramRequest
     public function setRegistrationData($registration)
     {
         $this->setData('registration', $registration);
+        $this->params->text = $this->getText()->get();
     }
 
     public function setRegional($regional)
     {
         $this->setData('regional', $regional);
+        $this->params->text = $this->getText()->get();
     }
 
     public function setWitel($witel)
     {
         $this->setData('witel', $witel);
-    }
-
-    public function buildText()
-    {
         $this->params->text = $this->getText()->get();
     }
 

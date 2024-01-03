@@ -189,4 +189,41 @@ class AlertUsers extends Model
             return $db->update($table, $data, "$collId=%i", $id);
         });
     }
+
+    public static function create(array $params)
+    {
+        if(static::$activeQueryPattern != 'basic') {
+            static::useBasicPattern();
+        }
+
+        $pattern = static::getQueryPattern();
+        $collCreatedAt = $pattern->collumns->created_at;
+        $data = [];
+        foreach($params as $key => $val) {
+            $field = $pattern->collumns->get($key);
+            $data[$field] = $val;
+        }
+        $data[$collCreatedAt] = date('Y-m-d H:i:s');
+
+        return static::query(function ($db, $table) use ($data) {
+            $db->insert($table, $data);
+            $id = $db->insertId();
+            return $id ? AlertUsers::find($id) : null;
+        });
+    }
+
+    public static function findPivot($level, $pivotId = null)
+    {
+        $pattern = static::getQueryPattern();
+        $colls = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $colls->pivot_level=%s_plevel";
+        $params = [ 'plevel' => $level ];
+        if($pivotId) {
+            $query .= " AND $colls->pivot_id=%i_pid";
+            $params['pid'] = $pivotId;
+        }
+
+        return static::query(fn($db) => $db->queryFirstRow($query, $params) ?? null);
+    }
 }

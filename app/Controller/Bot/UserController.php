@@ -20,6 +20,7 @@ use App\Model\PicLocation;
 use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
+use App\Model\AlertUsers;
 use App\BuiltMessageText\UserText;
 use App\Core\Exception\TelegramResponseException;
 
@@ -61,19 +62,24 @@ class UserController extends BotController
 
         if(!TelegramUser::exists($chatId)) {
 
-            $registration = Registration::findByChatId($chatId);
-            if(!$registration) {
-                return null;
+            $regists = Registration::getByChatIdDesc($chatId);
+            $regist = null;
+            for($i=0; $i<count($regists); $i++) {
+                if($regists[$i]['request_type'] == 'user' && $regists[$i]['status'] == 'unprocessed') {
+                    $regist = $regists[$i];
+                }
             }
+
+            if(!$regist) return null;
 
             $request = BotController::request('Registration/TextOnReview');
             $request->params->chatId = $chatId;
-            $request->setRegistration($registration);
-            if($registration['data']['level'] == 'regional' || $registration['data']['level'] == 'witel') {
-                $request->setRegional(Regional::find($registration['data']['regional_id']));
+            $request->setRegistration($regist);
+            if($regist['data']['level'] == 'regional' || $regist['data']['level'] == 'witel') {
+                $request->setRegional(Regional::find($regist['data']['regional_id']));
             }
-            if($registration['data']['level'] == 'witel') {
-                $request->setWitel(Witel::find($registration['data']['witel_id']));
+            if($regist['data']['level'] == 'witel') {
+                $request->setWitel(Witel::find($regist['data']['witel_id']));
             }
 
             return $request->send();
@@ -697,49 +703,19 @@ class UserController extends BotController
 
     public static function whenRegistApproved($registId)
     {   
-        $telegramUser = TelegramUser::findByRegistId($registId);
-        if(!$telegramUser) {
-            return Request::emptyResponse();
-        }
-
-        $request = BotController::request('Registration/TextApproved');
-        $request->params->chatId = $telegramUser['chat_id'];
-        
-        $request->setIsPrivate($telegramUser['type'] == 'private', false);
-
-        if(!$telegramUser['is_pic'] && $telegramUser['level'] == 'witel') {
-            $group = TelegramUser::findAlertWitelGroup($telegramUser['witel_id']);
-        } elseif(!$telegramUser['is_pic'] && $telegramUser['level'] == 'regional') {
-            $group = TelegramUser::findAlertRegionalGroup($telegramUser['regional_id']);
-        }
-        
-        if(isset($group, $group['username']) && $telegramUser['id'] != $group['id']) {
-            $request->setAlertingGroup($group['username'], false);
-        }
-
-        $request->setApprovedAt($telegramUser['created_at']);
-
-        return $request->send();
+        return static::callModules('on-user-approval', [ 'registId' => $registId ]);
     }
 
-    public static function whenRegistRejected($registData)
+    public static function whenRegistRejected($registId)
     {
+        $registData = Registration::find($registId);
         if(!$registData) {
             return Request::emptyResponse();
         }
 
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $registData['chat_id'];
-
-        $reqData->text = TelegramText::create()
-            ->addBold('Pendaftaran Opnimus ditolak.')->newLine()
-            ->addItalic($registData['updated_at'])->newLine(2)
-            ->addText('Mohon maaf, permintaan anda tidak mendapat persetujuan oleh Admin. ')
-            ->addText('Anda dapat berkoordinasi dengan Admin lokal anda untuk mendapatkan informasi terkait.')->newLine()
-            ->addText('Terima kasih.')
-            ->get();
-
-        return Request::sendMessage($reqData->build());
+        $request = BotController::request('Registration/TextUserRejected');
+        $request->params->chatId = $registData['chat_id'];
+        $request->setRejectedDate($registData['updated_at']);
+        return $request->send();
     }
 }

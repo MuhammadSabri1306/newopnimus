@@ -17,6 +17,7 @@ use App\Core\CallbackData;
 use App\Core\TelegramTextSplitter;
 use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
+use App\Controller\Bot\UserController;
 use App\ApiRequest\NewosaseApi;
 use App\Model\TelegramUser;
 
@@ -56,6 +57,7 @@ class TestController extends BotController
             case 'chart': return TestController::createChart(...$params); break;
             case 'registapproved': return TestController::whenRegistApproved(...$params); break;
             case 'longmessage': return TestController::longMessage(...$params); break;
+            case 'userapprovedtext': return TestController::userApprovedText(...$params); break;
             default: return TestController::$command->replyToChat('This is TEST Command.');
         }
     }
@@ -397,5 +399,11 @@ class TestController extends BotController
 
         BotController::sendDebugMessage($errorResponses);
         return Request::emptyResponse();
+    }
+
+    public static function userApprovedText()
+    {
+        $response = UserController::whenRegistApproved(120);
+        return $response;
     }
 }

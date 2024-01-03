@@ -44,12 +44,62 @@ class Registration extends Model
         });
     }
 
+    public static function getByChatId($chatId)
+    {
+        return Registration::query(function ($db, $table) use ($chatId) {
+            $data = $db->query("SELECT * FROM $table WHERE chat_id=%i", $chatId);
+            if(!is_array($data)) return [];
+            
+            return array_map(function($item) {
+                $item['data'] = json_decode($item['data'], true);
+                return $item;
+            }, $data);
+        });
+    }
+
+    public static function getByChatIdDesc($chatId)
+    {
+        return Registration::query(function ($db, $table) use ($chatId) {
+            $data = $db->query("SELECT * FROM $table WHERE chat_id=%i ORDER BY created_at DESC", $chatId);
+            if(!is_array($data)) return [];
+            
+            return array_map(function($item) {
+                $item['data'] = json_decode($item['data'], true);
+                return $item;
+            }, $data);
+        });
+    }
+
     public static function findUnprocessedByChatId($chatId)
     {
         return Registration::query(function ($db, $table) use ($chatId) {
             $data = $db->queryFirstRow("SELECT * FROM $table WHERE status=%s AND chat_id=%i", 'unprocessed', $chatId);
             if(!$data) return null;
 
+            $data['data'] = json_decode($data['data'], true);
+            return $data;
+        });
+    }
+
+    public static function getByStatus($status)
+    {
+        return Registration::query(function ($db, $table) use ($status) {
+            $data = $db->query("SELECT * FROM $table WHERE status=%s", $status);
+            if(!is_array($data)) return [];
+            
+            return array_map(function($item) {
+                $item['data'] = json_decode($item['data'], true);
+                return $item;
+            }, $data);
+        });
+    }
+
+    public static function findLastByStatus($status)
+    {
+        return Registration::query(function ($db, $table) use ($status) {
+            $data = $db->query("SELECT * FROM $table WHERE status=%s ORDER BY created_at DESC", $status);
+            if(!$data) return null;
+            
             $data['data'] = json_decode($data['data'], true);
             return $data;
         });
