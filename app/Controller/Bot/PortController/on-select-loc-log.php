@@ -1,6 +1,7 @@
 <?php
 
 use App\Core\CallbackData;
+use App\ApiRequest\NewosaseApiV2;
 use App\Model\Witel;
 use App\Model\RtuList;
 use App\Model\AlarmPortStatus;
@@ -30,14 +31,43 @@ if(is_string($locId) && substr($locId, 0, 1) == 'w') {
 
 }
 
+$request = static::request('Action/Typing');
+$request->params->chatId = $chatId;
+$request->send();
+
+$newosaseApi = new NewosaseApiV2();
+$newosaseApi->setupAuth();
+$newosaseApi->request['query'] = [ 'locationId' => $locationId ];
+
+$osaseData = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
+if(!$osaseData->get()) {
+    $request = static::request('Error/TextErrorServer');
+    $request->params->chatId = $chatId;
+    return $request->send();
+}
+
+$portList = $osaseData->get('result.payload');
+if(!is_array($portList)) {
+    $request = static::request('Error/TextErrorNotFound');
+    $request->params->chatId = $chatId;
+    return $request->send();
+}
+
+$rtuSnames = array_reduce($portList, function($list, $port) {
+    if(isset($port->rtu_sname) && !in_array($port->rtu_sname, $list)) {
+        array_push($list, $port->rtu_sname);
+    }
+    return $list;
+}, []);
+
 $request = static::request('Area/SelectRtu');
 $request->params->chatId = $chatId;
-$request->setRtus(RtuList::getSnameOrderedByLocation($locId));
+$request->setRtus($rtuSnames);
 
 $callbackData = new CallbackData('portlog.rtu');
 $callbackData->limitAccess($fromId);
-$request->setInKeyboard(function($inKeyboardItem, $rtu) use ($callbackData) {
-    $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($rtu['sname']);
+$request->setInKeyboard(function($inKeyboardItem, $rtuSname) use ($callbackData) {
+    $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($rtuSname);
     return $inKeyboardItem;
 });
 
