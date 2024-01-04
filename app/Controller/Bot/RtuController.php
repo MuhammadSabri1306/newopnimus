@@ -8,34 +8,38 @@ use Longman\TelegramBot\ChatAction;
 use App\Core\RequestData;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\PortText;
+use App\Request\RequestInKeyboard;
+
+use App\Core\CallbackData;
+use App\ApiRequest\NewosaseApi;
+use App\ApiRequest\NewosaseApiV2;
 use App\Controller\BotController;
 use App\Model\TelegramUser;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\RtuLocation;
 use App\Model\RtuList;
-use App\ApiRequest\NewosaseApi;
-use App\Request\RequestInKeyboard;
 
 useHelper('telegram-callback');
 
 class RtuController extends BotController
 {
     public static $callbacks = [
-        'rtu.select_regional' => 'onSelectRegional',
-        'rtu.select_witel' => 'onSelectWitel',
-        'rtu.select_loc' => 'onSelectLocation',
-        'rtu.select_rtu' => 'onSelectRtu',
+        'rtu.cekreg' => 'onSelectRegional',
+        'rtu.cekwit' => 'onSelectWitel',
+        'rtu.cekloc' => 'onSelectLocation',
+        'rtu.cekrtu' => 'onSelectRtu',
     ];
 
     public static function checkRtu()
     {
         $message = RtuController::$command->getMessage();
-        $messageText = trim($message->getText(true));
+        $fromId = $message->getFrom()->getId();
         $chatId = $message->getChat()->getId();
+        $messageText = trim($message->getText(true));
 
-        $user = TelegramUser::findByChatId($chatId);
-        if(!$user) {
+        $telgUser = TelegramUser::findByChatId($chatId);
+        if(!$telgUser) {
             $request = BotController::request('Error/TextUserUnidentified');
             $request->params->chatId = $chatId;
             return $request->send();
@@ -53,200 +57,197 @@ class RtuController extends BotController
 
         }
         
-        if($user['level'] == 'nasional') {
+        if($telgUser['level'] == 'nasional') {
 
-            $request = BotController::request('Area/SelectRegional');
-            $questionText = $request->getText()->newLine()
-                ->addItalic('* Anda juga dapat memilih RTU dan Port dengan mengetikkan perintah /cekrtu [Kode RTU], e.g: /cekrtu RTU00-D7-BAL')
-                ->get();
-
-            $request->params->chatId = $chatId;
-            $request->params->text = $questionText;
+            $request = static::request('Area/SelectRegional');
             $request->setData('regionals', Regional::getSnameOrdered());
-            $request->setInKeyboard(function($item, $regional) {
-                $item['callback_data'] = encodeCallbackData('rtu.select_regional', null, $regional['id']);
-                return $item;
-            });
-            return $request->send();
-            
-        }
-        
-        if($user['level'] == 'regional') {
 
-            $request = BotController::request('Area/SelectWitel');
-            $questionText = $request->getText()->newLine()
-                ->addItalic('* Anda juga dapat memilih RTU dan Port dengan mengetikkan perintah /cekrtu [Kode RTU], e.g: /cekrtu RTU00-D7-BAL')
-                ->get();
-
-            $request->params->chatId = $chatId;
-            $request->params->text = $questionText;
-            $request->setData('witels', Witel::getNameOrdered($user['regional_id']));
-            $request->setInKeyboard(function($item, $witel) {
-                $item['callback_data'] = encodeCallbackData(
-                    'rtu.select_witel',
-                    $item['text'],
-                    $witel['id']
-                );
-                return $item;
-            });
-            return $request->send();
-
-        }
-        
-        if($user['level'] == 'witel') {
-
-            $request = BotController::request('Area/SelectLocation');
-            $request->setData('locations', RtuLocation::getSnameOrderedByWitel($user['witel_id']));
             $request->params->chatId = $chatId;
             $request->params->text = $request->getText()->newLine()
-                ->addItalic('* Anda juga dapat memilih RTU dan Port dengan mengetikkan perintah /cekrtu [Kode RTU], e.g: /cekrtu RTU00-D7-BAL')
+                ->addItalic('* Anda juga dapat memilih RTU dan Port dengan mengetikkan perintah')
+                ->addItalic(' /cekrtu [Kode RTU], e.g: /cekrtu RTU00-D7-BAL')
                 ->get();
-            
-            $request->setInKeyboard(function($item, $loc) {
-                $item['callback_data'] = encodeCallbackData(
-                    'rtu.select_loc',
-                    $item['text'],
-                    $loc['id']
-                );
-                return $item;
+
+            $callbackData = new CallbackData('rtu.cekreg');
+            $callbackData->limitAccess($fromId);
+            $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
+                $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+                return $inKeyboardItem;
             });
 
-            $response = $request->send();
-            return $response;
+            return $request->send();
+            
+        }
+        
+        if($telgUser['level'] == 'regional') {
+
+            $request = static::request('Area/SelectWitel');
+            $request->setData('witels', Witel::getNameOrdered($telgUser['regional_id']));
+
+            $request->params->chatId = $chatId;
+            $request->params->text = $request->getText()->newLine()
+                ->addItalic('* Anda juga dapat memilih RTU dan Port dengan mengetikkan perintah')
+                ->addItalic(' /cekrtu [Kode RTU], e.g: /cekrtu RTU00-D7-BAL')
+                ->get();
+
+            $callbackData = new CallbackData('rtu.cekwit');
+            $callbackData->limitAccess($fromId);
+            $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
+                $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+                return $inKeyboardItem;
+            });
+            
+            return $request->send();
 
         }
-
-        return Request::emptyResponse();
-    }
-
-    public static function onSelectRegional($option, $callbackQuery)
-    {
-        $message = $callbackQuery->getMessage();
-        $messageId = $message->getMessageId();
-        $chatId = $message->getChat()->getId();
-
-        $regional = Regional::find($option['value']);
-        $request = BotController::request('TextAnswerSelect', [
-            BotController::request('Area/SelectRegional')->getText()->get(),
-            $regional['name']
-        ]);
-        $request->params->chatId = $chatId;
-        $request->params->messageId = $messageId;
-        $response = $request->send();
-
-        $request = BotController::request('Area/SelectWitel');
-        $request->setData('witels', Witel::getNameOrdered($option['value']));
-        $request->params->chatId = $chatId;
         
-        $request->setInKeyboard(function($item, $witel) {
-            $item['callback_data'] = encodeCallbackData(
-                'rtu.select_witel',
-                $item['text'],
-                $witel['id']
-            );
-            return $item;
+        $request = static::request('Area/SelectLocation');
+        $request->setData('locations', RtuLocation::getSnameOrderedByWitel($telgUser['witel_id']));
+
+        $request->params->chatId = $chatId;
+        $request->params->text = $request->getText()->newLine()
+                ->addItalic('* Anda juga dapat memilih RTU dan Port dengan mengetikkan perintah')
+                ->addItalic(' /cekrtu [Kode RTU], e.g: /cekrtu RTU00-D7-BAL')
+                ->get();
+
+        $callbackData = new CallbackData('rtu.cekloc');
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem, $loc) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($loc['id']);
+            return $inKeyboardItem;
         });
-
-        return $request->send();
-    }
-
-    public static function onSelectWitel($option, $callbackQuery)
-    {
-        $message = $callbackQuery->getMessage();
-        $messageId = $message->getMessageId();
-        $chatId = $message->getChat()->getId();
-
-        $request = BotController::request('TextAnswerSelect', [
-            BotController::request('Area/SelectWitel')->getText()->get(),
-            $option['title']
-        ]);
-        $request->params->chatId = $chatId;
-        $request->params->messageId = $messageId;
-        $response = $request->send();
-
-        $request = BotController::request('Area/SelectLocation');
-        $request->setData('locations', RtuLocation::getSnameOrderedByWitel($option['value']));
-        $request->params->chatId = $chatId;
         
-        $request->setInKeyboard(function($item, $loc) {
-            $item['callback_data'] = encodeCallbackData(
-                'rtu.select_loc',
-                $item['text'],
-                $loc['id']
-            );
-            return $item;
-        });
-
         return $request->send();
     }
 
-    public static function onSelectLocation($option, $callbackQuery)
+    public static function onSelectRegional($regionalId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
-        $messageId = $message->getMessageId();
+        $fromId = $callbackQuery->getFrom()->getId();
         $chatId = $message->getChat()->getId();
+        $messageId = $message->getMessageId();
 
-        $request = BotController::request('TextAnswerSelect', [
-            BotController::request('Area/SelectLocation')->getText()->get(),
-            $option['title']
-        ]);
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+
+        $request = static::request('Area/SelectWitel');
+        $request->setData('witels', Witel::getNameOrdered($regionalId));
         $request->params->chatId = $chatId;
-        $request->params->messageId = $messageId;
-        $response = $request->send();
 
-        $loc = RtuLocation::find($option['value']);
-        $request = BotController::request('Area/SelectRtu');
-
-        $request->params->chatId = $chatId;
-        $request->setData('rtus', RtuList::getSnameOrderedByLocation($loc['id']));
-        $request->setInKeyboard(function($item, $rtu) {
-            $item['callback_data'] = encodeCallbackData(
-                'rtu.select_rtu',
-                $item['text'],
-                $rtu['id']
-            );
-            return $item;
+        $callbackData = new CallbackData('rtu.cekwit');
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+            return $inKeyboardItem;
         });
-
+        
         return $request->send();
     }
 
-    public static function onSelectRtu($option, $callbackQuery)
+    public static function onSelectWitel($witelId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
-        $messageId = $message->getMessageId();
+        $fromId = $callbackQuery->getFrom()->getId();
         $chatId = $message->getChat()->getId();
+        $messageId = $message->getMessageId();
 
-        $request = BotController::request('TextAnswerSelect', [
-            BotController::request('Area/SelectRtu')->getText()->get(),
-            $option['title']
-        ]);
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+
+        $request = static::request('Area/SelectLocation');
+        $request->setData('locations', RtuLocation::getSnameOrderedByWitel($witelId));
         $request->params->chatId = $chatId;
-        $request->params->messageId = $messageId;
-        $request->send();
 
-        $rtu = RtuList::find($option['value']);
+        $callbackData = new CallbackData('rtu.cekloc');
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem, $loc) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($loc['id']);
+            return $inKeyboardItem;
+        });
+        
+        return $request->send();
+    }
+
+    public static function onSelectLocation($locId, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $fromId = $callbackQuery->getFrom()->getId();
+        $chatId = $message->getChat()->getId();
+        $messageId = $message->getMessageId();
+
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+
+        $newosaseApi = new NewosaseApiV2();
+        $newosaseApi->setupAuth();
+        $newosaseApi->request['query'] = [ 'locationId' => $locId ];
+        
+        $osaseData = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
+        if(!$osaseData->get()) {
+            $request = static::request('Error/TextErrorServer');
+            $request->params->chatId = $chatId;
+            return $request->send();
+        }
+        
+        $portList = $osaseData->get('result.payload');
+        if(!is_array($portList)) {
+            $request = static::request('Error/TextErrorNotFound');
+            $request->params->chatId = $chatId;
+            return $request->send();
+        }
+        
+        $rtuSnames = array_reduce($portList, function($list, $port) {
+            if(isset($port->rtu_sname) && !in_array($port->rtu_sname, $list)) {
+                array_push($list, $port->rtu_sname);
+            }
+            return $list;
+        }, []);
+        
+        $request = static::request('Area/SelectRtu');
+        $request->params->chatId = $chatId;
+        $request->setRtus($rtuSnames);
+        
+        $callbackData = new CallbackData('rtu.cekrtu');
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem, $rtuSname) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($rtuSname);
+            return $inKeyboardItem;
+        });
+        
+        return $request->send();
+    }
+
+    public static function onSelectRtu($rtuSname, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $fromId = $callbackQuery->getFrom()->getId();
+        $chatId = $message->getChat()->getId();
+        $messageId = $message->getMessageId();
+
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+
+        $rtu = RtuList::findBySname($rtuSname);
         return RtuController::sendRtuDetail($chatId, $rtu);
     }
 
     public static function sendRtuDetail($chatId, $rtu)
     {
-        $request = BotController::request('Action/Typing');
+        $request = static::request('Action/Typing');
         $request->params->chatId = $chatId;
         $request->send();
 
-        $newosaseApi = new NewosaseApi();
+        $newosaseApi = new NewosaseApiV2();
         $newosaseApi->setupAuth();
-        $data = $newosaseApi->sendRequest('GET', '/dashboard-service/operation/rtu/'.$rtu['id']);
+        $newosaseApi->request['query'] = [ 'locationId' => $locId ];
 
-        if(!$data) {
-            $request = BotController::request('Error/TextErrorServer');
+        $rtuId = $rtu['uuid'] ?? $rtu['id'];
+        $osaseData = $newosaseApi->sendRequest('GET', "/dashboard-service/operation/rtu/$rtuId");
+        if(!$osaseData->get()) {
+            $request = static::request('Error/TextErrorServer');
             $request->params->chatId = $chatId;
             return $request->send();
         }
-
-        if(!isset($data->result) || !$data->result) {
-            $request = BotController::request('Error/TextErrorNotFound');
+        
+        $rtuData = $osaseData->get('result');
+        if(!$rtuData) {
+            $request = static::request('Error/TextErrorNotFound');
             $request->params->chatId = $chatId;
             return $request->send();
         }
@@ -255,21 +256,25 @@ class RtuController extends BotController
         $request->setData('regional', Regional::find($rtu['regional_id']));
         $request->setData('witel', Witel::find($rtu['witel_id']));
         $request->setData('location', RtuLocation::find($rtu['location_id']));
-        $request->setData('rtu', $data->result);
+        $request->setData('rtu', $rtuData);
         $request->params->chatId = $chatId;
         $request->params->text = $request->getText()->get();
         
         $response = $request->send();
-        if(!$response->isOk()) {
+        $rtuLat = $osaseData->get('result.latitude');
+        $rtuLng = $osaseData->get('result.longitude');
+
+        if(!$response->isOk() || !$rtuLat || !$rtuLng) {
             return $response;
         }
 
-        $request = BotController::request('Attachment/MapLocation', [
-            $data->result->latitude,
-            $data->result->longitude
-        ]);
+        $detailMessageId = $response->getResult()->getMessageId();
+
+        $request = BotController::request('Attachment/MapLocation', [ $rtuLat, $rtuLng ]);
         $request->params->chatId = $chatId;
-        $request->params->replyToMessageId = $response->getResult()->getMessageId();
+        if($detailMessageId) {
+            $request->params->replyToMessageId = $detailMessageId;
+        }
         return $request->send();
     }
 }

@@ -18,11 +18,18 @@ class RtuList extends Model
             return $db->query("SELECT * FROM $table");
         });
     }
-    
+
     public static function find($id)
     {
         return RtuList::query(function ($db, $table) use ($id) {
             return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
+        });
+    }
+
+    public static function findByUUID($uuid)
+    {
+        return RtuList::query(function ($db, $table) use ($uuid) {
+            return $db->queryFirstRow("SELECT * FROM $table WHERE uuid=%i", $uuid);
         });
     }
     

@@ -118,6 +118,12 @@ class CallbackqueryCommand extends SystemCommand
                 return $callbackQuery->answer();
             }
 
+            if($methodName = $decCallbackData->isCallbackOf(RtuController::$callbacks)) {
+                RtuController::$command = $this;
+                RtuController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
         }
 
         if($decodedCallbackData) {

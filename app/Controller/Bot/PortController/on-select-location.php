@@ -47,7 +47,3 @@ $request->setInKeyboard(function($inKeyboardItem, $rtuSname) use ($callbackData)
 });
 
 return $request->send();
-
-$request = static::request('Error/TextErrorMaintenance');
-$request->params->chatId = $chatId;
-return $request->send();
