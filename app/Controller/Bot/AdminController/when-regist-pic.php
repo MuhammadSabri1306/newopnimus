@@ -60,8 +60,6 @@ $request->setInKeyboard(function($inlineKeyboardData) use ($registId, $callbackD
 });
 
 foreach($admins as $admin) {
-    if($admin['id'] == 12) {
-        $request->params->chatId = $admin['chat_id'];
-        $response = $request->send();
-    }
+    $request->params->chatId = $admin['chat_id'];
+    $response = $request->send();
 }

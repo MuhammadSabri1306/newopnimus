@@ -37,7 +37,7 @@ class PicController extends BotController
         'pic.update_loc' => 'onUpdateLocation',
         'pic.remove_loc' => 'onRemoveLocation',
         'pic.set_organik' => 'onSelectOrganik',
-        'pic.set_reset' => 'onSetReset',
+        'pic.set_reset' => 'onReset',
     ];
 
     public static function getPicRegistConversation()
@@ -642,32 +642,12 @@ class PicController extends BotController
         return Request::sendMessage($reqData1->build());
     }
 
-    public static function onSetReset($callbackValue, $callbackQuery)
+    public static function onReset($callbackValue, $callbackQuery)
     {
-        $reqData = New RequestData();
-        $message = $callbackQuery->getMessage();
-        $user = $callbackQuery->getUser();
-        $messageId = $message->getMessageId();
-        $chatId = $message->getChat()->getId();
-
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
-        $reqData->messageId = $messageId;
-
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $response = $request->send();
-
-        if($callbackValue != 'continue') {
-            return $response;
-        }
-
-        $telgUser = TelegramUser::findByChatId($reqData->chatId);
-        PicLocation::deleteByUserId($telgUser['id']);
-        TelegramUser::update($telgUser['id'], [ 'is_pic' => 0 ]);
-        
-        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-        $reqData1->text = 'Status PIC anda telah di-reset.';
-        return Request::sendMessage($reqData1->build());
+        return static::callModules('on-reset', [
+            'callbackValue' => $callbackValue,
+            'callbackQuery' => $callbackQuery
+        ]);
     }
 
     private static function sendRegistRequest($chatId)
@@ -751,23 +731,5 @@ class PicController extends BotController
     public static function whenRegistRejected($registId)
     {
         return static::callModules('when-regist-rejected', [ 'registId' => $registId ]);
-
-        if(!$registData) {
-            return Request::emptyResponse();
-        }
-
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $registData['chat_id'];
-
-        $reqData->text = TelegramText::create()
-            ->addBold('Pengajuan PIC ditolak.')->newLine()
-            ->addItalic($registData['updated_at'])->newLine(2)
-            ->addText('Mohon maaf, permintaan anda tidak mendapat persetujuan oleh Admin. ')
-            ->addText('Anda dapat berkoordinasi dengan Admin lokal anda untuk mendapatkan informasi terkait.')->newLine()
-            ->addText('Terima kasih.')
-            ->get();
-
-        return Request::sendMessage($reqData->build());
     }
 }
