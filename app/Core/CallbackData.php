@@ -67,7 +67,7 @@ class CallbackData
 
         $encData = static::encodeData($data);
         if(strlen($encData) > 64) {
-            throw new \Exception('The generated Encoded Data is more than 64 characters and should be minimize.');
+            throw new \Exception("The generated Encoded Data is more than 64 characters and should be minimize:'$encData'");
         }
 
         return $encData;

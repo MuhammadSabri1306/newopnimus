@@ -122,4 +122,9 @@ class BotController extends Controller
         if($response->isOk()) return $response;
         throw new TelegramResponseException($response);
     }
+
+    public static function sendEmptyResponse()
+    {
+        return Request::emptyResponse();
+    }
 }

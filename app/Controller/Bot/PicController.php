@@ -743,22 +743,15 @@ class PicController extends BotController
         return $response;
     }
 
-    public static function whenRegistApproved($telegramUser)
+    public static function whenRegistApproved($registId)
     {
-        if(!$telegramUser) {
-            return Request::emptyResponse();
-        }
-
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $telegramUser['chat_id'];
-        $reqData->text = PicText::getRegistApprovedText($telegramUser)->get();
-
-        return Request::sendMessage($reqData->build());
+        return static::callModules('when-regist-approved', [ 'registId' => $registId ]);
     }
 
-    public static function whenRegistRejected($registData)
+    public static function whenRegistRejected($registId)
     {
+        return static::callModules('when-regist-rejected', [ 'registId' => $registId ]);
+
         if(!$registData) {
             return Request::emptyResponse();
         }

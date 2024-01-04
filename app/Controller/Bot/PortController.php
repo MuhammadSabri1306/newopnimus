@@ -343,7 +343,6 @@ class PortController extends BotController
         $rtuSname = isset($dataArr[0]) ? $dataArr[0] : null;
         $noPort = isset($dataArr[1]) && $dataArr[1] != '0' ? $dataArr[1] : null;
         $portDescr = isset($dataArr[2]) ? $dataArr[2] : null;
-        BotController::sendDebugMessage($callbackData);
 
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;

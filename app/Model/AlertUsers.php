@@ -154,6 +154,15 @@ class AlertUsers extends Model
         return static::query(fn($db) => $db->queryFirstRow($query, $id) ?? null);
     }
 
+    public static function findByAlertId($alertUserId)
+    {
+        $pattern = static::getQueryPattern();
+        $cols = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $cols->alert_user_id=%i";
+        return static::query(fn($db) => $db->queryFirstRow($query, $alertUserId) ?? null);
+    }
+
     public static function findByChatId($chatId)
     {
         $pattern = static::getQueryPattern();
@@ -208,7 +217,7 @@ class AlertUsers extends Model
         return static::query(function ($db, $table) use ($data) {
             $db->insert($table, $data);
             $id = $db->insertId();
-            return $id ? AlertUsers::find($id) : null;
+            return $id ? AlertUsers::findByAlertId($id) : null;
         });
     }
 

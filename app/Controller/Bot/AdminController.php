@@ -27,7 +27,7 @@ class AdminController extends BotController
 {
     public static $callbacks = [
         'admin.user_approval' => 'onUserApproval',
-        'admin.pic_approval' => 'onPicApproval',
+        'admin.picaprv' => 'onPicApproval',
         'admin.alert_exclusion' => 'onAlertExclusionApproval',
         'admin.adminaprv' => 'onAdminApproval',
         'admin.start' => 'onRegistration',
@@ -87,36 +87,7 @@ class AdminController extends BotController
 
     public static function whenRegistPic($registId)
     {
-        $registData = Registration::find($registId);
-        if(!$registData) return null;
-
-        $apprData = AdminController::buildPicApprvData($registData);
-        $admins = TelegramAdmin::getByUserArea($apprData, 'request_level');
-        if(count($admins) < 1) return;
-
-        $request = BotController::request('Registration/SelectAdminPicApproval');
-        $request->setRegistrationData($apprData);
-
-        $regional = Regional::find($apprData['regional_id']);
-        $request->setRegional($regional);
-
-        $witel = Witel::find($apprData['witel_id']);
-        $request->setWitel($witel);
-
-        $locations = RtuLocation::getByIds($apprData['locations']);
-        $request->setLocations($locations);
-
-        $request->buildText();
-        $request->setInKeyboard(function($inlineKeyboardData) use ($registId) {
-            $inlineKeyboardData['approve']['callback_data'] = 'admin.pic_approval.approve:'.$registId;
-            $inlineKeyboardData['reject']['callback_data'] = 'admin.pic_approval.reject:'.$registId;
-            return $inlineKeyboardData;
-        });
-
-        foreach($admins as $admin) {
-            $request->params->chatId = $admin['chat_id'];
-            $request->send();
-        }
+        return static::callModules('when-regist-pic', [ 'registId' => $registId ]);
     }
 
     public static function whenRequestAlertExclusion($registId)
@@ -415,58 +386,10 @@ class AdminController extends BotController
 
     public static function onPicApproval($callbackData, $callbackQuery)
     {
-        $reqData = New RequestData();
-        $message = $callbackQuery->getMessage();
-        $chatId = $message->getChat()->getId();
-        $messageId = $message->getMessageId();
-
-        list($callbackAnswer, $registId) = explode(':', $callbackData);
-        $admin = TelegramAdmin::findByChatId($chatId);
-
-        // $status, $registData
-        extract(AdminController::getRegistData($registId));
-        
-        $reqData = AdminController::getUnavailableApproveText($registData);
-        $reqData->chatId = $chatId;
-        $reqData->messageId = $messageId;
-
-        if($status == 'empty' || $status == 'done') {
-            return Request::editMessageText($reqData->build());
-        }
-
-        $apprData = AdminController::buildPicApprvData($registData);
-        $answerText = $callbackAnswer == 'approve' ? 'Izinkan' : 'Tolak';
-        $questionText = AdminText::getPicApprovalText($apprData)->get();
-        $reqData->text = AdminController::getInKeyboardAnswerText($questionText, $answerText)->get();
-        $response = Request::editMessageText($reqData->build());
-        
-        if(!$response->isOk()) {
-            return $response;
-        }
-
-        if($callbackAnswer == 'approve') {
-
-            Registration::update($registData['id'], [ 'status' => 'approved' ], $admin['id']);
-            $telegramUser = AdminController::saveRegisteringPic($registData);
-            if(!$telegramUser) return $response;
-
-            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = 'Pengajuan PIC telah diizinkan.';
-
-            $response = Request::sendMessage($reqData1->build());
-            PicController::whenRegistApproved($telegramUser);
-            return $response;
-
-        }
-
-        Registration::update($registData['id'], [ 'status' => 'rejected' ], $admin['id']);
-        $registData = Registration::find($registData['id']);
-
-        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-        $reqData1->text = 'Pengajuan PIC telah ditolak.';
-        Request::sendMessage($reqData1->build());
-        
-        return PicController::whenRegistRejected($registData);
+        return static::callModules('on-pic-approval', [
+            'callbackData' => $callbackData,
+            'callbackQuery' => $callbackQuery,
+        ]);
     }
 
     public static function onAlertExclusionApproval($callbackData, $callbackQuery)

@@ -13,7 +13,7 @@ class SelectAdminPicApproval extends TelegramRequest
     {
         parent::__construct();
         $this->params->parseMode = 'markdown';
-        $this->buildText();
+        $this->params->text = $this->getText()->get();
     }
 
     public function getText()
@@ -53,27 +53,34 @@ class SelectAdminPicApproval extends TelegramRequest
 
     public function setRegistrationData($registData)
     {
-        $this->setData('regist_data', $registData);
+        if(is_array($registData)) {
+            $this->setData('regist_data', $registData);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function setRegional($regional)
     {
-        $this->setData('regional', $regional);
+        if(is_array($regional)) {
+            $this->setData('regional', $regional);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function setWitel($witel)
     {
-        $this->setData('witel', $witel);
+        if(is_array($witel)) {
+            $this->setData('witel', $witel);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function setLocations($locations)
     {
-        $this->setData('locations', $locations);
-    }
-
-    public function buildText()
-    {
-        $this->params->text = $this->getText()->get();
+        if(is_array($locations)) {
+            $this->setData('locations', $locations);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function setInKeyboard(callable $callButton)
