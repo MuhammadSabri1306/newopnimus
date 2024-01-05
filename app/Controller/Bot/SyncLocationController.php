@@ -69,7 +69,7 @@ class SyncLocationController extends BotController
         foreach($osaseData->result->locations as $loc) {
             foreach($loc->rtus as $rtu) {
 
-                $matchedRtu = ArrayHelper::find($rtuList, fn($item) => $item['id'] == ($rtu->id ?? null));
+                $matchedRtu = ArrayHelper::find($rtuList, fn($item) => $item['sname'] == ($rtu->sname ?? null));
                 if(!$matchedRtu) {
                     
                     $newRtu = [
@@ -81,7 +81,7 @@ class SyncLocationController extends BotController
                         'witel_id' => $loc->id_witel,
                         'regional_id' => $loc->id_regional
                     ];
-                    if(preg_match('/\D/', $rtu->id)) {
+                    if(RtuList::isUUID($rtu->id)) {
                         $newRtu['uuid'] = $rtu->id;
                     } else {
                         $newRtu['id'] = $rtu->id;
@@ -92,6 +92,14 @@ class SyncLocationController extends BotController
                 } else {
 
                     $rtuUpdate = [];
+
+                    if(RtuList::isUUID($rtu->id) && $matchedRtu['uuid'] != $rtu->id) {
+                        $rtuUpdate['uuid'] = $rtu->id;
+                    } elseif($matchedRtu['id'] != $rtu->id) {
+                        $rtuUpdate['id'] = $rtu->id;
+                        $rtuUpdate['uuid'] = null;
+                    }
+
                     if($matchedRtu['id_m'] != $rtu->id_m_location) $rtuUpdate['id_m'] = $rtu->id_m_location;
                     if($matchedRtu['name'] != $rtu->name) $rtuUpdate['name'] = $rtu->name;
                     if($matchedRtu['sname'] != $rtu->sname) $rtuUpdate['sname'] = $rtu->sname;
@@ -101,7 +109,7 @@ class SyncLocationController extends BotController
                     if($matchedRtu['regional_id'] != $loc->id_regional) $rtuUpdate['regional_id'] = $loc->id_regional;
 
                     if(count($rtuUpdate) > 0) {
-                        // RtuList::update($matchedRtu['id'], $rtuUpdate);
+                        RtuList::update($matchedRtu['id'], $rtuUpdate);
                         $updateCount++;
                     }
 
