@@ -80,52 +80,11 @@ class TelegramUser extends Model
         });
     }
 
-    public static function findAlertWitelGroup($witelId)
+    public function getByIds($ids)
     {
-        return TelegramUser::query(function ($db, $table) use ($witelId) {
-            $group = $db->queryFirstRow("SELECT * FROM $table WHERE alert_status=1 AND type!='private' AND level='witel' AND witel_id=%i", $witelId);
-            return $group ?? null;
-        });
-    }
-
-    public static function findAlertRegionalGroup($regionalId)
-    {
-        return TelegramUser::query(function ($db, $table) use ($regionalId) {
-            $group = $db->queryFirstRow("SELECT * FROM $table WHERE alert_status=1 AND type!='private' AND level='regional' AND regional_id=%i", $regionalId);
-            return $group ?? null;
-        });
-    }
-
-    public static function findAlertNasionalGroup()
-    {
-        return TelegramUser::query(function ($db, $table) {
-            $group = $db->queryFirstRow("SELECT * FROM $table WHERE alert_status=1 AND type!='private' AND level='nasional'");
-            return $group ?? null;
-        });
-    }
-
-    // 
-    public static function getAlertWitelGroup($witelId)
-    {
-        return TelegramUser::query(function ($db, $table) use ($witelId) {
-            $groups = $db->query("SELECT * FROM $table WHERE alert_status=1 AND type!='private' AND level='witel' AND witel_id=%i", $witelId);
-            return $groups ?? [];
-        });
-    }
-
-    public static function getAlertRegionalGroup($regionalId)
-    {
-        return TelegramUser::query(function ($db, $table) use ($regionalId) {
-            $groups = $db->query("SELECT * FROM $table WHERE alert_status=1 AND type!='private' AND level='regional' AND regional_id=%i", $regionalId);
-            return $groups ?? [];
-        });
-    }
-
-    public static function getAlertNasionalGroup()
-    {
-        return TelegramUser::query(function ($db, $table) {
-            $groups = $db->query("SELECT * FROM $table WHERE alert_status=1 AND type!='private' AND level='nasional'");
-            return $groups ?? [];
+        return TelegramUser::query(function ($db, $table) use ($ids) {
+            $data = $db->query("SELECT * FROM $table WHERE id IN %li", $ids);
+            return $data ?? [];
         });
     }
 

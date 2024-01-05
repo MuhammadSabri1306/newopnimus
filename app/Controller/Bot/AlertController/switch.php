@@ -2,6 +2,7 @@
 
 use App\Controller\BotController;
 use App\Model\TelegramUser;
+use App\Model\AlertUsers;
 use App\Model\Regional;
 use App\Model\Witel;
 
@@ -28,10 +29,12 @@ if($telgUser['type'] == 'private' && !$telgUser['is_pic']) {
 
 if($messageText == 'status') {
 
+    $alertUser = AlertUsers::find($telgUser['id']);
+
     $request = BotController::request('TextDefault');
     $request->params->chatId = $chatId;
 
-    if($telgUser['alert_status'] == 1) {
+    if($alertUser['user_alert_status'] == 1) {
         $request->setText(fn($text) => $text->addItalic('Status Alert saat ini sedang ON.'));
     } else {
         $request->setText(fn($text) => $text->addItalic('Status Alert saat ini sedang OFF.'));
@@ -58,11 +61,20 @@ if($alertStatus === null) {
 
     $alertGroup = null;
     if($telgUser['level'] == 'witel') {
-        $alertGroup = TelegramUser::findAlertWitelGroup($telgUser['witel_id']);
+
+        $alertUser = AlertUsers::findPivot($telgUser['level'], $telgUser['witel_id']);
+        $alertGroup = $alertUser ? TelegramUser::find($alertUser['id']) : null;
+
     } elseif($telgUser['level'] == 'regional') {
-        $alertGroup = TelegramUser::findAlertRegionalGroup($telgUser['regional_id']);
+
+        $alertUser = AlertUsers::findPivot($telgUser['level'], $telgUser['regional_id']);
+        $alertGroup = $alertUser ? TelegramUser::find($alertUser['id']) : null;
+
     } elseif($telgUser['level'] == 'nasional') {
-        $alertGroup = TelegramUser::findAlertNasionalGroup();
+        
+        $alertUser = AlertUsers::findPivot($telgUser['level']);
+        $alertGroup = $alertUser ? TelegramUser::find($alertUser['id']) : null;
+
     }
 
     if($alertGroup) {
@@ -88,8 +100,9 @@ if($alertStatus === null) {
 
 }
 
-TelegramUser::update($telgUser['id'], [
-    'alert_status' => $alertStatus
+$alertUser = AlertUsers::find($telgUser['id']);
+AlertUsers::update($alertUser['alert_user_id'], [
+    'user_alert_status' => $alertStatus
 ]);
 
 $request = BotController::request('AlertStatus/TextSwitchSuccess', [ $alertStatus ]);

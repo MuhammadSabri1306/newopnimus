@@ -11,6 +11,7 @@ use App\Model\TelegramUser;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\Registration;
+use App\Model\AlertUsers;
 
 class AlertController extends BotController
 {
@@ -99,11 +100,21 @@ class AlertController extends BotController
         $conversation->done();
 
         if($telgUser['level'] == 'witel') {
-            $alertGroups = TelegramUser::getAlertWitelGroup($telgUser['witel_id']);
+            $alertUsers = AlertUsers::getByLevel('witel', $telgUser['witel_id']);
         } elseif($telgUser['level'] == 'regional') {
-            $alertGroups = TelegramUser::getAlertRegionalGroup($telgUser['regional_id']);
+            $alertUsers = AlertUsers::getByLevel('regional', $telgUser['regional_id']);
         } elseif($telgUser['level'] == 'nasional') {
-            $alertGroups = TelegramUser::getAlertNasionalGroup();
+            $alertUsers = AlertUsers::getByLevel('nasional');
+        }
+
+        $alertGroups = [];
+        if(is_array($alertUsers) && count($alertUsers) > 0) {
+            $alertTelgUsers = TelegramUser::getByIds( array_column($alertUsers, 'id') );
+            foreach($alertTelgUsers as $alertTelgUser) {
+                if(!$alertTelgUser['is_pic']) {
+                    array_push($alertGroups, $alertTelgUser);
+                }
+            }
         }
 
         $registration = Registration::create([

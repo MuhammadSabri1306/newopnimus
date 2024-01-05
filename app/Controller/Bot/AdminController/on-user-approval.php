@@ -79,21 +79,6 @@ if($registUser['type'] != 'private') {
     $dataUser['last_name'] = $registUser['last_name'];
 }
 
-if($registUser['is_pic']) {
-    $dataUser['alert_status'] = 1;
-} elseif($registUser['type'] == 'private') {
-    $dataUser['alert_status'] = 0;
-} elseif($registUser['level'] == 'witel') {
-    $group = TelegramUser::findAlertWitelGroup($registUser['witel_id']);
-    $dataUser['alert_status'] = $group ? 0 : 1;
-} elseif($registUser['level'] == 'regional') {
-    $group = TelegramUser::findAlertRegionalGroup($registUser['regional_id']);
-    $dataUser['alert_status'] = $group ? 0 : 1;
-} elseif($registUser['level'] == 'nasional') {
-    $group = TelegramUser::findAlertNasionalGroup();
-    $dataUser['alert_status'] = $group ? 0 : 1;
-}
-
 $telgUser = TelegramUser::create($dataUser);
 if($registUser['type'] == 'private') {
 
@@ -137,7 +122,6 @@ if($useAlert) {
             $dataAlert['pivot_id'] = $registUser['witel_id'];
         }
     }
-    // static::sendDebugMessage($dataAlert);
 
     AlertUsers::create($dataAlert);
 

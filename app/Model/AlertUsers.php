@@ -145,6 +145,21 @@ class AlertUsers extends Model
         return static::query(fn($db) => $db->query($query) ?? []);
     }
 
+    public static function getByLevel($level, $pivotId = null)
+    {
+        $pattern = static::getQueryPattern();
+        $cols = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $cols->pivot_level=%s_plevel";
+        $params = [ 'plevel' => $level ];
+        if($pivotId) {
+            $query .= " AND $cols->pivot_id=%i_pid";
+            $params['pid'] = $pivotId;
+        }
+
+        return static::query(fn($db) => $db->query($query, $params) ?? null);
+    }
+
     public static function find($id)
     {
         $pattern = static::getQueryPattern();
@@ -170,6 +185,21 @@ class AlertUsers extends Model
 
         $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $cols->chat_id=%s";
         return static::query(fn($db) => $db->queryFirstRow($query, $chatId) ?? null);
+    }
+
+    public static function findPivot($level, $pivotId = null)
+    {
+        $pattern = static::getQueryPattern();
+        $cols = $pattern->collumns;
+
+        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $cols->is_pivot_group=%i_isp AND $cols->pivot_level=%s_plevel";
+        $params = [ 'isp' => 1,  'plevel' => $level ];
+        if($pivotId) {
+            $query .= " AND $cols->pivot_id=%i_pid";
+            $params['pid'] = $pivotId;
+        }
+
+        return static::query(fn($db) => $db->queryFirstRow($query, $params) ?? null);
     }
 
     public static function chatIdExists($chatId)
@@ -219,21 +249,6 @@ class AlertUsers extends Model
             $id = $db->insertId();
             return $id ? AlertUsers::findByAlertId($id) : null;
         });
-    }
-
-    public static function findPivot($level, $pivotId = null)
-    {
-        $pattern = static::getQueryPattern();
-        $cols = $pattern->collumns;
-
-        $query = "SELECT $pattern->collumnsQuery FROM $pattern->tableQuery WHERE $cols->pivot_level=%s_plevel";
-        $params = [ 'plevel' => $level ];
-        if($pivotId) {
-            $query .= " AND $cols->pivot_id=%i_pid";
-            $params['pid'] = $pivotId;
-        }
-
-        return static::query(fn($db) => $db->queryFirstRow($query, $params) ?? null);
     }
 
     public static function deleteByUserId($userId)

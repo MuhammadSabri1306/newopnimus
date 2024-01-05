@@ -19,6 +19,7 @@ use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\RtuLocation;
 use App\Model\PicLocation;
+use App\Model\AlertUsers;
 use App\BuiltMessageText\AdminText;
 use App\Core\CallbackData;
 
@@ -266,116 +267,6 @@ class AdminController extends BotController
         return $reqData;
     }
 
-    public static function saveRegisteringUser($registData)
-    {
-        $dataUser = [];
-        $dataPersonal = [];
-        $registUser = $registData['data'];
-
-        $dataUser['chat_id'] = $registData['chat_id'];
-        $dataUser['user_id'] = $registData['user_id'];
-        $dataUser['username'] = $registUser['username'];
-        $dataUser['type'] = $registUser['type'];
-        $dataUser['level'] = $registUser['level'];
-        $dataUser['regist_id'] = $registData['id'];
-        
-        if($registUser['level'] == 'regional' || $registUser['level'] == 'witel') {
-            $dataUser['regional_id'] = $registUser['regional_id'];
-        }
-
-        if($registUser['level'] == 'witel') {
-            $dataUser['witel_id'] = $registUser['witel_id'];
-        }
-
-        if($registUser['type'] != 'private') {
-            $dataUser['group_description'] = $registUser['group_description'];
-        } else {
-            $dataUser['first_name'] = $registUser['first_name'];
-            $dataUser['last_name'] = $registUser['last_name'];
-        }
-
-        if($registUser['is_pic']) {
-            $dataUser['alert_status'] = 1;
-        } elseif($registUser['type'] == 'private') {
-            $dataUser['alert_status'] = 0;
-        } elseif($registUser['level'] == 'witel') {
-            $group = TelegramUser::findAlertWitelGroup($registUser['witel_id']);
-            $dataUser['alert_status'] = $group ? 0 : 1;
-        } elseif($registUser['level'] == 'regional') {
-            $group = TelegramUser::findAlertRegionalGroup($registUser['regional_id']);
-            $dataUser['alert_status'] = $group ? 0 : 1;
-        } elseif($registUser['level'] == 'nasional') {
-            $group = TelegramUser::findAlertNasionalGroup();
-            $dataUser['alert_status'] = $group ? 0 : 1;
-        }
-
-        $telegramUser = TelegramUser::create($dataUser);
-        if($registUser['type'] != 'private') {
-            return $telegramUser;
-        }
-        
-        $dataPersonal['user_id'] = $telegramUser['id'];
-        $dataPersonal['nama'] = $registUser['full_name'];
-        $dataPersonal['telp'] = $registUser['telp'];
-        $dataPersonal['instansi'] = $registUser['instansi'];
-        $dataPersonal['unit'] = $registUser['unit'];
-        $dataPersonal['is_organik'] = $registUser['is_organik'] ? 1 : 0;
-        $dataPersonal['nik'] = $registUser['nik'];
-
-        $personalUser = TelegramPersonalUser::create($dataPersonal);
-        return $personalUser ? $telegramUser : null;
-    }
-
-    public static function saveRegisteringPic($registration)
-    {
-        $dataUser = [];
-        $dataPersonal = [];
-        $registData = $registration['data'];
-        $registration['data']['is_pic'] = 1;
-
-        if(!$registData['has_regist']) {
-            $telegramUser = AdminController::saveRegisteringUser($registration);
-        } else {
-            $telegramUser = TelegramUser::find($registData['telegram_user_id']);
-            if($telegramUser) {
-                TelegramUser::update($telegramUser['id'], [
-                    'is_pic' => 1,
-                    'pic_regist_id' => $registration['id']
-                ]);
-            }
-        }
-
-        if(!$telegramUser) return null;
-
-        $savedLocs = PicLocation::getByUser($telegramUser['id']);
-        $savedLocIds = array_column($savedLocs, 'location_id');
-        $requestLocIds = $registData['locations'];
-
-        // create and update pic location
-        foreach($requestLocIds as $locationId) {
-            if(!in_array($locationId, $savedLocIds)) {
-                PicLocation::create([
-                    'regist_id' => $registration['id'],
-                    'user_id' => $telegramUser['id'],
-                    'location_id' => $locationId,
-                ]);
-            } else {
-                PicLocation::update($locationId, [
-                    'regist_id' => $registration['id']
-                ]);
-            }
-        }
-
-        // remove pic location
-        foreach($savedLocs as $savedLocItem) {
-            if(!in_array($savedLocItem['location_id'], $requestLocIds)) {
-                PicLocation::delete($savedLocItem['id']);
-            }
-        }
-
-        return TelegramUser::find($telegramUser['id']);
-    }
-
     public static function onUserApproval($callbackData, $callbackQuery)
     {
         return static::callModules('on-user-approval', [
@@ -452,11 +343,12 @@ class AdminController extends BotController
         Registration::update($registration['id'], [ 'status' => 'approved' ], $admin['id']);
         
         $telgUserId = $registration['data']['request_group']['id'];
-        TelegramUser::update($telgUserId, [ 'alert_status' => 1 ]);
-        
-        $telgUser = TelegramUser::find($telgUserId);
-        if(!$telgUser || $telgUser['alert_status'] != 1) {
-            throw new \Exception('Data telegram_user.alert_status is not updated, id:'.$telgUserId);
+        $alertUser = AlertUsers::find($telgUserId);
+        AlertUsers::update($alertUser['alert_user_id'], [ 'user_alert_status' => 1 ]);
+
+        $alertUser = AlertUsers::find($telgUserId);
+        if(!$alertUser || $alertUser['user_alert_status'] != 1) {
+            throw new \Exception('Data alert_users.user_alert_status is not updated, alert_user_id:'.$telgUserId);
         }
 
         $request = BotController::request('TextDefault');
