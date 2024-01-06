@@ -48,8 +48,6 @@ $request->setLocations($locations);
 
 $callbackData = new CallbackData('admin.picaprv');
 $request->setInKeyboard(function($inlineKeyboardData) use ($registId, $callbackData) {
-    // $inlineKeyboardData['approve']['callback_data'] = 'admin.picaprv.approve:'.$registId;
-    // $inlineKeyboardData['reject']['callback_data'] = 'admin.picaprv.reject:'.$registId;
     $inlineKeyboardData['approve']['callback_data'] = $callbackData->createEncodedData([
         'i' => $registId, 'a' => 1
     ]);

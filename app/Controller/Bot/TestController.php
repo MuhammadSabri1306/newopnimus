@@ -19,10 +19,14 @@ use App\Controller\BotController;
 use App\Controller\Bot\AdminController;
 use App\Controller\Bot\UserController;
 use App\ApiRequest\NewosaseApi;
+
+use App\Model\TelegramAdmin;
 use App\Model\TelegramUser;
+use App\Model\TelegramPersonalUser;
 use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
+use App\Model\RtuLocation;
 
 class TestController extends BotController
 {
@@ -47,6 +51,7 @@ class TestController extends BotController
             case 'registapproved': return TestController::whenRegistApproved(...$params); break;
             case 'userapprovedtext': return TestController::userApprovedText(...$params); break;
             case 'whenregistuser': return TestController::whenRegistUser(...$params); break;
+            case 'whenregistpic': return TestController::whenRegistPic(...$params); break;
             default: return TestController::$command->replyToChat('This is TEST Command.');
         }
     }
@@ -393,5 +398,65 @@ class TestController extends BotController
 
         $request->params->chatId = \App\Config\AppConfig::$DEV_CHAT_ID;;
         return $request->send();
+    }
+
+    public static function whenRegistPic($registId)
+    {
+        $regist = Registration::find($registId);
+        if(!$regist) return null;
+
+        $pic = $regist['data'];
+        $pic['request_level'] = 'pic';
+        if($pic['has_regist']) {
+
+            $telgUser = TelegramUser::find($pic['telegram_user_id']);
+            $telgPersUser = TelegramPersonalUser::findByUserId($pic['telegram_user_id']);
+
+            $pic['full_name'] = $telgPersUser['nama'];
+            $pic['telp'] = $telgPersUser['telp'];
+            $pic['level'] = $telgUser['level'];
+            $pic['nik'] = $telgPersUser['nik'];
+            $pic['is_organik'] = $telgPersUser['is_organik'];
+            $pic['instansi'] = $telgPersUser['instansi'];
+            $pic['unit'] = $telgPersUser['unit'];
+            $pic['regional_id'] = $telgUser['regional_id'];
+            $pic['witel_id'] = $telgUser['witel_id'];
+
+        }
+
+        $admins = TelegramAdmin::getByUserArea($pic, 'request_level');
+        if(count($admins) < 1) return;
+
+        $request = static::request('Registration/SelectAdminPicApproval');
+        $request->setRegistrationData($pic);
+
+        $regional = Regional::find($pic['regional_id']);
+        $request->setRegional($regional);
+
+        $witel = Witel::find($pic['witel_id']);
+        $request->setWitel($witel);
+
+        $locations = RtuLocation::getByIds($pic['locations']);
+        $request->setLocations($locations);
+
+        $callbackData = new CallbackData('admin.picaprv');
+        $request->setInKeyboard(function($inlineKeyboardData) use ($registId, $callbackData) {
+            $inlineKeyboardData['approve']['callback_data'] = $callbackData->createEncodedData([
+                'i' => $registId, 'a' => 1
+            ]);
+            $inlineKeyboardData['reject']['callback_data'] = $callbackData->createEncodedData([
+                'i' => $registId, 'a' => 0
+            ]);
+            return $inlineKeyboardData;
+        });
+
+        foreach($admins as $admin) {
+            if($admin['chat_id'] == \App\Config\AppConfig::$DEV_CHAT_ID) {
+                $request->params->chatId = $admin['chat_id'];
+                $request->send();
+            }
+        }
+
+        return static::sendEmptyResponse();
     }
 }
