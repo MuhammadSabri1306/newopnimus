@@ -3,7 +3,6 @@
 use App\Core\CallbackData;
 use App\ApiRequest\NewosaseApiV2;
 use App\Model\Witel;
-use App\Model\RtuList;
 use App\Model\AlarmPortStatus;
 
 $message = $callbackQuery->getMessage();

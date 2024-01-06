@@ -5,8 +5,6 @@ use App\Model\TelegramUser;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\RtuLocation;
-use App\Model\PicLocation;
-use App\Model\RtuList;
 
 $message = static::$command->getMessage();
 $chatId = $message->getChat()->getId();

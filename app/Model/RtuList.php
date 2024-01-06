@@ -59,14 +59,8 @@ class RtuList extends Model
 
     public static function update($id, array $data)
     {
-        if(static::isUUID($id)) {
-            return RtuList::query(function ($db, $table) use ($id, $data) {
-                return $db->update($table, $data, "uuid=%s", $id);
-            });
-        } else {
-            return RtuList::query(function ($db, $table) use ($id, $data) {
-                return $db->update($table, $data, "id=%i", $id);
-            });
-        }
+        return RtuList::query(function ($db, $table) use ($id, $data) {
+            return $db->update($table, $data, "id=%i", $id);
+        });
     }
 }

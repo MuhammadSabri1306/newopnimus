@@ -28,3 +28,34 @@ function dd_json($var, ...$vars) {
     echo json_encode([$var, ...$vars], JSON_INVALID_UTF8_IGNORE);
     die();
 }
+
+function debugError($err, $exit = true) {
+    echo '<style>';
+    echo 'pre { background-color: #f6f8fa; padding: 10px; }';
+    echo 'strong { color: #e91e63; }';
+    echo '</style>';
+
+    while($err) {
+
+        $text = $err->getMessage() . ' in ' . $err->getFile() . ':' . $err->getLine();
+        ?><pre><?=$text?></pre><?php
+        $err = $err->getPrevious();
+
+    }
+
+    if($exit) {
+        die();
+    }
+}
+
+function readErrorStack($err) {
+    $errStack = [];
+    while($err) {
+
+        $text = $err->getMessage() . ' in ' . $err->getFile() . ':' . $err->getLine();
+        array_push($errStack, $text);
+        $err = $err->getPrevious();
+
+    }
+    return $errStack;
+}

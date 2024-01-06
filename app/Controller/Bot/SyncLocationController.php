@@ -47,83 +47,55 @@ class SyncLocationController extends BotController
         $message = static::$command->getMessage();
         $chatId = $message->getChat()->getId();
 
-        $newosaseApi = new NewosaseApi();
+        $newosaseApi = new NewosaseApiV2();
         $newosaseApi->setupAuth();
         $osaseData = $newosaseApi->sendRequest('GET', '/admin-service/locations');
-
-        if(!$osaseData) {
-            $request = BotController::request('Error/TextErrorServer');
-            $request->params->chatId = $chatId;
-            return $request->send();
+        $locationList = $osaseData->get('result.locations');
+        if(!$locationList) {
+            dd('$osaseData->result->locations is empty', $locationList);
         }
 
-        if(!isset($osaseData->result->locations) || !is_array($osaseData->result->locations)) {
-            $request = BotController::request('Error/TextErrorNotFound');
-            $request->params->chatId = $chatId;
-            return $request->send();
-        }
-
-        $rtuList = RtuList::getAll();
-        $pushCount = 0;
-        $updateCount = 0;
-        foreach($osaseData->result->locations as $loc) {
+        $rtuData = [];
+        $currDate = date('Y-m-d H:i:s');
+        foreach($locationList as $loc) {
             foreach($loc->rtus as $rtu) {
 
-                $matchedRtu = ArrayHelper::find($rtuList, fn($item) => $item['sname'] == ($rtu->sname ?? null));
-                if(!$matchedRtu) {
-                    
-                    $newRtu = [
-                        'id_m' => $rtu->id_m_location,
-                        'name' => $rtu->name,
-                        'sname' => $rtu->sname,
-                        'location_id' => $loc->id,
-                        'datel_id' => $loc->id_datel,
-                        'witel_id' => $loc->id_witel,
-                        'regional_id' => $loc->id_regional
-                    ];
-                    if(RtuList::isUUID($rtu->id)) {
-                        $newRtu['uuid'] = $rtu->id;
-                    } else {
-                        $newRtu['id'] = $rtu->id;
-                    }
-                    RtuList::create($newRtu);
-                    $pushCount++;
+                $newRtu = [
+                    'uuid' => $rtu->id,
+                    'id_m' => $rtu->id_m_location,
+                    'name' => $rtu->name,
+                    'sname' => $rtu->sname,
+                    'location_id' => $loc->id,
+                    'datel_id' => $loc->id_datel,
+                    'witel_id' => $loc->id_witel,
+                    'regional_id' => $loc->id_regional,
+                    'timestamp' => $currDate
+                ];
 
-                } else {
-
-                    $rtuUpdate = [];
-
-                    if(RtuList::isUUID($rtu->id) && $matchedRtu['uuid'] != $rtu->id) {
-                        $rtuUpdate['uuid'] = $rtu->id;
-                    } elseif($matchedRtu['id'] != $rtu->id) {
-                        $rtuUpdate['id'] = $rtu->id;
-                        $rtuUpdate['uuid'] = null;
-                    }
-
-                    if($matchedRtu['id_m'] != $rtu->id_m_location) $rtuUpdate['id_m'] = $rtu->id_m_location;
-                    if($matchedRtu['name'] != $rtu->name) $rtuUpdate['name'] = $rtu->name;
-                    if($matchedRtu['sname'] != $rtu->sname) $rtuUpdate['sname'] = $rtu->sname;
-                    if($matchedRtu['location_id'] != $loc->id) $rtuUpdate['location_id'] = $loc->id;
-                    if($matchedRtu['datel_id'] != $loc->id_datel) $rtuUpdate['datel_id'] = $loc->id_datel;
-                    if($matchedRtu['witel_id'] != $loc->id_witel) $rtuUpdate['witel_id'] = $loc->id_witel;
-                    if($matchedRtu['regional_id'] != $loc->id_regional) $rtuUpdate['regional_id'] = $loc->id_regional;
-
-                    if(count($rtuUpdate) > 0) {
-                        RtuList::update($matchedRtu['id'], $rtuUpdate);
-                        $updateCount++;
-                    }
-
-                }
+                array_push($rtuData, $newRtu);
 
             }
         }
 
+        $rtuCount = count($rtuData);
+        if($rtuCount > 0) {
+            RtuList::query(function($db, $table) use ($rtuData) {
+    
+                $db->query("TRUNCATE TABLE $table");
+                $db->insert($table, $rtuData);
+    
+            });
+        }
+
         $request = BotController::request('TextDefault');
         $request->params->chatId = $chatId;
-        $request->setText(function($text) use ($pushCount, $updateCount) {
-            return $text->addText('Data RTU telah disinkronisasi dengan API New Osase.')
-                ->newLine()->addSpace(4)->addItalic("Total RTU baru     : $pushCount")
-                ->newLine()->addSpace(4)->addItalic("Total RTU diupdate : $updateCount");
+        $request->setText(function($text) use ($rtuCount) {
+            if($rtuCount > 0) {
+                return $text->addText('Data RTU telah disinkronisasi dengan API New Osase.')
+                    ->newLine()->addSpace(4)->addItalic("Total RTU : $rtuCount");
+            } else {
+                return $text->addText('Gagal melakukan sinkronisasi RTU.');
+            }
         });
         return $request->send();
     }
