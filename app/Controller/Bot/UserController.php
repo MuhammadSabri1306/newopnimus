@@ -699,7 +699,7 @@ class UserController extends BotController
 
     public static function whenRegistApproved($registId)
     {   
-        return static::callModules('on-user-approval', [ 'registId' => $registId ]);
+        return static::callModules('when-regist-approved', [ 'registId' => $registId ]);
     }
 
     public static function whenRegistRejected($registId)

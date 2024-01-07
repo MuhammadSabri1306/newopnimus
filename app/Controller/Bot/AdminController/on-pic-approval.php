@@ -5,7 +5,10 @@ use App\Model\TelegramAdmin;
 use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
 use App\Model\AlertUsers;
+use App\Model\Regional;
+use App\Model\Witel;
 use App\Model\PicLocation;
+use App\Model\RtuLocation;
 use App\Controller\Bot\PicController;
 
 $message = $callbackQuery->getMessage();
@@ -27,12 +30,35 @@ if(!$regist) {
 
 }
 
+$pic = $regist['data'];
+$pic['request_level'] = 'pic';
+if($pic['has_regist']) {
+    $telgUser = TelegramUser::find($pic['telegram_user_id']);
+    $telgPersUser = TelegramPersonalUser::findByUserId($pic['telegram_user_id']);
+    $pic['full_name'] = $telgPersUser['nama'];
+    $pic['telp'] = $telgPersUser['telp'];
+    $pic['level'] = $telgUser['level'];
+    $pic['nik'] = $telgPersUser['nik'];
+    $pic['is_organik'] = $telgPersUser['is_organik'];
+    $pic['instansi'] = $telgPersUser['instansi'];
+    $pic['unit'] = $telgPersUser['unit'];
+    $pic['regional_id'] = $telgUser['regional_id'];
+    $pic['witel_id'] = $telgUser['witel_id'];
+}
+$prevRequest = static::request('Registration/SelectAdminPicApproval');
+$prevRequest->setRegistrationData($pic);
+$prevRequest->setRegional( Regional::find($pic['regional_id']) );
+$prevRequest->setWitel( Witel::find($pic['witel_id']) );
+$prevRequest->setLocations( RtuLocation::getByIds($pic['locations']) );
+$prevRequestText = $prevRequest->params->text;
+
 if($regist['status'] != 'unprocessed') {
 
     $request = static::request('Registration/TextDoneReviewed');
     $request->params->chatId = $chatId;
     $request->setStatusText( $regist['status'] == 'approved' ? 'disetujui' : 'ditolak' );
     $request->setAdminData( TelegramAdmin::find($regist['updated_by']) );
+    $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
     return $request->send();
 
 }
@@ -44,7 +70,7 @@ if(!$isApproved) {
 
     $request = static::request('TextDefault');
     $request->params->chatId = $chatId;
-    $request->setText(fn($text) => $text->addText('Pengajuan PIC telah ditolak.'));
+    $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Pengajuan PIC telah ditolak.'));
     $response = $request->send();
 
     PicController::whenRegistRejected($regist['id']);
@@ -149,7 +175,7 @@ foreach($savedLocs as $savedLocItem) {
 
 $request = static::request('TextDefault');
 $request->params->chatId = $chatId;
-$request->setText(fn($text) => $text->addText('Pengajuan PIC telah diizinkan.'));
+$request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Pengajuan PIC telah diizinkan.'));
 $response = $request->send();
 
 PicController::whenRegistApproved($regist['id']);

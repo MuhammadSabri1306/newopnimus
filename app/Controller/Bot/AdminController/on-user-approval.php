@@ -27,12 +27,25 @@ if(!$regist) {
 
 }
 
+$prevRequest = static::request('Registration/SelectAdminApproval');
+$prevRequest->setRegistrationData($regist);
+if(in_array($regist['data']['level'], [ 'regional', 'witel' ])) {
+    $regional = Regional::find($regist['data']['regional_id']);
+    $prevRequest->setRegional($regional);
+}
+if($regist['data']['level'] == 'witel') {
+    $witel = Witel::find($regist['data']['witel_id']);
+    $prevRequest->setWitel($witel);
+}
+$prevRequestText = $prevRequest->params->text;
+
 if($regist['status'] != 'unprocessed') {
 
     $request = static::request('Registration/TextDoneReviewed');
     $request->params->chatId = $chatId;
     $request->setStatusText( $regist['status'] == 'approved' ? 'disetujui' : 'ditolak' );
     $request->setAdminData( TelegramAdmin::find($regist['updated_by']) );
+    $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
     return $request->send();
 
 }
@@ -44,7 +57,7 @@ if($callbackAnswer != 'approve') {
 
     $request = static::request('TextDefault');
     $request->params->chatId = $chatId;
-    $request->setText(fn($text) => $text->addText('Permohonan registrasi telah ditolak.'));
+    $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Permohonan registrasi telah ditolak.'));
     $response = $request->send();
 
     UserController::whenRegistRejected($regist['id']);
@@ -129,7 +142,7 @@ if($useAlert) {
 
 $request = static::request('TextDefault');
 $request->params->chatId = $chatId;
-$request->setText(fn($text) => $text->addText('Akses telah diizinkan.'));
+$request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Akses telah diizinkan.'));
 $response = $request->send();
 
 UserController::whenRegistApproved($regist['id']);
