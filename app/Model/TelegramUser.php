@@ -80,7 +80,7 @@ class TelegramUser extends Model
         });
     }
 
-    public function getByIds($ids)
+    public static function getByIds($ids)
     {
         return TelegramUser::query(function ($db, $table) use ($ids) {
             $data = $db->query("SELECT * FROM $table WHERE id IN %li", $ids);

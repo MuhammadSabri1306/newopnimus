@@ -101,9 +101,18 @@ if($alertStatus === null) {
 }
 
 $alertUser = AlertUsers::find($telgUser['id']);
-AlertUsers::update($alertUser['alert_user_id'], [
-    'user_alert_status' => $alertStatus
-]);
+if($alertStatus == 0 && !$telgUser['is_pic'] && !$alertUser['is_pivot_group']) {
+
+    AlertUsers::deleteByUserId($alertUser['id']);
+
+} else {
+
+    AlertUsers::update($alertUser['alert_user_id'], [
+        'user_alert_status' => $alertStatus
+    ]);
+
+}
+
 
 $request = BotController::request('AlertStatus/TextSwitchSuccess', [ $alertStatus ]);
 $request->params->chatId = $chatId;

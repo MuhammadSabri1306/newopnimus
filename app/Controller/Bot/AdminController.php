@@ -94,8 +94,8 @@ class AdminController extends BotController
     public static function whenRequestAlertExclusion($registId)
     {
         $registration = Registration::find($registId);
-        // $admins = TelegramAdmin::getSuperAdmin();
-        $admins = [TelegramAdmin::findByChatId('1931357638')];
+        $admins = TelegramAdmin::getSuperAdmin();
+        // $admins = [TelegramAdmin::findByChatId('1931357638')];
         if(!$registration || count($admins) < 1) {
             return;
         }
@@ -292,6 +292,7 @@ class AdminController extends BotController
 
         list($callbackAnswer, $registId) = explode(':', $callbackData);
         $registration = Registration::find($registId);
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         if(!$registration) {
 
@@ -302,6 +303,17 @@ class AdminController extends BotController
 
         }
 
+        $prevRequest = static::request('AlertStatus/SelectAdminExclusionApproval');
+        $prevRequest->setRegistrationData($registration);
+        if(in_array($registration['data']['request_group']['level'], [ 'regional', 'witel' ])) {
+            $regional = Regional::find($registration['data']['request_group']['regional_id']);
+            $prevRequest->setRegional($regional);
+        }
+        if($registration['data']['request_group']['level'] == 'witel') {
+            $witel = Witel::find($registration['data']['request_group']['witel_id']);
+            $prevRequest->setWitel($witel);
+        }
+
         if($registration['status'] != 'unprocessed') {
 
             $registStatus = Registration::getStatus($registration['id']);
@@ -310,28 +322,19 @@ class AdminController extends BotController
             $request->setAdminData($registStatus['updated_by']);
             $request->params->chatId = $chatId;
             $request->params->messageId = $messageId;
+            $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
             return $request->sendUpdate();
 
         }
 
-        $request = BotController::request('TextAnswerSelect', [
-            $messageText,
-            $callbackAnswer == 'approve' ? 'Izinkan' : 'Tolak'
-        ]);
-        $request->params->chatId = $chatId;
-        $request->params->messageId = $messageId;
-        $response = $request->send();
-        if(!$response->isOk()) {
-            return $response;
-        }
-
         $admin = TelegramAdmin::findByChatId($chatId);
+        $prevRequestText = $prevRequest->getText()->get();
 
         if($callbackAnswer != 'approve') {
 
             Registration::update($registration['id'], [ 'status' => 'rejected' ], $admin['id']);
             $request = BotController::request('TextDefault');
-            $request->setText(fn($text) => $text->addText('Permintaan')->addBold(' Penambahan Alerting ')->addText('ditolak.'));
+            $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Permintaan')->addBold(' Penambahan Alerting ')->addText('ditolak.'));
             $request->params->chatId = $chatId;
             $response = $request->send();
 
@@ -344,15 +347,30 @@ class AdminController extends BotController
         
         $telgUserId = $registration['data']['request_group']['id'];
         $alertUser = AlertUsers::find($telgUserId);
-        AlertUsers::update($alertUser['alert_user_id'], [ 'user_alert_status' => 1 ]);
+        if($alertUser) {
 
-        $alertUser = AlertUsers::find($telgUserId);
+            $alertUser = AlertUsers::update($alertUser['alert_user_id'], [
+                'user_alert_status' => 1
+            ]);
+
+        } else {
+            
+            $alertUser = AlertUsers::create([
+                'id' => $telgUserId,
+                'mode_id' => 1,
+                'cron_alert_status' => 1,
+                'user_alert_status' => 1,
+                'is_pivot_group' => 0
+            ]);
+
+        }
+
         if(!$alertUser || $alertUser['user_alert_status'] != 1) {
             throw new \Exception('Data alert_users.user_alert_status is not updated, alert_user_id:'.$telgUserId);
         }
 
         $request = BotController::request('TextDefault');
-        $request->setText(fn($text) => $text->addText('Pengajuan')->addBold(' Penambahan Alerting ')->addText('disetujui.'));
+        $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Pengajuan')->addBold(' Penambahan Alerting ')->addText('disetujui.'));
         $request->params->chatId = $chatId;
         $response = $request->send();
 

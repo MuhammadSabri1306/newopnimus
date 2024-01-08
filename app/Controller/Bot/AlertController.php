@@ -147,16 +147,14 @@ class AlertController extends BotController
         $chatId = $message->getChat()->getId();
         $userId = $callbackQuery->getFrom()->getId();
 
-        $request = BotController::request('TextAnswerSelect', [
-            $messageText,
-            $answer == 'continue' ? 'Lanjutkan' : 'Pengajuan dibatalkan.'
-        ]);
-        $request->params->chatId = $chatId;
-        $request->params->messageId = $messageId;
-        $response = $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         if($answer != 'continue') {
-            return $response;
+
+            $request = static::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Pengajuan dibatalkan.'));
+            return $request->send();
         }
 
         $conversation = AlertController::getAlertExclusionConversation();
