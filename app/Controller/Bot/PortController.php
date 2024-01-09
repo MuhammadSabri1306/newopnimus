@@ -7,6 +7,7 @@ use Longman\TelegramBot\ChatAction;
 use Goat1000\SVGGraph\SVGGraph;
 
 use App\Core\RequestData;
+use App\Core\Conversation;
 use App\Core\CallbackData;
 use App\BuiltMessageText\UserText;
 use App\BuiltMessageText\PortText;
@@ -33,6 +34,23 @@ class PortController extends BotController
         'portlog.loc' => 'onSelectLocationLog',
         'portlog.rtu' => 'onSelectRtuLog',
     ];
+
+    public static function getCekPortAllConversation()
+    {
+        if($command = PortController::$command) {
+            if($command->getMessage()) {
+                $chatId = PortController::$command->getMessage()->getChat()->getId();
+                $userId = PortController::$command->getMessage()->getFrom()->getId();
+                return new Conversation('cekportall', $userId, $chatId);
+            } elseif($command->getCallbackQuery()) {
+                $chatId = PortController::$command->getCallbackQuery()->getMessage()->getChat()->getId();
+                $userId = PortController::$command->getCallbackQuery()->getFrom()->getId();
+                return new Conversation('cekportall', $userId, $chatId);
+            }
+        }
+
+        return null;
+    }
 
     public static function checkPort()
     {
@@ -122,9 +140,39 @@ class PortController extends BotController
                 return Request::sendMessage($reqData->build());
             }
             
-            $btnPortRequest = PortController::getBtnPortList($rtuSname, $ports, $userChatId);
-            $btnPortRequest->chatId = $reqData->chatId;
-            return Request::sendMessage($btnPortRequest->build());
+            $btnPortRequests = PortController::getBtnPortList($rtuSname, $ports, $userChatId);
+            if(count($btnPortRequests) < 1) {
+                return Request::emptyResponse();
+            }
+
+            $sendedMsgIds = [];
+            for($i=0; $i<count($btnPortRequests); $i++) {
+
+                $btnPortRequests[$i]->chatId = $reqData->chatId;
+                $response = Request::sendMessage($btnPortRequests[$i]->build());
+                if(!$response->isOk()) {
+                    $i = count($btnPortRequests);
+                } else {
+                    array_push($sendedMsgIds, $response->getResult()->getMessageId());
+                }
+    
+            }
+
+            if(count($sendedMsgIds) < 1) return $response;
+
+            $conversation = new Conversation('cekportall', $userChatId, $chatId, [
+                'call' => function($db, $params) {
+                    return $db->queryFirstRow(
+                        "SELECT * FROM conversation WHERE status='active' AND name=%s_name AND user_id=%i_userid",
+                        [ 'name' => $params['name'], 'userid' => $params['userId'] ]
+                    );
+                }
+            ]);
+            if(!$conversation->isExists()) $conversation->create();
+            $conversation->messageIds = $sendedMsgIds;
+            $conversation->commit();
+
+            return $response;
 
         }
 
@@ -189,53 +237,91 @@ class PortController extends BotController
     public static function getBtnPortList($rtuSname, $portsData, $userChatId)
     {
         $callbackData = new CallbackData('port.port');
-        $ports = array_map(function($port) use ($rtuSname, $userChatId, $callbackData) {
+        $inKeyboard = []; $index = 0; $itemCount = 0;
 
-            $portData = [];
-            array_push($portData, $rtuSname);
-            if($port->result_type == 'port') {
-
-                array_push($portData, $port->no_port);
-                $callbackData->limitAccess($userChatId);
-
-            } else {
-
-                array_push($portData, '0');
-                array_push($portData, $port->description);
-                $callbackData->resetAccess();
-
-            }
-
-            $portData = implode(':', $portData);
-            return [
-                'text' => $port->no_port,
-                'callback_data' => $callbackData->createEncodedData($portData)
-            ];
-
-        }, $portsData);
-
-        $callbackData->limitAccess($userChatId);
-        array_push($ports, [
-            'text' => 'ALL PORT',
-            'callback_data' => $callbackData->createEncodedData($rtuSname)
+        array_push($inKeyboard, [
+            [ 'text' => 'ALL PORT', 'callback_data' => $callbackData->createEncodedData($rtuSname) ]
         ]);
+        $index++;
 
-        $inlineKeyboardData = array_reduce($ports, function($result, $port) {
-            $lastIndex = count($result) - 1;
-            if($lastIndex < 0 || count($result[$lastIndex]) == 3) {
-                array_push($result, []);
-                $lastIndex++;
+        for($i=0; $i<count($portsData); $i++) {
+
+            $port = $portsData[$i];
+            $values = [ $rtuSname ];
+
+            if($port->result_type == 'port') {
+                array_push($values, $port->no_port);
+                $callbackData->limitAccess($userChatId);
+            } else {
+                array_push($values, '0', $port->description);
+                $callbackData->resetAccess();
             }
 
-            array_push($result[$lastIndex], $port);
-            return $result;
-        }, []);
+            if( !isset($inKeyboard[$index]) ) {
+                array_push($inKeyboard, []);
+                $itemCount = 0;
+            }
 
+            $portData = $callbackData->createEncodedData( implode(':', $values) );
+            array_push($inKeyboard[$index], [
+                'text' => $port->no_port,
+                'callback_data' => $portData
+            ]);
+
+            $itemCount++;
+            if($itemCount >= 3) $index++;
+
+        }
+
+        $maxInKeyboardCount = 30;
+        $inKeyboardCount = count($inKeyboard);
+        $useSplit = $inKeyboardCount > $maxInKeyboardCount;
+        $useAvgSplit = $useSplit && ($inKeyboardCount % $maxInKeyboardCount < $maxInKeyboardCount / 2);
+
+        if(!$useSplit) {
+
+            $reqData = new RequestData();
+            $reqData->parseMode = 'markdown';
+            $reqData->text = PortText::getPortInKeyboardText()->get();
+            $reqData->replyMarkup = new InlineKeyboard(...$inKeyboard);
+            return [ $reqData ];
+
+        }
+
+        $splittedCountTarget = ceil($inKeyboardCount / $maxInKeyboardCount);
+        $maxInKeyboardLine = $maxInKeyboardCount;
+        if($useAvgSplit) {
+            $maxInKeyboardLine = (int) ceil($inKeyboardCount / $splittedCountTarget);
+        }
+
+        $splittedInKeyboard = [];
+        $splitIndex = 0;
+        $inKeyboardLine = 0;
+        foreach($inKeyboard as $item) {
+
+            if(!isset($splittedInKeyboard[$splitIndex])) {
+                array_push($splittedInKeyboard, []);
+            }
+
+            array_push($splittedInKeyboard[$splitIndex], $item);
+            $inKeyboardLine++;
+
+            if($inKeyboardLine >= $maxInKeyboardLine) {
+                $splitIndex++;
+                $inKeyboardLine = 0;
+            }
+
+        }
+
+        $reqDatas = [];
         $reqData = new RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->text = PortText::getPortInKeyboardText()->get();
-        $reqData->replyMarkup = new InlineKeyboard(...$inlineKeyboardData);
-        return $reqData;
+        foreach($splittedInKeyboard as $inKeyboard) {
+            $reqData->replyMarkup = new InlineKeyboard(...$inKeyboard);
+            array_push($reqDatas, $reqData->duplicate('parseMode', 'text', 'replyMarkup'));
+        }
+        return $reqDatas;
     }
 
     public static function onSelectRegional($regionalId, $callbackQuery)
@@ -304,10 +390,11 @@ class PortController extends BotController
     {   
         $message = $callbackQuery->getMessage();
         $userChatId = $callbackQuery->getFrom()->getId();
+        $chatId = $message->getChat()->getId();
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $message->getChat()->getId();
+        $reqData->chatId = $chatId;
         $reqData->messageId = $message->getMessageId();
 
         Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
@@ -327,10 +414,40 @@ class PortController extends BotController
             $reqData1->text = 'Data Port RTU tidak dapat ditemukan.';
             return Request::sendMessage($reqData1->build());
         }
-        
-        $btnPortRequest = PortController::getBtnPortList($rtuSname, $ports, $userChatId);
-        $btnPortRequest->chatId = $reqData->chatId;
-        return Request::sendMessage($btnPortRequest->build());
+
+        $btnPortRequests = PortController::getBtnPortList($rtuSname, $ports, $userChatId);
+        if(count($btnPortRequests) < 1) {
+            return Request::emptyResponse();
+        }
+
+        $sendedMsgIds = [];
+        for($i=0; $i<count($btnPortRequests); $i++) {
+
+            $btnPortRequests[$i]->chatId = $reqData->chatId;
+            $response = Request::sendMessage($btnPortRequests[$i]->build());
+            if(!$response->isOk()) {
+                $i = count($btnPortRequests);
+            } else {
+                array_push($sendedMsgIds, $response->getResult()->getMessageId());
+            }
+
+        }
+
+        if(count($sendedMsgIds) < 1) return $response;
+
+        $conversation = new Conversation('cekportall', $userChatId, $chatId, [
+            'call' => function($db, $params) {
+                return $db->queryFirstRow(
+                    "SELECT * FROM conversation WHERE status='active' AND name=%s_name AND user_id=%i_userid",
+                    [ 'name' => $params['name'], 'userid' => $params['userId'] ]
+                );
+            }
+        ]);
+        if(!$conversation->isExists()) $conversation->create();
+        $conversation->messageIds = $sendedMsgIds;
+        $conversation->commit();
+
+        return $response;
     }
 
     public static function onSelectPort($callbackData, $callbackQuery)
@@ -338,16 +455,33 @@ class PortController extends BotController
         $reqData = New RequestData();
         $message = $callbackQuery->getMessage();
         $chatId = $message->getChat()->getId();
+        $fromId = $callbackQuery->getFrom()->getId();
 
         $dataArr = explode(':', $callbackData);
         $rtuSname = isset($dataArr[0]) ? $dataArr[0] : null;
         $noPort = isset($dataArr[1]) && $dataArr[1] != '0' ? $dataArr[1] : null;
         $portDescr = isset($dataArr[2]) ? $dataArr[2] : null;
 
+        $conversation = new Conversation('cekportall', $fromId, $chatId, [
+            'call' => function($db, $params) {
+                return $db->queryFirstRow(
+                    "SELECT * FROM conversation WHERE status='active' AND name=%s_name AND user_id=%i_userid",
+                    [ 'name' => $params['name'], 'userid' => $params['userId'] ]
+                );
+            }
+        ]);
+
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
-        $reqData->messageId = $message->getMessageId();
-        Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
+        if($conversation->isExists()) {
+            $messageIds = $conversation->messageIds ?? [];
+            $conversation->done();
+            foreach($messageIds as $msgId) {
+                $reqData->messageId = $msgId;
+                Request::deleteMessage($reqData->duplicate('chatId', 'messageId')->build());
+            }
+        }
+
 
         $newosaseApiParams = [];
         if($rtuSname && $portDescr) {
