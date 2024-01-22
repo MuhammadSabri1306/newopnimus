@@ -21,11 +21,11 @@ class TextUserRejected extends TelegramRequest
         $text = TelegramText::create()
             ->addBold('Pendaftaran Opnimus ditolak.')->newLine();
         if($rejectedDate) $text->addItalic($rejectedDate)->newLine();
-        return $text->newLine()
+        $text->newLine()
             ->addText('Mohon maaf, permintaan anda tidak mendapat persetujuan oleh Admin. ')
             ->addText('Anda dapat berkoordinasi dengan Admin lokal anda untuk mendapatkan informasi terkait.')->newLine()
-            ->addText('Terima kasih.')
-            ->get();
+            ->addText('Terima kasih.');
+        return $text;
     }
 
     public function setRejectedDate($rejectedDate)
