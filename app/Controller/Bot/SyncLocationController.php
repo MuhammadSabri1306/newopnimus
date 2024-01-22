@@ -9,6 +9,7 @@ use App\Model\Datel;
 use App\Model\RtuList;
 use App\Model\RtuLocation;
 use App\ApiRequest\NewosaseApi;
+use App\ApiRequest\NewosaseApiV2;
 use App\Helper\ArrayHelper;
 
 class SyncLocationController extends BotController

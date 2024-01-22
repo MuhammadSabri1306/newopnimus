@@ -20,6 +20,21 @@ if(count($ports) < 1) {
 $data = [ 'port' => $ports[0] ];
 $portId = $data['port']->id;
 
+$currHourDateTime = new \DateTime();
+$currHourDateTime->setTime($currHourDateTime->format('H'), 0, 0);
+$fileName = "checkport_chart_port_$portId_" . $currHourDateTime->getTimestamp();
+
+$svgFileName = $fileName . '.svg';
+$svgFilePath = __DIR__.'/../../../../public/charts/'.$svgFileName;
+
+$pngFileName = $fileName . '.png';
+$pngFilePath = __DIR__.'/../../../../public/charts/'.$pngFileName;
+
+if(file_exists($pngFilePath)) {
+    $data['chart'] = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
+    return $data;
+}
+
 $currDateTime = new \DateTime('now', new \DateTimeZone('Asia/Jakarta'));
 $currDateTimeStr = $currDateTime->format('Y-m-d H:i:s');
 $currDateTime->setTime(0, 0, 0);
@@ -207,8 +222,6 @@ $graph->colours(array_map(function($item) {
 
 $graph->values(array_map(fn($item) => $item['data'], $chartData));
 $svgImg = $graph->fetch('MultiLineGraph');
-$svgFileName = "checkport_chart_port$portId.svg";
-$svgFilePath = __DIR__.'/../../../../public/charts/'.$svgFileName;
 
 try {
 
@@ -217,18 +230,47 @@ try {
 
         $cmd = "node /var/www/html/newopnimus/app/CLI/svg-to-png charts/$svgFileName";
         $output = null;
+
         if(exec($cmd, $output)) {
             
-            $outputFile = pathinfo($svgFileName);
-            $pngFileName = $outputFile['filename'] . '.png';
             $data['chart'] = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
             return $data;
     
         }
-        // dd($cmd);
+        
+        static::sendDebugMessage([
+            'status' => 'Cannot write png file',
+            'png_path' => realpath($pngFilePath),
+            'api' => [
+                [
+                    'path' => "/dashboard-service/operation/chart/pooling/$portId",
+                    'params' => [
+                        'start' => $startTime,
+                        'end' => $endTime,
+                        'timeframe' => 'hour',
+                        'is_formula' => 0
+                    ]
+                ]
+            ]
+        ]);
 
     }
-    // dd(file_put_contents($svgFilePath, $svgImg));
+
+    static::sendDebugMessage([
+        'status' => 'Cannot write svg file',
+        'svg_path' => realpath($svgFilePath),
+        'api' => [
+            [
+                'path' => "/dashboard-service/operation/chart/pooling/$portId",
+                'params' => [
+                    'start' => $startTime,
+                    'end' => $endTime,
+                    'timeframe' => 'hour',
+                    'is_formula' => 0
+                ]
+            ]
+        ]
+    ]);
 
 } catch(\Throwable $err) {
     \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);

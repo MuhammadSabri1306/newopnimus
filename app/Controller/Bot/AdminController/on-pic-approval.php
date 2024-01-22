@@ -57,7 +57,18 @@ if($regist['status'] != 'unprocessed') {
     $request = static::request('Registration/TextDoneReviewed');
     $request->params->chatId = $chatId;
     $request->setStatusText( $regist['status'] == 'approved' ? 'disetujui' : 'ditolak' );
-    $request->setAdminData( TelegramAdmin::find($regist['updated_by']) );
+
+    $admin = TelegramAdmin::find($regist['updated_by']);
+    if($admin) {
+        if($admin['level'] == 'regional') {
+            $regional = Regional::find($admin['regional_id']);
+            $admin['regional_name'] = $regional ? $regional['name'] : 'NULL';
+        } elseif($admin['level'] == 'witel') {
+            $witel = Witel::find($admin['witel_id']);
+            $admin['witel_name'] = $witel ? $witel['witel_name'] : 'NULL';
+        }
+    }
+    $request->setAdminData($admin);
     $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
     return $request->send();
 

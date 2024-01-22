@@ -121,7 +121,7 @@ class TextLogTable extends TelegramRequest
         $text = $this->params->text;
         $messageTextList = $this->splitText($text, 50);
 
-        if(count($messageTextList) <= 50) {
+        if(count($messageTextList) < 2) {
             return Request::sendMessage($this->params->build());
         }
         return $this->sendList($messageTextList);

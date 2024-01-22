@@ -124,6 +124,12 @@ class CallbackqueryCommand extends SystemCommand
                 return $callbackQuery->answer();
             }
 
+            if($methodName = $decCallbackData->isCallbackOf(PicController::$callbacks)) {
+                PicController::$command = $this;
+                PicController::$methodName($decCallbackData->value, $callbackQuery);
+                return $callbackQuery->answer();
+            }
+
         }
 
         if($decodedCallbackData) {

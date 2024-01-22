@@ -473,6 +473,7 @@ class AdminController extends BotController
 
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
+
         if(TelegramAdmin::findByChatId($chatId)) {
 
             $request = BotController::request('TextDefault');
@@ -484,7 +485,20 @@ class AdminController extends BotController
 
         }
 
-        if(Registration::findUnprocessedByChatId($chatId)) {
+        $telgUser = TelegramUser::findByChatId($chatId);
+        if(!$telgUser) {
+
+            $request = static::request('Error/TextUserUnidentified');
+            $request->params->chatId = $chatId;
+            return $request->send();
+
+        }
+
+        $regist = Registration::query(function ($db, $table) use ($chatId) {
+            $query = "SELECT * FROM $table WHERE request_type='admin' AND chat_id=%i AND status='unprocessed'";
+            return $db->queryFirstRow($query, $chatId);
+        });
+        if($regist) {
 
             $request = BotController::request('TextDefault');
             $request->params->chatId = $chatId;
@@ -591,6 +605,13 @@ class AdminController extends BotController
 
         }
 
+        $telgUser = TelegramUser::findByChatId($chatId);
+        if(!$telgUser) {
+            $request = static::request('Error/TextUserUnidentified');
+            $request->params->chatId = $chatId;
+            return $request->send();
+        }
+
         $conversation = AdminController::getRegistConversation();
         if(!$conversation->isExists()) {
             $conversation->create();
@@ -600,21 +621,87 @@ class AdminController extends BotController
         $conversation->username = $user->getUsername();
         $conversation->firstName = $user->getFirstName();
         $conversation->lastName = $user->getLastName();
+
+        $conversation->level = $telgUser['level'];
+        if($telgUser['level'] == 'regional' || $telgUser['level'] == 'witel') {
+            $conversation->regionalId = $telgUser['regional_id'];
+        }
+
+        if($conversation->level == 'witel') {
+            $conversation->witelId = $telgUser['witel_id'];
+        }
+
         $conversation->nextStep();
         $conversation->commit();
 
-        $request = BotController::request('RegistrationAdmin/SelectLevel');
+        $telgPersUser = TelegramPersonalUser::findByUserId($telgUser['id']);
+        if(!$telgPersUser) {
+
+            $request = BotController::request('RegistrationAdmin/SelectIsOrganik');
+            $request->params->chatId = $chatId;
+            
+            $callbackData = new CallbackData('admin.organik');
+            $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
+                $inlineKeyboardData['yes']['callback_data'] = $callbackData->createEncodedData(1);
+                $inlineKeyboardData['no']['callback_data'] = $callbackData->createEncodedData(0);
+                return $inlineKeyboardData;
+            });
+            
+            return $request->send();
+
+        }
+
+        $conversation->isOrganik = $telgPersUser['is_organik'];
+        $conversation->nextStep();
+        $conversation->commit();
+
+        if($telgPersUser['nik']) {
+            $conversation->nik = $telgPersUser['nik'];
+            $conversation->nextStep();
+            $conversation->commit();
+        } else {
+            $request = BotController::request('TextDefault');
+            $request->params->chatId = $chatId;
+            $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
+            return $request->send();
+        }
+
+        $conversation->done();
+        $registAdmin = [
+            'request_type' => 'admin',
+            'chat_id' => $conversation->chatId,
+            'user_id' => $conversation->chatId,
+            'data' => []
+        ];
+
+        $registAdmin['data']['chat_id'] = $conversation->chatId;
+        $registAdmin['data']['username'] = $conversation->username;
+        $registAdmin['data']['first_name'] = $conversation->firstName;
+        $registAdmin['data']['last_name'] = $conversation->lastName;
+        $registAdmin['data']['is_organik'] = $conversation->isOrganik;
+        $registAdmin['data']['nik'] = $conversation->nik;
+        $registAdmin['data']['level'] = $conversation->level;
+
+        if($conversation->level == 'regional' || $conversation->level == 'witel') {
+            $registAdmin['data']['regional_id'] = $conversation->regionalId;
+        }
+
+        if($conversation->level == 'witel') {
+            $registAdmin['data']['witel_id'] = $conversation->witelId;
+        }
+
+        $registration = Registration::create($registAdmin);
+        if(!$registration) {
+            throw new \Exception('Admin registration data not saved, conversation id:'.$conversation->getId());
+        }
+
+        $request = BotController::request('TextDefault');
         $request->params->chatId = $chatId;
+        $request->setText(fn($text) => $text->addText('Pengajuan anda telah dikirim ke Admin untuk ditinjau, terima kasih.'));
+        $response = $request->send();
 
-        $callbackData = new CallbackData('admin.level');
-        $request->setInKeyboard(function($inlineKeyboardData) use ($callbackData) {
-            $inlineKeyboardData['nasional']['callback_data'] = $callbackData->createEncodedData('nasional');
-            $inlineKeyboardData['regional']['callback_data'] = $callbackData->createEncodedData('regional');
-            $inlineKeyboardData['witel']['callback_data'] = $callbackData->createEncodedData('witel');
-            return $inlineKeyboardData;
-        });
-
-        return $request->send();
+        AdminController::whenRegistAdmin($registration);
+        return $response;
     }
 
     public static function onSelectLevel($callbackValue, $callbackQuery)
@@ -766,5 +853,10 @@ class AdminController extends BotController
         $request->params->chatId = $chatId;
         $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
         return $request->send();
+    }
+
+    public static function list()
+    {
+        return static::callModules('list');
     }
 }

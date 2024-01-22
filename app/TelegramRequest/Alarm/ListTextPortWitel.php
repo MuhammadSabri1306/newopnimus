@@ -49,13 +49,14 @@ class ListTextPortWitel extends TelegramRequest
             foreach($rtu->ports as $port) {
 
                 $portStatusTitle = $this->formatPortStatus($port);
-                $portName = $this->formatPortName($port);
+                $portName = $port->description;
+                $portNo = $port->no_port;
                 $portValue = $this->formatPortValue($port);
                 $duration = dateDiff(timeToDateString($port->updated_at), $currDateTime);
 
                 $text->newLine()
                     ->addSpace(2)
-                    ->addText("$portStatusTitle: $portName ($portValue) selama $duration");
+                    ->addText("$portStatusTitle: ($portNo) $portName ($portValue)");
             }
 
             $text->endCode();
@@ -64,14 +65,9 @@ class ListTextPortWitel extends TelegramRequest
         return $text;
     }
 
-    protected function formatPortName($port)
-    {
-        return $port->port_name ?? $port->no_port;
-    }
-
     protected function formatPortStatus($port)
     {
-        $portName = $this->formatPortName($port);
+        $portName = $port->port_name ?? $port->no_port;
         if($portName == 'Status PLN') return '⚡️ PLN OFF';
         if($portName == 'Status DEG') return '🔆 GENSET ON';
 

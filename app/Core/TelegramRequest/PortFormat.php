@@ -48,4 +48,22 @@ trait PortFormat
     {
         return boolval($portValue) ? $trueValue : $falseValue;
     }
+
+    protected function getAlarmIcon($portNo, $portName, $portSeverity)
+    {
+        if($portNo == 'D-02') return '⚡️';
+        if($portNo == 'D-01') return '🔆';
+
+        $portName = strtolower($portName);
+        if(strpos($portName, 'temperature') !== false) {
+            return "🌡️";
+        }
+
+        $statusKey = strtolower($portSeverity);
+        if($statusKey == 'off') return '‼️';
+        if($statusKey == 'critical') return '❗️';
+        if($statusKey == 'warning') return '⚠️';
+        if($statusKey == 'sensor broken') return '❌';
+        return $statusKey;
+    }
 }

@@ -36,7 +36,7 @@ $request->send();
 
 $newosaseApi = new NewosaseApiV2();
 $newosaseApi->setupAuth();
-$newosaseApi->request['query'] = [ 'locationId' => $locationId ];
+$newosaseApi->request['query'] = [ 'locationId' => $locId ];
 
 $osaseData = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
 if(!$osaseData->get()) {

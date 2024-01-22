@@ -22,7 +22,7 @@ class AlarmPortStatus extends Model
         $pattern->addCollumn('port_severity');
         $pattern->addCollumn('type');
         $pattern->addCollumn('rtu_sname');
-        $pattern->addCollumn('rtu_status');
+        // $pattern->addCollumn('rtu_status');
         $pattern->addCollumn('is_closed');
         $pattern->addCollumn('opened_at');
         $pattern->addCollumn('closed_at');
@@ -59,7 +59,7 @@ class AlarmPortStatus extends Model
         $pattern->addCollumn('port_severity', 'alarm.port_severity');
         $pattern->addCollumn('type', 'alarm.type');
         $pattern->addCollumn('rtu_sname', 'alarm.rtu_sname');
-        $pattern->addCollumn('rtu_status', 'alarm.rtu_status');
+        // $pattern->addCollumn('rtu_status', 'alarm.rtu_status');
         $pattern->addCollumn('is_closed', 'alarm.is_closed');
         $pattern->addCollumn('opened_at', 'alarm.opened_at');
         $pattern->addCollumn('closed_at', 'alarm.closed_at');

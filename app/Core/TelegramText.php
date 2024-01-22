@@ -129,6 +129,21 @@ class TelegramText
         return $this->startCode()->addText($text)->endCode();
     }
 
+    public function startInlineCode()
+    {
+        return $this->addText('`');
+    }
+
+    public function endInlineCode()
+    {
+        return $this->addText('`');
+    }
+
+    public function addInlineCode(string $text)
+    {
+        return $this->startInlineCode()->addText($text)->endInlineCode();
+    }
+
     public function addTabspace()
     {
         return $this->addText('        ');

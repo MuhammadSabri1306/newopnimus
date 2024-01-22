@@ -68,8 +68,34 @@ class AlarmController extends BotController
         });
 
         if(!$ports || count($ports) < 1) {
-            $reqData->text = 'Data Port tidak dapat ditemukan.';
-            return Request::sendMessage($reqData->build());
+
+            $request = static::request('TextDefault');
+            $request->params->chatId = $chatId;
+
+            $levelName = null;
+            if($user['level'] == 'nasional') {
+                $levelName = 'level Nasional';
+            } elseif($user['level'] == 'regional') {
+                $regional = Regional::find($user['regional_id']);
+                $levelName = $regional ? $regional['name'] : null;
+            } elseif($user['level'] == 'witel') {
+                $witel = Witel::find($user['witel_id']);
+                $levelName = $witel ? $witel['witel_name'] : null;
+            }
+
+            $request->setText(function($text) use ($levelName) {
+                $text->addText('✅✅')->addBold('ZERO ALARM')->addText('✅✅')->newLine()
+                    ->addText('Saat ini tidak ada alarm');
+                if($levelName) $text->addText(' di ')->addBold($levelName);
+                $text->addText(' pada ')->addBold( date('Y-m-d H:i:s') )->newLine()
+                    ->startInlineCode()
+                    ->addText('Tetap Waspada dan disiplin mengawal Network Element Kita.')
+                    ->addText(' Semoga Network Element Kita tetap dalam kondisi prima dan terkawal.')
+                    ->endInlineCode()->newLine(2)
+                    ->addText('Ketikan /help untuk mengakses menu OPNIMUS lainnya.');
+                return $text;
+            });
+            return $request->send();
         }
 
         if($user['level'] == 'regional') {
@@ -181,26 +207,42 @@ class AlarmController extends BotController
         });
 
         if(!$ports || count($ports) < 1) {
-
-            $request = BotController::request('TextDefault');
+            
+            $request = static::request('TextDefault');
             $request->params->chatId = $chatId;
-            $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+
+            $levelName = null;
+            if($user['level'] == 'nasional') {
+                $levelName = 'level Nasional';
+            } elseif($user['level'] == 'regional') {
+                $regional = Regional::find($user['regional_id']);
+                $levelName = $regional ? $regional['name'] : null;
+            } elseif($user['level'] == 'witel') {
+                $witel = Witel::find($user['witel_id']);
+                $levelName = $witel ? $witel['witel_name'] : null;
+            }
+
+            $request->setText(function($text) use ($levelName) {
+                $text->addText('✅✅')->addBold('ZERO ALARM')->addText('✅✅')->newLine()
+                    ->addText('Saat ini tidak ada alarm');
+                if($levelName) $text->addText(' di ')->addBold($levelName);
+                $text->addText(' pada ')->addBold( date('Y-m-d H:i:s') )->newLine()
+                    ->startInlineCode()
+                    ->addText('Tetap Waspada dan disiplin mengawal Network Element Kita.')
+                    ->addText(' Semoga Network Element Kita tetap dalam kondisi prima dan terkawal.')
+                    ->endInlineCode()->newLine(2)
+                    ->addText('Ketikan /help untuk mengakses menu OPNIMUS lainnya.');
+                return $text;
+            });
             return $request->send();
 
         }
-        
-        if($user['level'] == 'witel') {
-            
-            $request = BotController::request('Alarm/ListTextPortWitel');
-            $request->params->chatId = $chatId;
-            $request->setWitel(Witel::find($user['witel_id']));
-            $request->setPorts($ports);
-            return $request->sendList();
 
-        }
-        
-        // PIC
-        return Request::emptyMessage();
+        $request = BotController::request('Alarm/TextPortWitel');
+        $request->params->chatId = $chatId;
+        $request->setWitel(Witel::find($user['witel_id']));
+        $request->setPorts($ports);
+        return $request->send();
     }
 
     public static function onSelectRegionalV2($callbackValue, $callbackQuery)
@@ -260,17 +302,40 @@ class AlarmController extends BotController
 
         if(!$ports || count($ports) < 1) {
             
-            $request = BotController::request('TextDefault');
+            $request = static::request('TextDefault');
             $request->params->chatId = $chatId;
-            $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
+
+            $levelName = null;
+            if($user['level'] == 'nasional') {
+                $levelName = 'level Nasional';
+            } elseif($user['level'] == 'regional') {
+                $regional = Regional::find($user['regional_id']);
+                $levelName = $regional ? $regional['name'] : null;
+            } elseif($user['level'] == 'witel') {
+                $witel = Witel::find($user['witel_id']);
+                $levelName = $witel ? $witel['witel_name'] : null;
+            }
+
+            $request->setText(function($text) use ($levelName) {
+                $text->addText('✅✅')->addBold('ZERO ALARM')->addText('✅✅')->newLine()
+                    ->addText('Saat ini tidak ada alarm');
+                if($levelName) $text->addText(' di ')->addBold($levelName);
+                $text->addText(' pada ')->addBold( date('Y-m-d H:i:s') )->newLine()
+                    ->startInlineCode()
+                    ->addText('Tetap Waspada dan disiplin mengawal Network Element Kita.')
+                    ->addText(' Semoga Network Element Kita tetap dalam kondisi prima dan terkawal.')
+                    ->endInlineCode()->newLine(2)
+                    ->addText('Ketikan /help untuk mengakses menu OPNIMUS lainnya.');
+                return $text;
+            });
             return $request->send();
 
         }
 
-        $request = BotController::request('Alarm/ListTextPortWitel');
+        $request = BotController::request('Alarm/TextPortWitel');
         $request->params->chatId = $chatId;
         $request->setWitel(Witel::find($callbackValue));
         $request->setPorts($ports);
-        return $request->sendList();
+        return $request->send();
     }
 }
