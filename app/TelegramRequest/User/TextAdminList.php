@@ -20,11 +20,40 @@ class TextAdminList extends TelegramRequest
         $this->params->text = $this->getText()->get();
     }
 
+    public function getLocalAdminsTreeText($tree, $leftSpace = 0)
+    {
+        if(count($tree) < 1) return '';
+        $text = TelegramText::create();
+        foreach($tree as $item) {
+
+            $text->newLine(2)->addSpace($leftSpace);
+            
+            if($item['level'] == 'regional') {
+                $text->addText('🏤 ')->addBold($item['regional_name']);
+            } elseif($item['level'] == 'witel') {
+                $text->addText('🏬 ')->addBold($item['witel_name']);
+            }
+
+            foreach($item['admins'] as $admin) {
+                $adminName = implode(' ', array_filter([ $admin['first_name'], $admin['last_name'] ]));
+                $text->newLine()
+                    ->addSpace($leftSpace)
+                    ->addText(' - ')
+                    ->addMentionByName($admin['chat_id'], $adminName);
+            }
+
+            if(isset($item['childs'])) {
+                $text->addText($this->getLocalAdminsTreeText($item['childs'], $leftSpace + 3));
+            }
+
+        }
+        return $text->get();
+    }
+
     public function getText()
     {
         $nasionalAdmins = $this->getData('nasional_admins', []);
-        $regionalAdmins = $this->getData('regional_admins', []);
-        $witelAdmins = $this->getData('witel_admins', []);
+        $localAdmins = $this->getData('local_admins', []);
 
         $text = TelegramText::create()
             ->addBold('List Admin terdaftar')->newLine(2)
@@ -40,30 +69,8 @@ class TextAdminList extends TelegramRequest
             }
         }
 
-        if(count($regionalAdmins) > 0) {
-            foreach($regionalAdmins as $regional) {
-                $text->newLine(2)
-                    ->addText('🏤 ')->addBold($regional['regional_name']);
-                foreach($regional['admins'] as $admin) {
-                    $adminName = implode(' ', array_filter([ $admin['first_name'], $admin['last_name'] ]));
-                    $text->newLine()
-                        ->addText(' - ')
-                        ->addMentionByName($admin['chat_id'], $adminName);
-                }
-            }
-        }
-
-        if(count($witelAdmins) > 0) {
-            foreach($witelAdmins as $witel) {
-                $text->newLine(2)
-                    ->addText('🏬 ')->addBold($witel['witel_name']);
-                foreach($witel['admins'] as $admin) {
-                    $adminName = implode(' ', array_filter([ $admin['first_name'], $admin['last_name'] ]));
-                    $text->newLine()
-                        ->addText(' - ')
-                        ->addMentionByName($admin['chat_id'], $adminName);
-                }
-            }
+        if(count($localAdmins) > 0) {
+            $text->addText($this->getLocalAdminsTreeText($localAdmins));
         }
 
         return $text;
@@ -74,45 +81,51 @@ class TextAdminList extends TelegramRequest
         if(is_array($admins)) {
             
             $nasionalAdmins = [];
-            $regionalAdmins = [];
-            $witelAdmins = [];
+            $localAdmins = [];
             foreach($admins as $admin) {
-                if($admin['level'] == 'witel') {
-
-                    $witelId = $admin['witel_id'];
-                    $index = ArrayHelper::findIndex($witelAdmins, fn($item) => $item['witel_id'] == $witelId);
-                    if($index < 0) {
-                        array_push($witelAdmins, [
-                            'witel_id' => $witelId,
-                            'witel_name' => $admin['witel_name'],
-                            'admins' => [ $admin ]
-                        ]);
-                    } else {
-                        array_push($witelAdmins[$index]['admins'], $admin);
-                    }
-                    
-                } elseif($admin['level'] == 'regional') {
+                if($admin['level'] != 'nasional') {
 
                     $regionalId = $admin['regional_id'];
-                    $index = ArrayHelper::findIndex($regionalAdmins, fn($item) => $item['regional_id'] == $regionalId);
-                    if($index < 0) {
-                        array_push($regionalAdmins, [
+                    $rIndex = ArrayHelper::findIndex($localAdmins, fn($item) => $item['regional_id'] == $regionalId);
+                    if($rIndex < 0) {
+                        $rIndex = count($localAdmins);
+                        array_push($localAdmins, [
+                            'level' => 'regional',
                             'regional_id' => $regionalId,
                             'regional_name' => $admin['regional_name'],
-                            'admins' => [ $admin ]
+                            'admins' => [],
+                            'childs' => []
                         ]);
-                    } else {
-                        array_push($regionalAdmins[$index]['admins'], $admin);
                     }
-                    
+
+                    if($admin['level'] == 'witel') {
+
+                        $witelId = $admin['witel_id'];
+                        $wIndex = ArrayHelper::findIndex($localAdmins[$rIndex]['childs'], fn($item) => $item['witel_id'] == $witelId);
+                        if($wIndex < 0) {
+                            array_push($localAdmins[$rIndex]['childs'], [
+                                'level' => 'witel',
+                                'witel_id' => $witelId,
+                                'witel_name' => $admin['witel_name'],
+                                'admins' => [ $admin ]
+                            ]);
+                        } else {
+                            array_push($localAdmins[$rIndex]['childs'][$wIndex]['admins'], $admin);
+                        }
+
+                    } elseif($admin['level'] == 'regional') {
+
+                        array_push($localAdmins[$rIndex]['admins'], $admin);
+
+                    }
+
                 } else {
                     array_push($nasionalAdmins, $admin);
                 }
             }
 
             $this->setData('nasional_admins', $nasionalAdmins);
-            $this->setData('regional_admins', $regionalAdmins);
-            $this->setData('witel_admins', $witelAdmins);
+            $this->setData('local_admins', $localAdmins);
             $this->params->text = $this->getText()->get();
 
         }
