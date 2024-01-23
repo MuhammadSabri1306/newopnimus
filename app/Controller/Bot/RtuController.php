@@ -29,6 +29,9 @@ class RtuController extends BotController
         'rtu.cekwit' => 'onSelectWitel',
         'rtu.cekloc' => 'onSelectLocation',
         'rtu.cekrtu' => 'onSelectRtu',
+
+        'rtu.listreg' => 'onListSelectRegional',
+        'rtu.listwit' => 'onListSelectWitel',
     ];
 
     public static function checkRtu()
@@ -276,5 +279,128 @@ class RtuController extends BotController
             $request->params->replyToMessageId = $detailMessageId;
         }
         return $request->send();
+    }
+
+    public static function sendRtuList($chatId, $witelId)
+    {
+        $request = static::request('Action/Typing');
+        $request->params->chatId = $chatId;
+        $request->send();
+
+        $newosaseApi = new NewosaseApiV2();
+        $newosaseApi->setupAuth();
+        $newosaseApi->request['query'] = [
+            'isChildren' => 'view',
+            'isArea' => 'hide',
+            'level' => 2,
+            'witel' => $witelId,
+        ];
+
+        $osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
+        static::sendDebugMessage('TEST');
+        if(!$osaseData->get()) {
+            $request = static::request('Error/TextErrorServer');
+            $request->params->chatId = $chatId;
+            return $request->send();
+        }
+        
+        $witelData = $osaseData->get('result');
+        if(!$witelData) {
+            $request = static::request('Error/TextErrorNotFound');
+            $request->params->chatId = $chatId;
+            return $request->send();
+        }
+
+        $request = static::request('CheckRtu/TextWitelsRtuList');
+        $request->params->chatId = $chatId;
+
+        $witel = Witel::find($witelId);
+        $regional = Regional::find($witel['regional_id']);
+        $request->setWitelName($witel['witel_name'], $regional['name']);
+        $request->setRtuOfWitel($witelData);
+
+        return $request->send();
+    }
+
+    public static function listRtu()
+    {
+        $message = static::$command->getMessage();
+        $fromId = $message->getFrom()->getId();
+        $chatId = $message->getChat()->getId();
+
+        $telgUser = TelegramUser::findByChatId($chatId);
+        if(!$telgUser) {
+            $request = BotController::request('Error/TextUserUnidentified');
+            $request->params->chatId = $chatId;
+            return $request->send();
+        }
+
+        if($telgUser['level'] == 'witel') {
+            return static::sendRtuList($chatId, $telgUser['witel_id']);
+        }
+
+        if($telgUser['level'] == 'regional') {
+
+            $request = static::request('Area/SelectWitel');
+            $request->params->chatId = $chatId;
+            $request->setData('witels', Witel::getNameOrdered($telgUser['regional_id']));
+
+            $callbackData = new CallbackData('rtu.listwit');
+            $callbackData->limitAccess($fromId);
+            $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
+                $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+                return $inKeyboardItem;
+            });
+            
+            return $request->send();
+
+        }
+
+        $request = static::request('Area/SelectRegional');
+        $request->params->chatId = $chatId;
+        $request->setData('regionals', Regional::getSnameOrdered());
+
+        $callbackData = new CallbackData('rtu.listreg');
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+            return $inKeyboardItem;
+        });
+
+        return $request->send();
+    }
+
+    public static function onListSelectRegional($regionalId, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $fromId = $callbackQuery->getFrom()->getId();
+        $chatId = $message->getChat()->getId();
+        $messageId = $message->getMessageId();
+
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+
+        $request = static::request('Area/SelectWitel');
+        $request->setData('witels', Witel::getNameOrdered($regionalId));
+        $request->params->chatId = $chatId;
+
+        $callbackData = new CallbackData('rtu.listwit');
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
+            return $inKeyboardItem;
+        });
+        
+        return $request->send();
+    }
+
+    public static function onListSelectWitel($witelId, $callbackQuery)
+    {
+        $message = $callbackQuery->getMessage();
+        $fromId = $callbackQuery->getFrom()->getId();
+        $chatId = $message->getChat()->getId();
+        $messageId = $message->getMessageId();
+
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+        return static::sendRtuList($chatId, $witelId);
     }
 }

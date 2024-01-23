@@ -19,15 +19,6 @@ class TextPortWitel extends TelegramRequest
         $this->params->text = $this->getText()->get();
     }
 
-    protected static function getFixedChars(string $textStr, int $minChar): string
-    {
-        $textStrLength = strlen($textStr);
-        if($textStrLength >= $minChar) return $textStr;
-        return TelegramText::create($textStr)
-            ->addSpace($minChar - $textStrLength)
-            ->get();
-    }
-
     public function getText()
     {
         $alarms = $this->getData('alarms', []);
