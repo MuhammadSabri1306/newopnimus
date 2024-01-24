@@ -62,9 +62,7 @@ class TextLogTable extends TelegramRequest
             $alarmPortSeverity = $alarm['port_severity'];
             $alarmPortName = $alarm['port_name'];
             
-            if($this->isOffPort($alarm['port_unit'])) $alarmPortValue = $this->formatBinerPortValue($alarm['port_value'], 'OFF', 'ON');
-            if($this->isBinerPort($alarm['port_unit'])) $alarmPortValue = $this->formatBinerPortValue($alarm['port_value'], 'ON', 'OFF');
-            else $alarmPortValue = $this->formatPortValue($alarm['port_value'], $alarm['port_unit']);
+            $alarmPortValue = $this->toDefaultPortValueFormat($alarm['port_no'], $alarm['port_unit'], null);
 
             $text->newLine()->addText( static::getFixedChars("$no", 2) )
                 ->addText(' | ')->addText( static::getFixedChars($alarmDate, 16) );

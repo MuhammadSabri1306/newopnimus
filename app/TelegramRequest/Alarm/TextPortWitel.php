@@ -49,7 +49,7 @@ class TextPortWitel extends TelegramRequest
                 $portIcon = $this->getAlarmIcon($portNo, $port->port_name, $port->severity->name);
                 $portStatus = strtoupper($port->severity->name);
                 $portDescr = $port->description;
-                $portValue = $this->formatPortValue($port->value, $port->units);
+                $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
 
                 $text->newLine()
                     ->addSpace(2)

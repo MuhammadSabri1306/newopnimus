@@ -60,10 +60,41 @@ trait PortFormat
         }
 
         $statusKey = strtolower($portSeverity);
+        if($statusKey == 'normal') return '✅';
         if($statusKey == 'off') return '‼️';
         if($statusKey == 'critical') return '❗️';
         if($statusKey == 'warning') return '⚠️';
         if($statusKey == 'sensor broken') return '❌';
-        return $statusKey;
+        return '';
+    }
+
+    protected function toDefaultPortValueFormat($portValue, $portUnit, $portIdentifier)
+    {
+        if($portUnit == '-') return $portValue;
+        if(is_null($portValue)) return 'null';
+
+        if($this->isOffPort($portUnit)) {
+            return $this->formatBinerPortValue($portValue, 'OFF', 'ON');
+        }
+
+        if($this->isBinerPort($portUnit)) {
+            if($portIdentifier == 'ST_PLN') {
+                return $this->formatBinerPortValue($portValue, 'OFF', 'ON');
+            }
+            return $this->formatBinerPortValue($portValue, 'ON', 'OFF');
+        }
+
+        $portValue = NumberHelper::toNumber($portValue);
+        // $unit = utf8_encode($unit);
+        // $value = utf8_encode($value);
+        // $portUnitKey = strtoupper($portUnit);
+        // if(in_array($portUnitKey, ['#', '%', '%RH'])) {
+        //     return $value.$unit;
+        // }
+
+        if(strlen($portUnit) < 2) {
+            return $portValue.$portUnit;
+        }
+        return "$portValue $portUnit";
     }
 }

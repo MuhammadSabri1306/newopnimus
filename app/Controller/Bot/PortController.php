@@ -588,10 +588,10 @@ class PortController extends BotController
 
         }
         
-        $request = BotController::request('Port/ListTextCheckPort');
+        $request = BotController::request('Port/TextPortList');
         $request->params->chatId = $chatId;
         $request->setPorts($ports);
-        return $request->sendList();
+        return $request->send();
     }
 
     public static function sendTextDetailPort(array $newosaseApiParams, $chatId)
