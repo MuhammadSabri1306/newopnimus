@@ -54,9 +54,47 @@ class RtuController extends BotController
         }
 
         if(isset($rtuSname)) {
-            
-            $rtu = RtuList::findBySname($rtuSname);
-            return RtuController::sendRtuDetail($chatId, $rtu);
+
+            $request = static::request('Action/Typing');
+            $request->params->chatId = $chatId;
+            $request->send();
+
+            $requestNotFound = static::request('Error/TextErrorNotFound');
+            $requestNotFound->params->chatId = $chatId;
+
+            $rtuParams = RtuList::findBySname($rtuSname);
+            if(!$rtuParams) {
+                return $requestNotFound->send();
+            }
+
+            $newosaseApi = new NewosaseApiV2();
+            $newosaseApi->setupAuth();
+            $newosaseApi->request['query'] = [
+                'isArea' => 'hide',
+                'isChildren' => 'view',
+                'level' => 4,
+                'location' => $rtuParams['location_id'],
+            ];
+
+            $osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
+            $rtus = $osaseData->get('result.0.witel.0.rtu');
+            if(!is_array($rtus) || count($rtus) < 1) {
+                return $requestNotFound->send();
+            }
+
+            $rtuId = null;
+            for($i=0; $i<count($rtus); $i++) {
+                if($rtus[$i]->rtu_sname == $rtuSname) {
+                    $rtuId = $rtus[$i]->id_rtu;
+                    $i = count($rtus);
+                }
+            }
+
+            if(!$rtuId) {
+                return $requestNotFound->send();
+            }
+
+            return RtuController::sendRtuDetail($chatId, $rtuId);
 
         }
         
@@ -177,47 +215,46 @@ class RtuController extends BotController
         $messageId = $message->getMessageId();
 
         static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
+        $request = static::request('Action/Typing');
+        $request->params->chatId = $chatId;
+        $request->send();
 
         $newosaseApi = new NewosaseApiV2();
         $newosaseApi->setupAuth();
-        $newosaseApi->request['query'] = [ 'locationId' => $locId ];
-        
-        $osaseData = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
-        if(!$osaseData->get()) {
-            $request = static::request('Error/TextErrorServer');
-            $request->params->chatId = $chatId;
-            return $request->send();
-        }
-        
-        $portList = $osaseData->get('result.payload');
-        if(!is_array($portList)) {
+        $newosaseApi->request['query'] = [
+            'isArea' => 'hide',
+            'isChildren' => 'view',
+            'level' => 4,
+            'location' => $locId,
+        ];
+
+        $osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
+        $rtus = $osaseData->get('result.0.witel.0.rtu');
+        if(!is_array($rtus) || count($rtus) < 1) {
             $request = static::request('Error/TextErrorNotFound');
             $request->params->chatId = $chatId;
             return $request->send();
         }
-        
-        $rtuSnames = array_reduce($portList, function($list, $port) {
-            if(isset($port->rtu_sname) && !in_array($port->rtu_sname, $list)) {
-                array_push($list, $port->rtu_sname);
-            }
-            return $list;
-        }, []);
-        
+
         $request = static::request('Area/SelectRtu');
         $request->params->chatId = $chatId;
-        $request->setRtus($rtuSnames);
+
+        $rtuList = array_map(function($rtu) {
+            return [ 'sname' => $rtu->rtu_sname, 'id' => $rtu->id_rtu ];
+        }, $rtus);
+        $request->setRtus($rtuList);
         
         $callbackData = new CallbackData('rtu.cekrtu');
         $callbackData->limitAccess($fromId);
-        $request->setInKeyboard(function($inKeyboardItem, $rtuSname) use ($callbackData) {
-            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($rtuSname);
+        $request->setInKeyboard(function($inKeyboardItem, $rtu) use ($callbackData) {
+            $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($rtu['id']);
             return $inKeyboardItem;
         });
         
         return $request->send();
     }
 
-    public static function onSelectRtu($rtuSname, $callbackQuery)
+    public static function onSelectRtu($rtuId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
         $fromId = $callbackQuery->getFrom()->getId();
@@ -225,12 +262,10 @@ class RtuController extends BotController
         $messageId = $message->getMessageId();
 
         static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
-
-        $rtu = RtuList::findBySname($rtuSname);
-        return RtuController::sendRtuDetail($chatId, $rtu);
+        return RtuController::sendRtuDetail($chatId, $rtuId);
     }
 
-    public static function sendRtuDetail($chatId, $rtu)
+    public static function sendRtuDetail($chatId, $rtuId)
     {
         $request = static::request('Action/Typing');
         $request->params->chatId = $chatId;
@@ -238,9 +273,7 @@ class RtuController extends BotController
 
         $newosaseApi = new NewosaseApiV2();
         $newosaseApi->setupAuth();
-        $newosaseApi->request['query'] = [ 'locationId' => $locId ];
 
-        $rtuId = $rtu['uuid'] ?? $rtu['id'];
         $osaseData = $newosaseApi->sendRequest('GET', "/dashboard-service/operation/rtu/$rtuId");
         if(!$osaseData->get()) {
             $request = static::request('Error/TextErrorServer');
@@ -249,13 +282,14 @@ class RtuController extends BotController
         }
         
         $rtuData = $osaseData->get('result');
-        if(!$rtuData) {
+        $rtu = $rtuData ? RtuList::findBySname($rtuData->sname) : null;
+        if(!$rtuData || !$rtu) {
             $request = static::request('Error/TextErrorNotFound');
             $request->params->chatId = $chatId;
             return $request->send();
         }
 
-        $request = BotController::request('CheckRtu/TextRtuDetail');
+        $request = static::request('CheckRtu/TextRtuDetail');
         $request->setData('regional', Regional::find($rtu['regional_id']));
         $request->setData('witel', Witel::find($rtu['witel_id']));
         $request->setData('location', RtuLocation::find($rtu['location_id']));
@@ -273,7 +307,7 @@ class RtuController extends BotController
 
         $detailMessageId = $response->getResult()->getMessageId();
 
-        $request = BotController::request('Attachment/MapLocation', [ $rtuLat, $rtuLng ]);
+        $request = static::request('Attachment/MapLocation', [ $rtuLat, $rtuLng ]);
         $request->params->chatId = $chatId;
         if($detailMessageId) {
             $request->params->replyToMessageId = $detailMessageId;
@@ -297,7 +331,6 @@ class RtuController extends BotController
         ];
 
         $osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
-        static::sendDebugMessage('TEST');
         if(!$osaseData->get()) {
             $request = static::request('Error/TextErrorServer');
             $request->params->chatId = $chatId;

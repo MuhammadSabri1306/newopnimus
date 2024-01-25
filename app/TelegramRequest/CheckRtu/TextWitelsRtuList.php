@@ -7,10 +7,11 @@ use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 use App\Core\TelegramRequest\TextList;
 use App\Core\TelegramRequest\PortFormat;
+use App\Core\TelegramRequest\RtuFormat;
 
 class TextWitelsRtuList extends TelegramRequest
 {
-    use TextList, PortFormat;
+    use TextList, PortFormat, RtuFormat;
 
     public function __construct()
     {
@@ -43,12 +44,13 @@ class TextWitelsRtuList extends TelegramRequest
 
         $text->startCode();
         foreach($rtus as $rtu) {
-            $isRtuUp = strtolower($rtu['status']) == 'normal';
+            $isRtuDown = $this->isRtuStatusDown($rtu['status']);
+            $icon = $this->getRtuStatusIcon($rtu['status']);
             $text->newLine()
-                ->addText($isRtuUp ? '✅' : '❌')
+                ->addText($icon)
                 ->addText($rtu['sname'])
                 ->addText(' ('.$rtu['name'].')'.' dalam kondisi ')
-                ->addText($isRtuUp ? 'UP' : 'DOWN');
+                ->addText( $isRtuDown ? 'DOWN' : strtoupper($rtu['status']) );
         }
 
         $text->endCode();
