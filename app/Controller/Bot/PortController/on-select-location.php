@@ -12,23 +12,21 @@ static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
 $newosaseApi = new NewosaseApiV2();
 $newosaseApi->setupAuth();
-$newosaseApi->request['query'] = [ 'locationId' => $locationId ];
+$newosaseApi->request['query'] = [
+    'isArea' => 'hide',
+    'isChildren' => 'view',
+    'location' => $locationId,
+];
 
-$osaseData = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
-if(!$osaseData->get()) {
-    $request = static::request('Error/TextErrorServer');
-    $request->params->chatId = $chatId;
-    return $request->send();
-}
-
-$portList = $osaseData->get('result.payload');
-if(!is_array($portList)) {
+$osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
+$rtuData = $osaseData->get('result.0.witel.0.rtu');
+if(!is_array($rtuData)) {
     $request = static::request('Error/TextErrorNotFound');
     $request->params->chatId = $chatId;
     return $request->send();
 }
 
-$rtuSnames = array_reduce($portList, function($list, $port) {
+$rtuSnames = array_reduce($rtuData, function($list, $port) {
     if(isset($port->rtu_sname) && !in_array($port->rtu_sname, $list)) {
         array_push($list, $port->rtu_sname);
     }
