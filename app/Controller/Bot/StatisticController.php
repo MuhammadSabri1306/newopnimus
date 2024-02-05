@@ -7,6 +7,7 @@ use App\Model\TelegramUser;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\AlarmPortStatus;
+use App\Model\AlarmHistory;
 
 class StatisticController extends BotController
 {
@@ -78,10 +79,17 @@ class StatisticController extends BotController
         // LEVEL = WITEL
         $request = BotController::request('Statistic/TextDailyWitel');
         $request->params->chatId = $chatId;
-        $request->setWitel(Witel::find($telgUser['witel_id']));
 
-        AlarmPortStatus::useDefaultJoinPattern();
-        $request->setAlarms(AlarmPortStatus::getCurrDayByWitel($telgUser['witel_id']));
+        $witel = Witel::find($telgUser['witel_id']);
+        $request->setWitel($witel);
+
+        $dateTime = new \DateTime();
+        $dateTime->setTime(0, 0, 0);
+        $alarmStat = AlarmHistory::getStat([
+            'witelId' => $telgUser['witel_id'],
+            'startDate' => $dateTime,
+        ]);
+        $request->setAlarmStat($alarmStat);
         
         return $request->send();
     }
@@ -148,11 +156,19 @@ class StatisticController extends BotController
 
         $request = BotController::request('Statistic/TextMonthlyWitel');
         $request->params->chatId = $chatId;
-        $request->setWitel(Witel::find($telgUser['witel_id']));
 
-        AlarmPortStatus::useDefaultJoinPattern();
-        $request->setAlarms(AlarmPortStatus::getCurrMonthByWitel($telgUser['witel_id']));
-        
+        $witel = Witel::find($telgUser['witel_id']);
+        $request->setWitel($witel);
+
+        $dateTime = new \DateTime();
+        $dateTime->modify('first day of this month');
+        $dateTime->setTime(0, 0, 0);
+        $alarmStat = AlarmHistory::getStat([
+            'witelId' => $telgUser['witel_id'],
+            'startDate' => $dateTime,
+        ]);
+        $request->setAlarmStat($alarmStat);
+
         return $request->send();
     }
 
@@ -177,10 +193,10 @@ class StatisticController extends BotController
 
         $callbackData = new CallbackData('stat.witl');
         $callbackData->limitAccess($userChatId);
-        $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData, $statCategory) {
+        $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData, $statCategory, $regionalId) {
             if( isset($witel['title']) && $witel['title'] == 'PILIH SEMUA WITEL' ) {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData([
-                        'c' => $statCategory, 'w' => 'ALL', 'r' => $witel['regional_id']
+                        'c' => $statCategory, 'w' => 'ALL', 'r' => $regionalId
                     ]);
             } else {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData([
@@ -210,24 +226,39 @@ class StatisticController extends BotController
             $regionalId = $params['r'];
             if($statCategory == 'month') {
 
-                AlarmPortStatus::useDefaultJoinPattern();
-                $alarms = AlarmPortStatus::getCurrMonthByRegional($regionalId);
-
                 $request = BotController::request('Statistic/TextMonthlyRegional');
                 $request->params->chatId = $chatId;
-                $request->setRegional(Regional::find($regionalId));
-                $request->setAlarms($alarms);
+
+                $regional = Regional::find($regionalId);
+                $request->setRegional($regional);
+
+                $dateTime = new \DateTime();
+                $dateTime->modify('first day of this month');
+                $dateTime->setTime(0, 0, 0);
+                $alarmStat = AlarmHistory::getStat([
+                    'regionalId' => $regionalId,
+                    'startDate' => $dateTime,
+                ]);
+                $request->setAlarmStat($alarmStat);
+
                 return $request->send();
 
             } else {
 
-                AlarmPortStatus::useDefaultJoinPattern();
-                $alarms = AlarmPortStatus::getCurrDayByRegional($regionalId);
-
                 $request = BotController::request('Statistic/TextDailyRegional');
                 $request->params->chatId = $chatId;
-                $request->setRegional(Regional::find($regionalId));
-                $request->setAlarms($alarms);
+
+                $regional = Regional::find($regionalId);
+                $request->setRegional($regional);
+
+                $dateTime = new \DateTime();
+                $dateTime->setTime(0, 0, 0);
+                $alarmStat = AlarmHistory::getStat([
+                    'regionalId' => $regionalId,
+                    'startDate' => $dateTime,
+                ]);
+                $request->setAlarmStat($alarmStat);
+
                 return $request->send();
 
             }
@@ -236,24 +267,39 @@ class StatisticController extends BotController
 
         if($statCategory == 'month') {
 
-            AlarmPortStatus::useDefaultJoinPattern();
-            $alarms = AlarmPortStatus::getCurrMonthByWitel($witelId);
-
             $request = BotController::request('Statistic/TextMonthlyWitel');
             $request->params->chatId = $chatId;
-            $request->setWitel(Witel::find($witelId));
-            $request->setAlarms($alarms);
+
+            $witel = Witel::find($witelId);
+            $request->setWitel($witel);
+
+            $dateTime = new \DateTime();
+            $dateTime->modify('first day of this month');
+            $dateTime->setTime(0, 0, 0);
+            $alarmStat = AlarmHistory::getStat([
+                'witelId' => $witelId,
+                'startDate' => $dateTime,
+            ]);
+            $request->setAlarmStat($alarmStat);
+
             return $request->send();
 
         }
 
-        AlarmPortStatus::useDefaultJoinPattern();
-        $alarms = AlarmPortStatus::getCurrDayByWitel($witelId);
-
         $request = BotController::request('Statistic/TextDailyWitel');
         $request->params->chatId = $chatId;
-        $request->setWitel(Witel::find($witelId));
-        $request->setAlarms($alarms);
+
+        $witel = Witel::find($witelId);
+        $request->setWitel($witel);
+
+        $dateTime = new \DateTime();
+        $dateTime->setTime(0, 0, 0);
+        $alarmStat = AlarmHistory::getStat([
+            'witelId' => $witelId,
+            'startDate' => $dateTime,
+        ]);
+        $request->setAlarmStat($alarmStat);
+
         return $request->send();
     }
 }

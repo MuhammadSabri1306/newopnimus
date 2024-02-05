@@ -3,16 +3,15 @@ namespace App\TelegramRequest\Statistic;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
-use App\Core\TelegramRequest;
 use App\Core\TelegramText;
-use App\Core\TelegramTextSplitter;
+use App\Core\TelegramRequest;
+use App\Core\TelegramRequest\TextList;
+use App\Core\TelegramRequest\PortFormat;
 use App\Helper\ArrayHelper;
-use App\Helper\DateHelper;
-use App\Helper\NumberHelper;
 
 class TextDailyRegional extends TelegramRequest
 {
-    use TelegramTextSplitter;
+    use TextList, PortFormat;
 
     public function __construct()
     {
@@ -24,102 +23,93 @@ class TextDailyRegional extends TelegramRequest
     public function getText()
     {
         $regional = $this->getData('regional', null);
-        $alarmPorts = $this->getData('alarm_ports', null);
-        $alarmRtus = $this->getData('alarm_rtus', []);
-        $openAlarmCount = $this->getData('open_alarm_count', 0);
-        $closeAlarmCount = $this->getData('close_alarm_count', 0);
+        $witelRtuStates = $this->getData('witel_rtu_states', []);
+        $portsAlarm = $this->getData('ports_alarm', []);
+        $totalRtu = $this->getData('total_rtu', 0);
+        $totalPort = $this->getData('total_port', 0);
+        $totalOpenedPort = $this->getData('total_opened_port', 0);
+        $totalClosedPort = $this->getData('total_closed_port', 0);
 
-        if(!$regional || !is_array($alarmPorts)) {
+        if(!$regional || !is_array($portsAlarm)) {
             return TelegramText::create();
         }
 
         $regionalName = $regional['name'];
         $currDate = date('Y-m-d H:i:s');
-        $alarmPortsCount = count($alarmPorts);
-        $alarmRtusCount = array_reduce($alarmRtus, fn($total, $witelRtu) => $total += count($witelRtu), 0);
 
         $text = TelegramText::create()
             ->addText("Statistik HARIAN Anomali Perangkat $regionalName pada $currDate.")->newLine(2)
             ->addBold("〽️STATISTIK $regionalName:")->newLine(2)
-            ->addItalic("- TOTAL ALARM RTU  : $alarmRtusCount")->newLine()
-            ->addItalic("- TOTAL ALARM PORT : $alarmPortsCount")->newLine()
-            ->addSpace(7)->addItalic("➥ alarm off: $closeAlarmCount")->newLine()
-            ->addSpace(7)->addItalic("➥ alarm on: $openAlarmCount");
+            ->addItalic("- TOTAL ALARM RTU  : $totalRtu")->newLine()
+            ->addItalic("- TOTAL ALARM PORT : $totalPort")->newLine()
+            ->addSpace(7)->addItalic("➥ alarm off: $totalClosedPort")->newLine()
+            ->addSpace(7)->addItalic("➥ alarm on: $totalOpenedPort");
 
-        if($alarmPortsCount < 1) {
-            return $text;
+        if($totalRtu > 0) {
+            $text->newLine(2)
+                ->addText('🌟')->addBold('DETAIL RTU DOWN HARI INI');
+            foreach($witelRtuStates as $witel) {
+                $witelName = $witel['witel_name'];
+                $text->newLine(2)->addSpace()->addText("🌇$witelName");
+                foreach($witel['rtus'] as $rtu) {
+    
+                    $rtuSname = $rtu['rtu_sname'];
+                    $locName = $rtu['location_name'];
+                    $downCount = $rtu['down_count'].'x';
+                    $downAt = $rtu['last_down_at'];
+                    $text->newLine()->addSpace(8)->addText("- $rtuSname $locName: DOWN $downCount")->newLine()
+                        ->addSpace(10)->addItalic("(Last down $downAt)");
+    
+                }
+            }
         }
 
-        $text->newLine(2)
-            ->addText('🌟')->addBold('DETAIL RTU DOWN HARI INI');
-        
-        foreach($alarmRtus as $witelName => $alarmRtusItem) {
+        if($totalPort > 0) {
+            $text->newLine(2)
+                ->addText('🎚')->addBold('TOP 10 ALARM PORT HARI INI:')->startCode();
+            $maxPortsAlarmIndex = min([ $totalPort, 10 ]);
+            for($i=0; $i<$maxPortsAlarmIndex; $i++) {
 
-            $text->newLine(2)->addSpace()->addText("🌇 $witelName")->startCode();
-            foreach($alarmRtusItem as $index => $rtu) {
-                $rtuSname = $rtu['rtu_sname'];
-                $locName = $rtu['location_name'];
-                $openCount = $rtu['count'].'x';
-                $lastOpenedAt = $rtu['last_opened_at'];
-    
-                if($index > 0) $text->newLine();
-                $text->addSpace(2)->addText("- $rtuSname $locName: DOWN $openCount")->newLine()
-                    ->addSpace(4)->addText("(Last down $lastOpenedAt)");
+                if($i > 0) $text->newLine();
+
+                $no = $i + 1;
+                $portSeverity = ucfirst($portsAlarm[$i]['last_port_severity']);
+                $text->addSpace(2)->addText("$no.($portSeverity)");
+
+                if($portsAlarm[$i]['rtu_sname']) {
+                    $rtuSname = $portsAlarm[$i]['rtu_sname'];
+                    $text->addText(" $rtuSname");
+                }
+
+                if($portsAlarm[$i]['port_name']) {
+                    $portName = $portsAlarm[$i]['port_name'];
+                    $text->addText(" $portName");
+                }
+
+                if($portsAlarm[$i]['location_name']) {
+                    $locName = $portsAlarm[$i]['location_name'];
+                    $text->addText(" $locName");
+                }
+
+                if($portsAlarm[$i]['witel_name']) {
+                    $witelName = $portsAlarm[$i]['witel_name'];
+                    $text->addText(" $witelName");
+                }
+
+                $portValue = $this->toDefaultPortValueFormat(
+                    $portsAlarm[$i]['last_port_value'],
+                    $portsAlarm[$i]['port_unit'],
+                    $portsAlarm[$i]['port_identifier']
+                );
+                $openedAt = $portsAlarm[$i]['last_opened_at'];
+                $openCount = $portsAlarm[$i]['count'].'x';
+                $text->addText(" ($portValue - $openedAt): Alarm $openCount");
+
             }
             $text->endCode();
-
         }
 
-        $text->newLine(2)
-            ->addText('🎚')->addBold('TOP 10 ALARM PORT HARI INI:')->startCode();
-
-        $maxAlarmPortsIndex = min([ count($alarmPorts), 10 ]);
-        for($i=0; $i<$maxAlarmPortsIndex; $i++) {
-
-            $no = $i + 1;
-            $portSeverity = ucfirst($alarmPorts[$i]['port_severity']);
-            $rtuSname = $alarmPorts[$i]['rtu_sname'];
-            $portName = $alarmPorts[$i]['port_name'];
-            $locName = $alarmPorts[$i]['location_name'];
-            $witelName = $alarmPorts[$i]['witel_name'];
-            $lastPortValue = $this->formatPortValue($alarmPorts[$i]['last_port_value'], $alarmPorts[$i]['port_unit']);
-            $lastOpenedAt = $alarmPorts[$i]['last_opened_at'];
-            $openCount = $alarmPorts[$i]['count'].'x';
-
-            if($i > 0) $text->newLine();
-            $text->addSpace('2')
-                ->addText("$no.($portSeverity) $rtuSname $portName $locName $witelName ($lastPortValue - $lastOpenedAt): Alarm $openCount");
-        }
-
-        return $text->endCode();
-    }
-
-    protected function formatPortValue($portValue, $portUnit)
-    {
-        $portUnitKey = strtoupper($portUnit);
-
-        if(in_array($portUnitKey, ['OFF', 'ON/OFF'])) {
-            return boolval($portValue) ? 'OFF' : 'ON';
-        }
-
-        if($portUnitKey == 'OPEN/CLOSE') {
-            return boolval($portValue) ? 'OPEN' : 'CLOSE';
-        }
-        
-        if(is_null($portValue)) {
-            return 'null';
-        }
-
-        $value = NumberHelper::toNumber($portValue);
-
-        $unit = utf8_encode($portUnit);
-        $value = utf8_encode($value);
-
-        if(in_array($portUnitKey, ['#', '%', '%RH', '-'])) {
-            return $value.$unit;
-        }
-
-        return "$value $unit";
+        return $text;
     }
 
     public function setRegional($regional)
@@ -128,114 +118,45 @@ class TextDailyRegional extends TelegramRequest
         $this->params->text = $this->getText()->get();
     }
 
-    public function setAlarms(array $alarms)
+    public function setAlarmStat($alarmStat)
     {
-        $rtus = [];
-        $ports = [];
-        $openAlarms = [];
-        $closeAlarms = [];
-
-        foreach($alarms as $alarm) {
-
-            $rtuKey = $alarm['witel_name'];
-            if(!array_key_exists($rtuKey, $rtus)) {
-                $rtus[$rtuKey] = [];
-            }
-
-            $rtuIndex = ArrayHelper::findIndex($rtus[$rtuKey], fn($rtuItem) => $rtuItem['rtu_sname'] == $alarm['rtu_sname']);
-            if($rtuIndex < 0) {
-                $rtu = ArrayHelper::duplicateByKeysRegex($alarm, '/^(rtu_|location_|datel_|witel_|regional_)/');
-                array_push($rtus[$rtuKey], [
-                    ...$rtu,
-                    'count' => 1,
-                    'last_opened_at' => $alarm['opened_at']
-                ]);
-            } else {
-                $rtus[$rtuKey][$rtuIndex]['count']++;
-                $rtus[$rtuKey][$rtuIndex]['last_opened_at'] = DateHelper::max($rtus[$rtuKey][$rtuIndex]['last_opened_at'], $alarm['opened_at']);
-            }
-
-            $portKey = $alarm['rtu_sname'].'.'.$alarm['type'].'.'.$alarm['port_no'].'.'.$alarm['port_unit'];
-            $portIndex = ArrayHelper::findIndex($ports, fn($item) => $item['key'] == $portKey);
-            if($portIndex < 0) {
-                array_push($ports, [
-                    ...$alarm,
-                    'key' => $portKey,
-                    'count' => 1,
-                    'last_port_value' => $alarm['port_value'],
-                    'last_opened_at' => $alarm['opened_at']
-                ]);
-            } else {
-                $ports[$portIndex]['count']++;
-                $ports[$portIndex]['last_opened_at'] = DateHelper::max($ports[$portIndex]['last_opened_at'], $alarm['opened_at']);
-                if($alarm['opened_at'] == $ports[$portIndex]['last_opened_at']) {
-                    $ports[$portIndex]['last_port_value'] = $alarm['port_value'];
+        if(is_array($alarmStat)) {
+            if(isset($alarmStat['rtu_states'])) {
+                $witelRtuStates = [];
+                foreach($alarmStat['rtu_states'] as $rtu) {
+                    $witelIndex = ArrayHelper::findIndex($witelRtuStates, fn($item) => $item['witel_id'] == $rtu['witel_id']);
+                    if($witelIndex < 0) {
+                        $witel = ArrayHelper::duplicateByKeysRegex($rtu, '/^(witel_|regional_)/');
+                        $witelIndex = count($witelRtuStates);
+                        array_push($witelRtuStates, [
+                            ...$witel,
+                            'rtus' => []
+                        ]);
+                    }
+                    array_push($witelRtuStates[$witelIndex]['rtus'], $rtu);
                 }
+                $this->setData('witel_rtu_states', $witelRtuStates);
             }
-
-            if(!in_array($portKey, $openAlarms)) {
-                array_push($openAlarms, $portKey);
+            if(isset($alarmStat['ports_alarm'])) {
+                $portsAlarm = ArrayHelper::sort($alarmStat['ports_alarm'], fn($a, $b) => [ $b['count'], $a['count'] ]);
+                $this->setData('ports_alarm', $portsAlarm);
             }
-
-            if($alarm['is_closed'] == 1 && !in_array($portKey, $closeAlarms)) {
-                array_push($closeAlarms, $portKey);
-            }
-
+            if(isset($alarmStat['total_rtu'])) $this->setData('total_rtu', $alarmStat['total_rtu']);
+            if(isset($alarmStat['total_port'])) $this->setData('total_port', $alarmStat['total_port']);
+            if(isset($alarmStat['total_opened_port'])) $this->setData('total_opened_port', $alarmStat['total_opened_port']);
+            if(isset($alarmStat['total_closed_port'])) $this->setData('total_closed_port', $alarmStat['total_closed_port']);
+            $this->params->text = $this->getText()->get();
         }
-
-        $rtus = ArrayHelper::sortByKey($rtus);
-        $rtus = array_map(function($rtuWitel) {
-            return ArrayHelper::sort($rtuWitel, fn($a, $b) => [ $b['count'], $a['count'] ]);
-        }, $rtus);
-
-        $ports = ArrayHelper::sort($ports, fn($a, $b) => [ $b['count'], $a['count'] ]);
-        $openAlarms = array_diff($openAlarms, $closeAlarms);
-
-        $this->setData('alarm_rtus', $rtus);
-        $this->setData('alarm_ports', $ports);
-        $this->setData('open_alarm_count', count($openAlarms));
-        $this->setData('close_alarm_count', count($closeAlarms));
-
-        $this->params->text = $this->getText()->get();
     }
 
     public function send(): ServerResponse
     {
-        $alarmRtus = $this->getData('alarm_rtus', []);
-        $alarmRtusCount = array_reduce($alarmRtus, fn($total, $witelRtu) => $total += count($witelRtu), 0);
-
-        if($alarmRtusCount <= 15) {
-            return Request::sendMessage($this->params->build());
-        }
-        return $this->sendList();
-    }
-
-    public function sendList(callable $beforeSend = null): ServerResponse
-    {
         $text = $this->params->text;
         $messageTextList = $this->splitText($text, 50);
 
-        $params = $this->params;
-        $serverResponse = Request::emptyResponse();
-
-        foreach($messageTextList as $messageText) {
-
-            if(is_callable($beforeSend)) {
-                $beforeSend();
-            }
-
-            $params->text = $messageText;
-            try {
-
-                $response = Request::sendMessage($params->build());
-                $serverResponse = $response;
-
-            } catch(\Throwable $err) {
-                \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
-            }
-
+        if(count($messageTextList) < 2) {
+            return Request::sendMessage($this->params->build());
         }
-
-        return $serverResponse;
+        return $this->sendList($messageTextList);
     }
 }
