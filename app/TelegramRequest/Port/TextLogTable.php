@@ -58,9 +58,12 @@ class TextLogTable extends TelegramRequest
             
         foreach($alarmPorts as $index => $alarm) {
             $no = $index + 1;
-            $alarmDate = \DateTime::createFromFormat('Y-m-d H:i:s', $alarm['opened_at'])->format('Y-m-d H:i');
             $alarmPortSeverity = $alarm['port_severity'];
             $alarmPortName = $alarm['port_name'];
+
+            $dateOpenedAt = \DateTime::createFromFormat('Y-m-d H:i:s', $alarm['opened_at'])->format('Y-m-d H:i');
+            $dateAlarmStartTime = $alarm['alert_start_time'] ? date('Y-m-d H:i', $alarm['alert_start_time'] / 1000) : null;
+            $alarmDate = $dateAlarmStartTime ?? $dateOpenedAt;
             
             $alarmPortValue = $this->toDefaultPortValueFormat($alarm['port_no'], $alarm['port_unit'], null);
 

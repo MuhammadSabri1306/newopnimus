@@ -3,7 +3,7 @@
 use App\Model\Witel;
 use App\Model\RtuLocation;
 use App\Model\RtuList;
-use App\Model\AlarmPortStatus;
+use App\Model\AlarmHistory;
 
 $message = $callbackQuery->getMessage();
 $chatId = $message->getChat()->getId();
@@ -16,8 +16,7 @@ if($rtu = RtuList::findBySname($rtuSname)) {
     $witel = Witel::find($rtu['witel_id']);
 }
 
-AlarmPortStatus::useDefaultJoinPattern();
-$alarmPorts = AlarmPortStatus::getCurrDayByRtuDesc($rtuSname);
+$alarmPorts = AlarmHistory::getCurrDayByRtuDesc($rtuSname);
 
 $request = static::request('Port/TextLogTable');
 $request->params->chatId = $chatId;
