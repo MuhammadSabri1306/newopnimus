@@ -70,7 +70,6 @@ trait PortFormat
 
     protected function toDefaultPortValueFormat($portValue, $portUnit, $portIdentifier)
     {
-        if($portUnit == '-') return $portValue;
         if(is_null($portValue)) return 'null';
 
         if($this->isOffPort($portUnit)) {
@@ -85,6 +84,14 @@ trait PortFormat
         }
 
         $portValue = NumberHelper::toNumber($portValue);
+        $portValue = NumberHelper::round($portValue, 2);
+        if($portUnit == '-') return $portValue;
+
+        $portUnitUtf8 = utf8_encode($portUnit);
+        if(strpos($portUnitUtf8, '°') !== false) {
+            $portUnit = $portUnitUtf8;
+        }
+
         // $unit = utf8_encode($unit);
         // $value = utf8_encode($value);
         // $portUnitKey = strtoupper($portUnit);
