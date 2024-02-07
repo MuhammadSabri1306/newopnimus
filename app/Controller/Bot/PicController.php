@@ -202,7 +202,13 @@ class PicController extends BotController
             return PicController::$command->replyToChat($replyText);
         }
 
-        $registration = Registration::findUnprocessedByChatId($chatId);
+        $registration = Registration::query(function($db, $table) use ($chatId) {
+            $query = "SELECT * FROM $table WHERE AND request_type='pic' status='unprocessed' AND chat_id=%i";
+            $data = $db->queryFirstRow($query, $chatId);
+            if(isset($data['data'])) $data['data'] = json_decode($data['data'], true);
+            return $data ?? null;
+        });
+
         if($registration) {
 
             $locations = RtuLocation::getByIds($registration['data']['locations']);

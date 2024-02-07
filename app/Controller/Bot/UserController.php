@@ -62,13 +62,12 @@ class UserController extends BotController
 
         if(!TelegramUser::exists($chatId)) {
 
-            $regists = Registration::getByChatIdDesc($chatId);
-            $regist = null;
-            for($i=0; $i<count($regists); $i++) {
-                if($regists[$i]['request_type'] == 'user' && $regists[$i]['status'] == 'unprocessed') {
-                    $regist = $regists[$i];
-                }
-            }
+            $regist = Registration::query(function($db, $table) use ($chatId) {
+                $query = "SELECT * FROM $table WHERE AND request_type='user' status='unprocessed' AND chat_id=%i";
+                $data = $db->queryFirstRow($query, $chatId);
+                if(isset($data['data'])) $data['data'] = json_decode($data['data'], true);
+                return $data ?? null;
+            });
 
             if(!$regist) return null;
 
@@ -633,13 +632,21 @@ class UserController extends BotController
             return Request::emptyResponse();
         }
 
+        $chatId = $conversation->chatId;
+
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
-        $reqData->chatId = $conversation->chatId;
+        $reqData->chatId = $chatId;
         $reqData->replyMarkup = $conversation->type == 'private' ? Keyboard::remove(['selective' => true])
             : Keyboard::forceReply(['selective' => true]);
 
-        $registration = Registration::findUnprocessedByChatId($conversation->chatId);
+        $registration = Registration::query(function($db, $table) use ($chatId) {
+            $query = "SELECT * FROM $table WHERE AND request_type='user' status='unprocessed' AND chat_id=%i";
+            $data = $db->queryFirstRow($query, $chatId);
+            if(isset($data['data'])) $data['data'] = json_decode($data['data'], true);
+            return $data ?? null;
+        });
+
         if($registration) {
             $reqData->text = ( UserText::getRegistSuccessText($conversation) )->get();
             return Request::sendMessage($reqData->build());
@@ -647,7 +654,7 @@ class UserController extends BotController
 
         $registData = [];
         $registData['request_type'] = 'user';
-        $registData['chat_id'] = $conversation->chatId;
+        $registData['chat_id'] = $chatId;
         $registData['user_id'] = $conversation->userId;
         $registData['data']['username'] = $conversation->username;
         $registData['data']['type'] = $conversation->type;
@@ -682,7 +689,7 @@ class UserController extends BotController
         }
 
         $request = BotController::request('Registration/TextOnReview');
-        $request->params->chatId = $conversation->chatId;
+        $request->params->chatId = $chatId;
         $request->setRegistration($registration);
         if($conversation->level == 'regional' || $conversation->level == 'witel') {
             $request->setRegional(Regional::find($conversation->regionalId));
