@@ -43,15 +43,6 @@ class TestCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        $chatId = $this->getMessage()->getChat()->getId();
-        if($chatId != '1931357638') {
-            return Request::sendMessage([
-                'chat_id' => $chatId,
-                'parse_mode' => 'markdown',
-                'text' => 'TEST command'.PHP_EOL.'___- Developer only___'
-            ]);
-        }
-        
         TestController::$command = $this;
         return TestController::run();
     }

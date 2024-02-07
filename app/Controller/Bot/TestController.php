@@ -38,22 +38,56 @@ class TestController extends BotController
     {
         $message = TestController::$command->getMessage();
         $messageText = strtolower(trim($message->getText(true)));
+        $chatId = $message->getChat()->getId();
         $params = explode(' ', $messageText);
-        $modulKey = array_shift($params);
+        $moduleKey = array_shift($params);
 
-        switch($modulKey) {
-            case 'inkeyboard': return TestController::inKeyboard(...$params); break;
-            case 'adminregistapproval': return TestController::adminRegistApproval(...$params); break;
-            case 'errorlog': return TestController::errorLog(...$params); break;
-            case 'errorresponse': return TestController::throwErrorResponse(...$params); break;
-            case 'cmdexec': return TestController::executeCommandLine(...$params); break;
-            case 'chart': return TestController::createChart(...$params); break;
-            case 'registapproved': return TestController::whenRegistApproved(...$params); break;
-            case 'userapprovedtext': return TestController::userApprovedText(...$params); break;
-            case 'whenregistuser': return TestController::whenRegistUser(...$params); break;
-            case 'whenregistpic': return TestController::whenRegistPic(...$params); break;
-            default: return TestController::$command->replyToChat('This is TEST Command.');
+        $modulesDevOnly = [
+            'inkeyboard' => 'inKeyboard',
+            'adminregistapproval' => 'adminRegistApproval',
+            'errorlog' => 'errorLog',
+            'errorresponse' => 'throwErrorResponse',
+            'cmdexec' => 'executeCommandLine',
+            'chart' => 'createChart',
+            'registapproved' => 'whenRegistApproved',
+            'userapprovedtext' => 'userApprovedText',
+            'whenregistuser' => 'whenRegistUser',
+            'whenregistpic' => 'whenRegistPic',
+        ];
+
+        $modulesPublic = [
+            'mychat' => 'getMyChat'
+        ];
+
+        if(in_array($moduleKey, array_keys($modulesDevOnly))) {
+
+            if($chatId != \App\Config\AppConfig::$DEV_CHAT_ID) {
+                return Request::sendMessage([
+                    'chat_id' => $chatId,
+                    'parse_mode' => 'markdown',
+                    'text' => 'TEST command'.PHP_EOL.'___- Developer only___'
+                ]);
+            }
+
+            $handler = $modulesDevOnly[$moduleKey];
+            return static::$handler(...$params);
+
         }
+
+        if(in_array($moduleKey, array_keys($modulesPublic))) {
+
+            $handler = $modulesPublic[$moduleKey];
+            return static::$handler(...$params);
+
+        }
+
+        if(!$moduleKey) {
+            return static::$command->replyToChat('This is TEST Command.');
+        }
+        if($chatId == \App\Config\AppConfig::$DEV_CHAT_ID) {
+            return static::$command->replyToChat('Test command\'s handler not found.');
+        }
+        return Request::emptyResponse();
     }
 
     public static function inKeyboard()
@@ -458,5 +492,22 @@ class TestController extends BotController
         }
 
         return static::sendEmptyResponse();
+    }
+
+    public static function getMyChat()
+    {
+        $message = static::$command->getMessage();
+        $chatId = $message->getChat()->getId();
+
+        $data = json_encode($message, JSON_PRETTY_PRINT);
+
+        $reqData = New RequestData();
+        $reqData->parseMode = 'markdown';
+        $reqData->chatId = $chatId;
+        $reqData->text = TelegramText::create('Chat data structure')->newLine()
+            ->addCode($data)
+            ->get();
+
+        return Request::sendMessage($reqData->build());
     }
 }
