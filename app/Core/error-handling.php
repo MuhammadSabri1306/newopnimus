@@ -11,12 +11,16 @@ set_error_handler(function ($errNo, $errMsg, $errFile = null, $errLine = null, a
 
         if($errNo === E_WARNING) {
             $err = new PHPWarningException("WARNING:$errMsg", 0);
-            \MuhammadSabri1306\MyBotLogger\Entities\WarningLogger::catch($err);
+            if(!AppConfig::isErrorExcluded($err, 'warning')) {
+                \MuhammadSabri1306\MyBotLogger\Entities\WarningLogger::catch($err);
+            }
         }
     
         if($errNo === E_NOTICE) {
             $err = new PHPNoticeException("NOTICE:$errMsg", 0);
-            \MuhammadSabri1306\MyBotLogger\Entities\WarningLogger::catch($err);
+            if(!AppConfig::isErrorExcluded($err, 'notice')) {
+                \MuhammadSabri1306\MyBotLogger\Entities\WarningLogger::catch($err);
+            }
         }
 
     } elseif(AppConfig::$MODE == 'development') {

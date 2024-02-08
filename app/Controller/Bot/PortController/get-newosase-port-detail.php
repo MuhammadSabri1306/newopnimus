@@ -3,6 +3,24 @@
 use Goat1000\SVGGraph\SVGGraph;
 use App\ApiRequest\NewosaseApi;
 use App\Helper\Helper;
+use App\Config\AppConfig;
+
+if(AppConfig::$MODE == 'production') {
+    AppConfig::addErrorExclusions('notice', function($err) {
+        if($err->getMessage() != 'NOTICE:iconv(): Detected an illegal character in input string') {
+            return false;
+        }
+
+        $currPath = \App\Helper\Helper::appPath('Controller/Bot/PortController/get-newosase-port-detail.php');
+        $errTrace = $err->getTrace();
+        foreach($errTrace as $trace) {
+            if(isset($trace['file']) && $trace['file'] == $currPath) {
+                return true;
+            }
+        }
+        return false;
+    });
+}
 
 $newosaseApi = new NewosaseApi();
 $newosaseApi->request['query'] = $newosaseApiParams;

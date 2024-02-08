@@ -13,13 +13,13 @@ class Helper
     public static function basePath(string $targetPath)
     {
         $pathArr = explode('/', $targetPath);
-        return __DIR__.'/../../'. implode('/', $pathArr);
+        return realpath(__DIR__.'/../../'. implode('/', $pathArr));
     }
 
     public static function appPath(string $targetPath)
     {
         $pathArr = explode('/', $targetPath);
-        return __DIR__.'/../'. implode('/', $pathArr);
+        return realpath(__DIR__.'/../'. implode('/', $pathArr));
     }
 
     public static function debug(...$vars) {

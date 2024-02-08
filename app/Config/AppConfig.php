@@ -16,6 +16,8 @@ class AppConfig
     public static $OSASEAPI_TOKEN = null;
     public static $OSASEAPI_DBTABLE = null;
 
+    protected static $ERR_EXCLUSIONS = [];
+
     public static function initConfig()
     {
         static::$MODE = Helper::env('APP_MODE');
@@ -42,6 +44,43 @@ class AppConfig
         static::$OSASEAPI_APP_ID = Helper::env('OSASEAPI_APP_ID');
         static::$OSASEAPI_TOKEN = Helper::env('OSASEAPI_TOKEN');
         static::$OSASEAPI_DBTABLE = Helper::env('OSASEAPI_MYSQL_TABLE');
+
+        static::$ERR_EXCLUSIONS = [
+            'error' => [],
+            'warning' => [],
+            'notice' => [],
+        ];
+    }
+
+    public static function addErrorExclusions(string $severity, callable $checker)
+    {
+        $severities = array_keys(static::$ERR_EXCLUSIONS);
+        if(!in_array($severity, $severities)) {
+            $severitiesText = implode('|', $severities);
+            throw new \Error("first params expected:$severitiesText, given:$severity");
+        }
+        array_push(static::$ERR_EXCLUSIONS[$severity], $checker);
+    }
+
+    public static function isErrorExcluded($err, string $severity = 'error')
+    {
+        $severities = array_keys(static::$ERR_EXCLUSIONS);
+        if(!in_array($severity, $severities)) {
+            $severitiesText = implode('|', $severities);
+            throw new \Error("first params expected:$severitiesText, given:$severity");
+        }
+
+        $errExclusions = static::$ERR_EXCLUSIONS[$severity];
+        for($i=0; $i<count($errExclusions); $i++) {
+
+            $checker = $errExclusions[$i];
+            if($checker($err)) {
+                $i = count($errExclusions);
+                return true;
+            }
+
+        }
+        return false;
     }
 }
 
