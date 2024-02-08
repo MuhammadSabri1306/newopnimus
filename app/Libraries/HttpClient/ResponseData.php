@@ -30,9 +30,9 @@ class ResponseData
         for($i=0; $i<count($keys); $i++) {
 
             $key = $keys[$i];
-            if(is_array($data)) {
+            if(is_array($data) && isset($data[$key])) {
                 $data = $data[$key];
-            } elseif(is_object($data)) {
+            } elseif(is_object($data) && isset($data->$key)) {
                 $data = $data->$key;
             } else {
                 $data = $defaultValue;
