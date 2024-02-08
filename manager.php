@@ -44,7 +44,7 @@ try {
 
 } catch(\Throwable $err) {
 
-    debugError($err);
+    // debugError($err);
     $chatIdExists = true;
 
     if($err instanceof \App\Core\Exception\TelegramResponseException) {
