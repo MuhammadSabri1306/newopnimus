@@ -35,7 +35,7 @@ class CallbackData
 
     public function isCallbackOf(array $controllerCallbacks)
     {
-        if(array_key_exists(!$this->prefix, $controllerCallbacks)) {
+        if(!array_key_exists($this->prefix, $controllerCallbacks)) {
             return null;
         }
         return $controllerCallbacks[$this->prefix];
