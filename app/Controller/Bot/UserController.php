@@ -63,7 +63,7 @@ class UserController extends BotController
         if(!TelegramUser::exists($chatId)) {
 
             $regist = Registration::query(function($db, $table) use ($chatId) {
-                $query = "SELECT * FROM $table WHERE AND request_type='user' status='unprocessed' AND chat_id=%i";
+                $query = "SELECT * FROM $table WHERE request_type='user' AND status='unprocessed' AND chat_id=%i";
                 $data = $db->queryFirstRow($query, $chatId);
                 if(isset($data['data'])) $data['data'] = json_decode($data['data'], true);
                 return $data ?? null;
@@ -641,7 +641,7 @@ class UserController extends BotController
             : Keyboard::forceReply(['selective' => true]);
 
         $registration = Registration::query(function($db, $table) use ($chatId) {
-            $query = "SELECT * FROM $table WHERE AND request_type='user' status='unprocessed' AND chat_id=%i";
+            $query = "SELECT * FROM $table WHERE request_type='user' AND status='unprocessed' AND chat_id=%i";
             $data = $db->queryFirstRow($query, $chatId);
             if(isset($data['data'])) $data['data'] = json_decode($data['data'], true);
             return $data ?? null;

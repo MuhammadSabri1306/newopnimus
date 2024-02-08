@@ -44,19 +44,16 @@ try {
 
 } catch(\Throwable $err) {
 
-    echo $err;
+    debugError($err);
     $chatIdExists = true;
-    if($err instanceof \App\Core\Exception\TelegramResponseException) {
 
+    if($err instanceof \App\Core\Exception\TelegramResponseException) {
         \MuhammadSabri1306\MyBotLogger\Entities\TelegramResponseLogger::catch($err);
         if($err->getResponseData()['description'] == 'Bad Request: chat not found') {
             $chatIdExists = false;
         }
-
     } else {
-
         \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
-
     }
 
     if($chatIdExists) {

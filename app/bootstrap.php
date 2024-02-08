@@ -10,3 +10,4 @@ require_once __DIR__ . '/Config/environtments.php';
 
 // Load App
 require __DIR__.'/Helper/main.php';
+require __DIR__.'/Core/error-handling.php';

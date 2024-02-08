@@ -56,7 +56,7 @@ class TestController extends BotController
         ];
 
         $modulesPublic = [
-            'mychat' => 'getMyChat'
+            'mychat' => 'getMyChat',
         ];
 
         if(in_array($moduleKey, array_keys($modulesDevOnly))) {
@@ -93,6 +93,7 @@ class TestController extends BotController
     public static function inKeyboard()
     {
         $message = TestController::$command->getMessage();
+        $fromId = $message->getFrom()->getId();
         
         $reqData = new RequestData();
         $reqData->chatId = $message->getChat()->getId();
@@ -103,7 +104,7 @@ class TestController extends BotController
         $callbackData3 = [ 'id' => 3, 'n' => '3' ];
 
         $callbackData = new CallbackData('test.inkeyboard_encode');
-        $callbackData->limitAccess($reqData->chatId);
+        $callbackData->limitAccess($fromId);
 
         $reqData->replyMarkup = new InlineKeyboard([
             ['text' => 'Callback 1', 'callback_data' => $callbackData->createEncodedData($callbackData1)],
@@ -157,19 +158,16 @@ class TestController extends BotController
 
     public static function errorLog()
     {
-        $test = testError();
-        // try {
+        $testClosure = function(array $data) {
+            $result = $data['saya'];
+            return $result;
+        };
 
+        $testClosure($data); // test warning error
+        // $testClosure([]); // test warning error
+        // $data = new UndefinedClass(); // test fatal error
 
-        // } catch(\Throwable $err) {
-        //     $test = \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
-        //     BotController::sendDebugMessage($test, [ 'toJson' => false ]);
-        // } finally {
-        //     // return Request::emptyResponse();
-        //     return TestController::$command->replyToChat('TEST Logger');
-        // }
-        // BotController::sendDebugMessage(\MuhammadSabri1306\MyBotLogger\Logger::$botUsername);
-        // return TestController::$command->replyToChat('TEST Logger');
+        return Request::emptyResponse();
     }
 
     public static function throwErrorResponse()

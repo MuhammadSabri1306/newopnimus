@@ -29,23 +29,34 @@ function dd_json($var, ...$vars) {
     die();
 }
 
+function toErrorText($err) {
+    $errMessage = $err->getMessage();
+    $errFile = $err->getFile();
+    $errLine = $err->getLine();
+    $text = "$errMessage\n  at $errFile:$errLine";
+
+    foreach($err->getTrace() as $errTrace) {
+        $errFile = $errTrace['file'];
+        $errLine = $errTrace['line'];
+        $text .= "\n  at $errFile:$errLine";
+    }
+
+    return $text;
+}
+
 function debugError($err, $exit = true) {
+
     echo '<style>';
     echo 'pre { background-color: #f6f8fa; padding: 10px; }';
     echo 'strong { color: #e91e63; }';
     echo '</style>';
 
-    while($err) {
-
-        $text = $err->getMessage() . ' in ' . $err->getFile() . ':' . $err->getLine();
-        ?><pre><?=$text?></pre><?php
-        $err = $err->getPrevious();
-
-    }
+    ?><pre><?=toErrorText($err)?></pre><?php
 
     if($exit) {
         die();
     }
+
 }
 
 function readErrorStack($err) {

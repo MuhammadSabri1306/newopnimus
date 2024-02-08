@@ -203,7 +203,7 @@ class PicController extends BotController
         }
 
         $registration = Registration::query(function($db, $table) use ($chatId) {
-            $query = "SELECT * FROM $table WHERE AND request_type='pic' status='unprocessed' AND chat_id=%i";
+            $query = "SELECT * FROM $table WHERE request_type='pic' AND status='unprocessed' AND chat_id=%i";
             $data = $db->queryFirstRow($query, $chatId);
             if(isset($data['data'])) $data['data'] = json_decode($data['data'], true);
             return $data ?? null;
