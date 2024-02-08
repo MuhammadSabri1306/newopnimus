@@ -22,7 +22,7 @@ $portId = $data['port']->id;
 
 $currHourDateTime = new \DateTime();
 $currHourDateTime->setTime($currHourDateTime->format('H'), 0, 0);
-$fileName = "checkport_chart_port_$portId_" . $currHourDateTime->getTimestamp();
+$fileName = 'checkport_chart_port_'.$portId.'_' . $currHourDateTime->getTimestamp();
 
 $svgFileName = $fileName . '.svg';
 $svgFilePath = __DIR__.'/../../../../public/charts/'.$svgFileName;
