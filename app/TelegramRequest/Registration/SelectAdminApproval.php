@@ -45,11 +45,15 @@ class SelectAdminApproval extends TelegramRequest
         $text->addText('Level           : '.ucfirst($userData->level))->newLine();
         
         if($userData->level == 'regional' || $userData->level == 'witel') {
-            $text->addText('Regional        : '.$regional['name'])->newLine();
+            if(is_array($regional)) {
+                $text->addText('Regional        : '.$regional['name'])->newLine();
+            }
         }
         
         if($userData->level == 'witel') {
-            $text->addText('Witel           : '.$witel['witel_name'])->newLine();
+            if(is_array($witel)) {
+                $text->addText('Witel           : '.$witel['witel_name'])->newLine();
+            }
         }
         
         if(!$isPrivateChat) {
