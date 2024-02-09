@@ -267,7 +267,7 @@ class AlarmController extends BotController
         return $request->send();
     }
 
-    public static function onSelectWitel($callbackValue, $callbackQuery)
+    public static function onSelectWitel($witelId, $callbackQuery)
     {
         $message = $callbackQuery->getMessage();
         $messageId = $message->getMessageId();
@@ -283,7 +283,7 @@ class AlarmController extends BotController
         $newosaseApi = new NewosaseApi();
         $newosaseApi->request['query'] = [
             'isAlert' => 1,
-            'witelId' => $callbackValue
+            'witelId' => $witelId
         ];
 
         $fetResp = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
@@ -305,17 +305,8 @@ class AlarmController extends BotController
             $request = static::request('TextDefault');
             $request->params->chatId = $chatId;
 
-            $levelName = null;
-            if($user['level'] == 'nasional') {
-                $levelName = 'level Nasional';
-            } elseif($user['level'] == 'regional') {
-                $regional = Regional::find($user['regional_id']);
-                $levelName = $regional ? $regional['name'] : null;
-            } elseif($user['level'] == 'witel') {
-                $witel = Witel::find($user['witel_id']);
-                $levelName = $witel ? $witel['witel_name'] : null;
-            }
-
+            $witel = Witel::find($witelId);
+            $levelName = $witel ? $witel['witel_name'] : null;
             $request->setText(function($text) use ($levelName) {
                 $text->addText('✅✅')->addBold('ZERO ALARM')->addText('✅✅')->newLine()
                     ->addText('Saat ini tidak ada alarm');
@@ -334,7 +325,7 @@ class AlarmController extends BotController
 
         $request = BotController::request('Alarm/TextPortWitel');
         $request->params->chatId = $chatId;
-        $request->setWitel(Witel::find($callbackValue));
+        $request->setWitel(Witel::find($witelId));
         $request->setPorts($ports);
         return $request->send();
     }

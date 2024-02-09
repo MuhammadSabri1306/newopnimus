@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller\Bot;
 
+use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\InlineKeyboard;
 use Longman\TelegramBot\ChatAction;
@@ -52,7 +53,7 @@ class PortController extends BotController
         return null;
     }
 
-    public static function checkPort()
+    public static function checkPort(): ServerResponse
     {
         $message = PortController::$command->getMessage();
         $messageText = trim($message->getText(true));
