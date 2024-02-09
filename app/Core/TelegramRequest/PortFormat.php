@@ -44,6 +44,18 @@ trait PortFormat
         return in_array(strtoupper($portUnit), $binerUnits);
     }
 
+    protected function isPlnPort($portUnit, $portIdentifier)
+    {
+        if(!$this->isBinerPort($portUnit)) return false;
+        return strtolower($portIdentifier) == 'st_pln';
+    }
+
+    protected function isGensetPort($portUnit, $portIdentifier)
+    {
+        if(!$this->isBinerPort($portUnit)) return false;
+        return strtolower($portIdentifier) == 'st_deg';
+    }
+
     protected function formatBinerPortValue($portValue, $trueValue, $falseValue)
     {
         return boolval($portValue) ? $trueValue : $falseValue;
@@ -72,14 +84,11 @@ trait PortFormat
     {
         if(is_null($portValue)) return 'null';
 
-        if($this->isOffPort($portUnit)) {
+        if($this->isOffPort($portUnit) || $this->isPlnPort($portUnit, $portIdentifier)) {
             return $this->formatBinerPortValue($portValue, 'OFF', 'ON');
         }
 
         if($this->isBinerPort($portUnit)) {
-            if($portIdentifier == 'ST_PLN') {
-                return $this->formatBinerPortValue($portValue, 'OFF', 'ON');
-            }
             return $this->formatBinerPortValue($portValue, 'ON', 'OFF');
         }
 

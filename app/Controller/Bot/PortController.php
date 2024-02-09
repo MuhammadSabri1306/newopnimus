@@ -34,6 +34,10 @@ class PortController extends BotController
         'portlog.wit' => 'onSelectWitelLog',
         'portlog.loc' => 'onSelectLocationLog',
         'portlog.rtu' => 'onSelectRtuLog',
+
+        'portsts.type' => 'onSelectStatusType',
+        'portstsa.reg' => 'onSelectRegionalStatusCatuan',
+        'portstsa.wit' => 'onSelectWitelStatusCatuan',
     ];
 
     public static function getCekPortAllConversation()
@@ -646,5 +650,34 @@ class PortController extends BotController
     public static function onSelectRegionalLog($regionalId, $callbackQuery)
     {   
         return static::callModules('on-select-regional-log', compact('regionalId', 'callbackQuery'));
+    }
+
+    public static function checkStatus()
+    {
+        return static::callModules('check-status');
+    }
+
+    public static function onSelectStatusType($statusTypeKey, $callbackQuery)
+    {
+        return static::callModules(
+            'on-select-status-type',
+            compact('statusTypeKey', 'callbackQuery')
+        );
+    }
+
+    public static function onSelectRegionalStatusCatuan($regionalId, $callbackQuery)
+    {
+        return static::callModules(
+            'on-select-regional-status-catuan',
+            compact('regionalId', 'callbackQuery')
+        );
+    }
+
+    public static function onSelectWitelStatusCatuan($witelId, $callbackQuery)
+    {
+        return static::callModules(
+            'on-select-witel-status-catuan',
+            compact('witelId', 'callbackQuery')
+        );
     }
 }
