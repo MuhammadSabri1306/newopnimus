@@ -31,7 +31,10 @@ class SelectAdminPicApproval extends TelegramRequest
 
         $text = TelegramText::create()
             ->addBold('Registrasi PIC OPNIMUS')->newLine(2)
-            ->addText('Terdapat permintaan registrasi User untuk ')->addBold('menjadi PIC')->addText(' sesuai data berikut.')->newLine(2)
+            ->addText('Terdapat permintaan registrasi User ')
+            ->addMentionByUsername($apprvData->user_id, "@$apprvData->username")
+            ->addText(' untuk ')
+            ->addBold('menjadi PIC')->addText(' sesuai data berikut.')->newLine(2)
             ->startCode()
             ->addText("Nama Pengguna   : $apprvData->full_name")->newLine()
             ->addText("No. Handphone   : $apprvData->telp")->newLine()

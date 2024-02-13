@@ -31,8 +31,15 @@ class SelectAdminApproval extends TelegramRequest
         $isPrivateChat = $userData->type == 'private';
 
         $text = TelegramText::create()
-            ->startBold()->addText('Registrasi User OPNIMUS')->endBold()->newLine(2)
-            ->addText('Terdapat permintaan registrasi '.($isPrivateChat ? 'User' : 'Grup').' dengan data berikut.')->newLine(2)
+            ->startBold()->addText('Registrasi User OPNIMUS')->endBold();
+        $text->newLine(2)->addText('Terdapat permintaan registrasi ');
+        if($isPrivateChat) {
+            $text->addText('User ')->addMentionByUsername($registration->user_id, "@$userData->username");
+        } else {
+            $text->addText('Grup');
+        }
+        $text->addText(' dengan data berikut.')
+            ->newLine(2)
             ->startCode();
 
         if($isPrivateChat) {

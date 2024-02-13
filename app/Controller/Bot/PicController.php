@@ -202,6 +202,14 @@ class PicController extends BotController
             return PicController::$command->replyToChat($replyText);
         }
 
+        if(!static::user()) {
+
+            static::setRequestTarget($message);
+            $request = static::request('Error/TextUserUnidentified');
+            return $request->send();
+
+        }
+
         $registration = Registration::query(function($db, $table) use ($chatId) {
             $query = "SELECT * FROM $table WHERE request_type='pic' AND status='unprocessed' AND chat_id=%i";
             $data = $db->queryFirstRow($query, $chatId);
@@ -257,6 +265,10 @@ class PicController extends BotController
         if($conversation->isExists()) {
             
             $conversationStep = $conversation->getStep();
+            if(!is_array($conversation->locations) || count($conversation->locations) < 1) {
+                return PicController::askAgreement($chatId, $telgUser);
+            }
+
             if($conversationStep == 1) {
                 return PicController::askLocations($chatId, $conversation->locations);
             }
@@ -338,12 +350,11 @@ class PicController extends BotController
             $conversation->level = 'pic';
             $conversation->commit();
 
-            $request = BotController::getRequest('Area/SelectRegional', [ $chatId, $telgUser['regional_id'] ]);
+            $request = BotController::getRequest('Area/SelectRegional', [ $chatId ]);
             $request->setRequest(function($inkeyboardItem, $regional) {
                 $inkeyboardItem['callback_data'] = 'pic.select_regional.'.$regional['id'];
                 return $inkeyboardItem;
             });
-
             return $request->send();
             
         }
@@ -365,7 +376,7 @@ class PicController extends BotController
             $conversation->level = 'nasional';
             $conversation->commit();
 
-            $request = BotController::getRequest('Area/SelectRegional', [ $chatId, $telgUser['regional_id'] ]);
+            $request = BotController::getRequest('Area/SelectRegional', [ $chatId ]);
             $request->setRequest(function($inkeyboardItem, $regional) {
                 $inkeyboardItem['callback_data'] = 'pic.select_regional.'.$regional['id'];
                 return $inkeyboardItem;

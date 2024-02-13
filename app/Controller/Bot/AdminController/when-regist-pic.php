@@ -20,6 +20,8 @@ if($pic['has_regist']) {
     $telgPersUser = TelegramPersonalUser::findByUserId($pic['telegram_user_id']);
 
     $pic['full_name'] = $telgPersUser['nama'];
+    $pic['username'] = $telgUser['username'];
+    $pic['user_id'] = $telgUser['user_id'];
     $pic['telp'] = $telgPersUser['telp'];
     $pic['level'] = $telgUser['level'];
     $pic['nik'] = $telgPersUser['nik'];

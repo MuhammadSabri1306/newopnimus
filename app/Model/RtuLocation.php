@@ -38,8 +38,8 @@ class RtuLocation extends Model
     public static function getByIds(array $locIds)
     {
         return RtuLocation::query(function ($db, $table) use ($locIds) {
-            $query = "SELECT * FROM $table WHERE id IN %li ORDER BY FIELD%ll";
-            return $db->query($query, $locIds, ['id', ...$locIds]);
+            $query = "SELECT * FROM $table WHERE id IN %li ORDER BY location_sname";
+            return $db->query($query, $locIds);
         });
     }
 

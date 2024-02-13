@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller;
 
+use Longman\TelegramBot\Commands\Command;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
@@ -13,6 +14,7 @@ use App\Model\TelegramUser;
 class BotController extends Controller
 {
     public static $command;
+    private static $currTelegramUser = null;
     protected static $requestTarget = null;
 
     public static function catchCallback($controller, $callbackData, $callbackQuery)
@@ -100,14 +102,48 @@ class BotController extends Controller
         return new $className(...$args);
     }
 
+    public static function getMessage()
+    {
+        $message = null;
+        if(isset(static::$command)) {
+            $message = static::$command->getMessage();
+            if(!$message) {
+                $message = static::$command->getCallbackQuery()->getMessage();
+            }
+        }
+        
+        return $message ?? null;
+    }
+
     public static function user()
     {
-        if(!isset(static::$command)) {
-            return null;
+        if(!static::$currTelegramUser) {
+            $message = static::getMessage();
+            if($message) {
+                $chatId = $message->getChat()->getId();
+                static::$currTelegramUser = TelegramUser::findByChatId($chatId);
+            }
         }
+        return static::$currTelegramUser;
+    }
 
-        $chatId = static::$command->getMessage()->getChat()->getId();
-        return TelegramUser::findByChatId($chatId);
+    public static function handle(Command $command)
+    {
+        static::$command = $command;
+        $user = static::user();
+
+        if($user) {
+
+            if(isset($user['type']) && $user['type'] == 'supergroup') {
+                if($user['message_thread_id'] !== null) {
+                    $messageThreadId = $message->getMessageThreadId();
+                    if(isset($user['message_thread_id']) && $user['message_thread_id'] != $messageThreadId) {
+                        return static::sendEmptyResponse();
+                    }
+                }
+            }
+
+        }
     }
 
     protected static function setRequestTarget($target)

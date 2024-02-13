@@ -81,7 +81,6 @@ class AdminController extends BotController
         });
 
         $apprMessages = [];
-        $test = [];
         foreach($admins as $admin) {
             $request->params->chatId = $admin['chat_id'];
             $request->params->chatId = $admin['chat_id'];
@@ -92,7 +91,6 @@ class AdminController extends BotController
                     'message_id' => $response->getResult()->getMessageId()
                 ]);
             }
-            array_push($test, $response);
         }
 
         if(count($apprMessages) > 0) {
@@ -101,8 +99,6 @@ class AdminController extends BotController
                 'data' => $registData['data']
             ], null);
         }
-
-        static::sendDebugMessage($test);
     }
 
     public static function whenRegistPic($registId)
