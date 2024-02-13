@@ -36,8 +36,8 @@ class TextPortStatusCatuan extends TelegramRequest
         }
 
         $defaultPortTexts = [
-            'pln' => TelegramText::create()->addStrike('Port PLN')->get(),
-            'genset' => TelegramText::create()->addStrike('Port Genset')->get(),
+            'pln' => TelegramText::create()->addItalic('Tidak ada Port PLN')->get(),
+            'genset' => TelegramText::create()->addItalic('Tidak ada Port Genset')->get(),
         ];
 
         $no = 0;
@@ -46,9 +46,8 @@ class TextPortStatusCatuan extends TelegramRequest
             $no++;
             $rtuSname = $rtu['rtu_sname'];
             $locName = $rtu['location'];
-            $rtuStatus = strtoupper($rtu['rtu_status']).$this->getRtuStatusIcon($rtu['rtu_status']);
-            $text->newLine(2)
-                ->addBold("$no ⛽️$rtuSname ($locName) : $rtuStatus");
+            $isPlnOn = false;
+            $isGensetOff = false;
 
             $portTexts = $defaultPortTexts;
             foreach($rtu['ports'] as $port) {
@@ -56,12 +55,21 @@ class TextPortStatusCatuan extends TelegramRequest
                 $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
                 if($this->isPlnPort($port->units, $port->identifier)) {
                     $portTexts['pln'] = "$portIcon PLN $portValue";
+                    if($port->value !== null) {
+                        $isPlnOn = !boolval($port->value);
+                    }
                 } elseif($this->isGensetPort($port->units, $port->identifier)) {
                     $portTexts['genset'] = "$portIcon Genset $portValue";
+                    if($port->value !== null) {
+                        $isGensetOff = !boolval($port->value);
+                    }
                 }
             }
 
-            $text->newLine()
+            $status = $isPlnOn && $isGensetOff ? 'NORMAL ✅'
+                : ( !$isPlnOn && !$isGensetOff ? 'CRITICAL ❗️' : 'ALERT ⚠️');
+            $text->newLine(2)
+                ->addBold("$no ⛽️$rtuSname ($locName) : $status")->newLine()
                 ->addText($portTexts['pln'])
                 ->addText(' | ')
                 ->addText($portTexts['genset']);
