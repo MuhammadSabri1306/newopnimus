@@ -61,7 +61,7 @@ class AdminController extends BotController
         $admins = TelegramAdmin::getByUserArea($registData['data']);
         if(!$registData || count($admins) < 1) return;
 
-        $request = BotController::request('Registration/SelectAdminApproval');
+        $request = BotController::request('Registration/SelectAdminApproval', [], false);
         $request->setRegistrationData($registData);
         
         if(in_array($registData['data']['level'], [ 'regional', 'witel' ])) {
@@ -80,10 +80,29 @@ class AdminController extends BotController
             return $inlineKeyboardData;
         });
 
+        $apprMessages = [];
+        $test = [];
         foreach($admins as $admin) {
             $request->params->chatId = $admin['chat_id'];
-            $request->send();
+            $request->params->chatId = $admin['chat_id'];
+            $response = $request->send();
+            if($response->isOk()) {
+                array_push($apprMessages, [
+                    'chat_id' => $admin['chat_id'],
+                    'message_id' => $response->getResult()->getMessageId()
+                ]);
+            }
+            array_push($test, $response);
         }
+
+        if(count($apprMessages) > 0) {
+            $registData['data']['approval_messages'] = $apprMessages;
+            Registration::update($registId, [
+                'data' => $registData['data']
+            ], null);
+        }
+
+        static::sendDebugMessage($test);
     }
 
     public static function whenRegistPic($registId)
@@ -155,116 +174,6 @@ class AdminController extends BotController
             $request->params->chatId = $admin['chat_id'];
             $request->send();
         }
-    }
-
-    public static function buildPicApprvData($registData)
-    {
-        if(!is_array($registData)) {
-            return $registData;
-        }
-
-        $apprData = $registData['data'];
-        $apprData['request_level'] = 'pic';
-        if($apprData['has_regist']) {
-
-            $telgUser = TelegramUser::find($apprData['telegram_user_id']);
-            $telgPersUser = TelegramPersonalUser::findByUserId($apprData['telegram_user_id']);
-
-            $apprData['full_name'] = $telgPersUser['nama'];
-            $apprData['telp'] = $telgPersUser['telp'];
-            $apprData['level'] = $telgUser['level'];
-            $apprData['nik'] = $telgPersUser['nik'];
-            $apprData['is_organik'] = $telgPersUser['is_organik'];
-            $apprData['instansi'] = $telgPersUser['instansi'];
-            $apprData['unit'] = $telgPersUser['unit'];
-            $apprData['regional_id'] = $telgUser['regional_id'];
-            $apprData['witel_id'] = $telgUser['witel_id'];
-
-        }
-
-        return $apprData;
-    }
-
-    public static function getBtnApproval(callable $callInKeyboard): RequestData
-    {
-        $reqData = new RequestData();
-        $reqData->parseMode = 'markdown';
-
-        $inlineKeyboardData = $callInKeyboard([
-            'approve' => [ 'text' => '👍 Izinkan', 'callback_data' => null ],
-            'reject' => [ 'text' => '❌ Tolak', 'callback_data' => null ]
-        ]);
-
-        $reqData->replyMarkup = new InlineKeyboard($inlineKeyboardData);
-        return $reqData;
-    }
-
-    public static function getRegistData($registId)
-    {
-        $registData = Registration::find($registId);
-        if(!$registData) {
-            return [ 'status' => 'empty', 'registData' => $registData ];
-        }
-        
-        $registStatus = Registration::getStatus($registId);
-        if($registStatus['status'] != 'unprocessed') {
-            return [ 'status' => 'done', 'registData' => $registData ];
-        }
-        
-        return [ 'status' => 'exists', 'registData' => $registData ];
-    }
-
-    public static function getInKeyboardAnswerText($questionText, $answerText): TelegramText
-    {
-        return TelegramText::create($questionText)->newLine(2)
-            ->addBold('=> ')->addText($answerText);
-    }
-
-    public static function getUnavailableApproveText($registData)
-    {
-        $reqData = new RequestData();
-        $reqData->parseMode = 'markdown';
-        
-        if(!$registData) {
-            $reqData->text = 'Permintaan registrasi tidak dapat ditemukan. Hal ini dapat dikarenakan permintaan telah dihapus.';
-            return $reqData;
-        }
-
-        $updateText = AdminText::getUserApprovalText($registData);
-        $registStatus = Registration::getStatus($registData['id']);
-        $statusText = $registStatus['status'] == 'approved' ? 'disetujui' : 'ditolak';
-
-        if(isset($registStatus['updated_by'])) {
-            $updateText = TelegramText::create("Permintaan registrasi telah $statusText oleh ");
-            $adminUserId = $registStatus['updated_by']['chat_id'] ?? null;
-            $adminFirstName = $registStatus['updated_by']['first_name'] ?? null;
-            $adminLastName = $registStatus['updated_by']['last_name'] ?? null;
-            $adminUsername = $registStatus['updated_by']['username'] ?? null;
-
-            if($adminFirstName && $adminLastName) {
-                $updateText->addText('Admin ')
-                    ->addMentionByName($adminUserId, "$adminFirstName $adminLastName");
-            } elseif($adminUsername) {
-                $updateText->addText('Admin ')
-                    ->addMentionByUsername($adminUserId, $adminUsername);
-            } else {
-                $updateText->addMentionByName($adminUserId, 'ADMIN');
-            }
-
-            if($registStatus['updated_by']['witel_name']) {
-                $updateText->newLine()->addItalic('- '.$registStatus['updated_by']['witel_name'].'.');
-            } elseif($registStatus['updated_by']['regional_name']) {
-                $updateText->newLine()->addItalic('- '.$registStatus['updated_by']['regional_name'].'.');
-            } else {
-                $updateText->newLine()->addItalic('- Level NASIONAL.');
-            }
-
-            $reqData->text = $updateText->get();
-        } else {
-            $reqData->text = "Permintaan registrasi telah $statusText.";
-        }
-
-        return $reqData;
     }
 
     public static function onUserApproval($callbackData, $callbackQuery)

@@ -25,12 +25,12 @@ class AnimationTou extends TelegramRequest
             ->addText('Hello! Welcome Heroes! selamat datang di ')
             ->startBold()->addText('OPNIMUS')->endBold()
             ->newLine()->newLine()
-            ->startCode()
+            ->startInlineCode()
             ->addText('OPNIMUS (Operational Network Infra Monitoring & Surveillance System)')
             ->addText(' adalah sebuah sistem monitoring kondisi kesehatan network')
             ->addText(' element secara realtime dan sistem early warning terhadap potensi gangguan')
             ->addText(' karena permasalahan fisik (catuan, suhu, arus listrik).')
-            ->endCode();
+            ->endInlineCode();
     }
 
     public function send(): ServerResponse

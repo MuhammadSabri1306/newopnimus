@@ -77,14 +77,18 @@ class SelectAdminApproval extends TelegramRequest
 
     public function setRegional($regional)
     {
-        $this->setData('regional', $regional);
-        $this->params->text = $this->getText()->get();
+        if(is_array($regional)) {
+            $this->setData('regional', $regional);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function setWitel($witel)
     {
-        $this->setData('witel', $witel);
-        $this->params->text = $this->getText()->get();
+        if(is_array($witel)) {
+            $this->setData('witel', $witel);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function setInKeyboard(callable $callButton)

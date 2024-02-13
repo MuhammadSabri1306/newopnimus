@@ -41,11 +41,11 @@ class TextDoneReviewed extends TelegramRequest
             $text->addMentionByName($adminUserId, 'Admin');
         }
 
-        if($admin['witel_name']) {
+        if($admin['level'] == 'witel' && isset($admin['witel_name'])) {
             $text->addItalic(' - '.$admin['witel_name'].'.');
-        } elseif($admin['regional_name']) {
+        } elseif($admin['level'] == 'regional' && isset($admin['regional_name'])) {
             $text->addItalic(' - '.$admin['regional_name'].'.');
-        } else {
+        } elseif($admin['level'] == 'nasional') {
             $text->addItalic(' - Level NASIONAL.');
         }
 

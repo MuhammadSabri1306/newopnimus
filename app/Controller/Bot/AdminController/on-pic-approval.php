@@ -141,7 +141,7 @@ if(!$telgUser) return null;
 
 $alertUser = AlertUsers::find($telgUser['id']);
 if($alertUser) {
-    AlertUsers::update($telgUser['alert_user_id'], [
+    AlertUsers::update($alertUser['alert_user_id'], [
         'user_alert_status' => 1
     ]);
 } else {

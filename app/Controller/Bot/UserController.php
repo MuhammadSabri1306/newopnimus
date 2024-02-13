@@ -59,6 +59,7 @@ class UserController extends BotController
         $message = UserController::$command->getMessage();
         $chatType = $message->getChat()->getType();
         $chatId = $message->getChat()->getId();
+        static::setRequestTarget($message);
 
         if(!TelegramUser::exists($chatId)) {
 
@@ -71,8 +72,7 @@ class UserController extends BotController
 
             if(!$regist) return null;
 
-            $request = BotController::request('Registration/TextOnReview');
-            $request->params->chatId = $chatId;
+            $request = static::request('Registration/TextOnReview');
             $request->setRegistration($regist);
             if($regist['data']['level'] == 'regional' || $regist['data']['level'] == 'witel') {
                 $request->setRegional(Regional::find($regist['data']['regional_id']));
@@ -89,7 +89,7 @@ class UserController extends BotController
             : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
         
         $request = BotController::request('Registration/AnimationUserExists');
-        $request->params->chatId = $chatId;
+        // $request->params->chatId = $chatId;
         $request->setName($fullName);
         return $request->send();
     }
@@ -98,32 +98,17 @@ class UserController extends BotController
     {
         $message = UserController::$command->getMessage();
         $userChatId = $message->getFrom()->getId();
-        $chatType = $message->getChat()->getType();
-        $chatId = $message->getChat()->getId();
-
-        $reqData = New RequestData();
+        static::setRequestTarget($message);
         
         $request1 = BotController::request('Registration/AnimationTou');
-        $request1->params->chatId = $chatId;
-        $request1->params->replyMarkup = Keyboard::remove(['selective' => true]);
-        if($chatType != 'private') {
-            // Force reply is applied by default so it can work with privacy on
-            $request1->params->replyMarkup = Keyboard::forceReply(['selective' => true]);
-        }
-
         $response = $request1->send();
 
         $request2 = BotController::request('Registration/TextTou');
-        $request2->params->paste($request1->params->copy('parseMode', 'chatId', 'replyMarkup'));
-        // $reqData2->params->replyToMessageId = $response->getResult()->getMessageId();
         $response = $request2->send();
-
-        $request3 = BotController::request('Registration/SelectTouApproval');
-        $request3->params->paste($request1->params->copy('parseMode', 'chatId'));
-        // $reqData3->params->replyToMessageId = $response->getResult()->getMessageId();
         
         $callbackData = new CallbackData('user.aggrmnt');
         $callbackData->limitAccess($userChatId);
+        $request3 = BotController::request('Registration/SelectTouApproval');
         $request3->setInKeyboard(function($inKeyboardItem) use ($callbackData) {
             $inKeyboardItem['approve']['callback_data'] = $callbackData->createEncodedData('agree');
             $inKeyboardItem['reject']['callback_data'] = $callbackData->createEncodedData('disagree');
@@ -138,18 +123,19 @@ class UserController extends BotController
         $message = UserController::$command->getMessage();
         $userChatId = $message->getFrom()->getId();
         $chatId = $message->getChat()->getId();
+        static::setRequestTarget($message);
 
         $currUser = TelegramUser::findByChatId($chatId);
         if(!$currUser) {
             
             $request = BotController::request('Error/TextUserUnidentified');
-            $request->params->chatId = $chatId;
+            // $request->params->chatId = $chatId;
             return $request->send();
 
         }
         
         $request = BotController::request('Registration/SelectResetApproval');
-        $request->params->chatId = $chatId;
+        // $request->params->chatId = $chatId;
         
         $request->setUser($currUser);
         if($currUser['level'] != 'nasional') {
@@ -181,17 +167,11 @@ class UserController extends BotController
         $isPrivateChat = $message->getChat()->isPrivateChat();
         $chatId = $message->getChat()->getId();
         $userChatId = $message->getFrom()->getId();
-
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
-        $reqData->replyMarkup = $isPrivateChat ? Keyboard::remove(['selective' => true])
-            : Keyboard::forceReply(['selective' => true]);
+        static::setRequestTarget($message);
 
         if($conversation->getStep() == 0) {
 
-            $request = BotController::request('Registration/SelectLevel');
-            $request->params->chatId = $chatId;
+            $request = static::request('Registration/SelectLevel');
             $request->params->text = $request->getText()
                 ->clear()
                 ->addText('Proses registrasi dimulai. Silahkan memilih ')->startBold()->addText('Level Monitoring')->endBold()->addText('.')->newLine(2)
@@ -216,11 +196,13 @@ class UserController extends BotController
         if($conversation->getStep() == 1) {
 
             if(empty($messageText)) {
-                $reqData1 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
-                $reqData1->text = $isPrivateChat ? 'Silahkan ketikkan nama lengkap anda.'
-                    : "Silahkan ketikkan deskripsi grup $conversation->username.";
-
-                return Request::sendMessage($reqData1->build());
+                $request = static::request('TextDefault');
+                if($isPrivateChat) {
+                    $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
+                } else {
+                    $request->setText(fn($text) => $text->addText('Silahkan ketikkan deskripsi grup.'));
+                }
+                return $request->send();
             }
 
             if($isPrivateChat) {
@@ -235,11 +217,6 @@ class UserController extends BotController
 
         }
 
-        // Request::sendMessage([
-        //     'chat_id' => 1931357638,
-        //     'text' => $conversation->toJson()
-        // ]);
-
         if(!$isPrivateChat && $conversation->getStep() > 1) {
             if($conversation->getStep() == 2) {
                 return UserController::saveRegistFromConversation();
@@ -250,17 +227,17 @@ class UserController extends BotController
         if($conversation->getStep() == 2) {
 
             if(!$message->getContact()) {
-                $reqData2 = $reqData->duplicate('parseMode', 'chatId');
-                $reqData2->text = 'Silahkan pilih menu "Bagikan Kontak Saya".';
-                
+                $request = static::request('TextDefault');
+                $request->setText(fn($text) => $text->addText('Silahkan pilih menu "Bagikan Kontak Saya".'));
+
                 $keyboardButton = new KeyboardButton('Bagikan Kontak Saya');
                 $keyboardButton->setRequestContact(true);
-                $reqData2->replyMarkup = ( new Keyboard($keyboardButton) )
+                $request->params->replyMarkup = ( new Keyboard($keyboardButton) )
                         ->setOneTimeKeyboard(true)
                         ->setResizeKeyboard(true)
                         ->setSelective(true);
 
-                return Request::sendMessage($reqData2->build());
+                return $request->send();
             }
 
             $conversation->telp = $message->getContact()->getPhoneNumber();
@@ -273,9 +250,9 @@ class UserController extends BotController
         if($conversation->getStep() == 3) {
 
             if(empty($messageText)) {
-                $reqData3 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
-                $reqData3->text = 'Silahkan ketikkan instansi anda.';
-                return Request::sendMessage($reqData3->build());
+                $request = static::request('TextDefault');
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan instansi anda.'));
+                return $request->send();
             }
             
             $conversation->instansi = $messageText;
@@ -288,9 +265,9 @@ class UserController extends BotController
         if($conversation->getStep() == 4) {
 
             if(empty($messageText)) {
-                $reqData4 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
-                $reqData4->text = 'Silahkan ketikkan unit kerja anda.';
-                return Request::sendMessage($reqData4->build());
+                $request = static::request('TextDefault');
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan unit kerja anda.'));
+                return $request->send();
             }
             
             $conversation->unit = $messageText;
@@ -303,7 +280,6 @@ class UserController extends BotController
         if($conversation->getStep() == 5) {
 
             $request = BotController::request('Registration/SelectIsOrganik');
-            $request->params->chatId = $chatId;
             
             $callbackData = new CallbackData('user.orgn');
             $callbackData->limitAccess($userChatId);
@@ -320,9 +296,9 @@ class UserController extends BotController
         if($conversation->getStep() == 6) {
 
             if(empty($messageText)) {
-                $reqData6 = $reqData->duplicate('parseMode', 'chatId', 'replyMarkup');
-                $reqData6->text = 'Silahkan ketikkan NIK anda.';
-                return Request::sendMessage($reqData6->build());
+                $request = static::request('TextDefault');
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
+                return $request->send();
             }
             
             $conversation->nik = $messageText;
@@ -346,16 +322,16 @@ class UserController extends BotController
         $message = $callbackQuery->getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        $user = $callbackQuery->getFrom();
-        $userChatId = $user->getId();
+        $from = $callbackQuery->getFrom();
+        $fromId = $from->getId();
+        static::setRequestTarget($message);
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request = static::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $request->send();
 
         if($callbackValue == 'disagree') {
 
-            $request = BotController::request('Registration/TextTouReject');
-            $request->params->chatId = $chatId;
+            $request = static::request('Registration/TextTouReject');
             $response = $request->send();
             
             $conversation = UserController::getRegistConversation();
@@ -373,26 +349,30 @@ class UserController extends BotController
             if(!$conversation->isExists()) {
                 
                 $conversation->create();
-                $conversation->userId = $user->getId();
+                $conversation->userId = $fromId;
                 $conversation->chatId = $message->getChat()->getId();
                 $conversation->type = $message->getChat()->getType();
                 
-                if(!$message->getChat()->isPrivateChat()) {
+                if($conversation->type != 'private') {
                     $conversation->username = $message->getChat()->getTitle();
                 } else {
-                    $conversation->username = $user->getUsername();
-                    $conversation->firstName = $user->getFirstName();
-                    $conversation->lastName = $user->getLastName();
+                    $conversation->username = $from->getUsername();
+                    $conversation->firstName = $from->getFirstName();
+                    $conversation->lastName = $from->getLastName();
                 }
+
+                if($conversation->type == 'supergroup') {
+                    $conversation->messageThreadId = $message->getMessageThreadId() ?? null;
+                }
+
                 $conversation->commit();
 
             }
 
-            $request = BotController::request('Registration/SelectLevel');
-            $request->params->chatId = $chatId;
+            $request = static::request('Registration/SelectLevel');
             
             $callbackData = new CallbackData('user.lvl');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem) use ($callbackData) {
                 $inKeyboardItem['nasional']['callback_data'] = $callbackData->createEncodedData('nasional');
                 $inKeyboardItem['regional']['callback_data'] = $callbackData->createEncodedData('regional');
@@ -424,11 +404,7 @@ class UserController extends BotController
         $userChatId = $callbackQuery->getFrom()->getId();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
-        $reqData->messageId = $messageId;
+        static::setRequestTarget($message);
         
         $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $request->send();
@@ -438,11 +414,13 @@ class UserController extends BotController
             $conversation->nextStep();
             $conversation->commit();
 
-            $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-            $reqData1->text = $message->getChat()->isPrivateChat() ? 'Silahkan ketikkan nama lengkap anda.'
-                : "Silahkan ketikkan deskripsi grup $conversation->username.";
-
-            return Request::sendMessage($reqData1->build());
+            $request = static::request('TextDefault');
+            if($message->getChat()->isPrivateChat()) {
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
+            } else {
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan deskripsi grup.'));
+            }
+            return $request->send();
 
         } elseif($conversation->level == 'regional' || $conversation->level == 'witel') {
 
@@ -466,10 +444,8 @@ class UserController extends BotController
             return $request->send();
 
         }
-        
-        $reqData1 = $reqData->duplicate('parseMode', 'chatId');
-        $reqData1->text = json_encode(['data' => $callbackData]);
-        return Request::sendMessage($reqData1->build());
+
+        return static::sendEmptyResponse();
     }
 
     public static function onSelectRegional($callbackData, $callbackQuery)
@@ -486,23 +462,24 @@ class UserController extends BotController
         $userChatId = $callbackQuery->getFrom()->getId();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
+        static::setRequestTarget($message);
 
         $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $request->send();
 
         if($conversation->level == 'regional') {
-            
-            $reqData = New RequestData();
-            $reqData->parseMode = 'markdown';
-            $reqData->chatId = $chatId;
-            $reqData->text = $message->getChat()->isPrivateChat() ? 'Silahkan ketikkan nama lengkap anda.'
-                : "Silahkan ketikkan deskripsi grup $conversation->username.";
 
             $conversation->nextStep();
             $conversation->commit();
-            
-            return Request::sendMessage($reqData->build());
-        
+
+            $request = static::request('TextDefault');
+            if($message->getChat()->isPrivateChat()) {
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
+            } else {
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan deskripsi grup.'));
+            }
+            return $request->send();
+
         }
 
         if($conversation->level == 'witel') {
@@ -538,6 +515,7 @@ class UserController extends BotController
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
         $isPrivateChat = $message->getChat()->isPrivateChat();
+        static::setRequestTarget($message);
 
         $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $request->send();
@@ -554,14 +532,15 @@ class UserController extends BotController
 
             $conversation->nextStep();
             $conversation->commit();
-            
-            $reqData = New RequestData();
-            $reqData->parseMode = 'markdown';
-            $reqData->chatId = $chatId;
-            $reqData->text = $isPrivateChat ? 'Silahkan ketikkan nama lengkap anda.'
-                : "Silahkan ketikkan deskripsi grup $conversation->username.";
-            return Request::sendMessage($reqData->build());
-        
+
+            $request = static::request('TextDefault');
+            if($message->getChat()->isPrivateChat()) {
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
+            } else {
+                $request->setText(fn($text) => $text->addText('Silahkan ketikkan deskripsi grup.'));
+            }
+            return $request->send();
+
         }
 
         return Request::emptyResponse();
@@ -572,6 +551,7 @@ class UserController extends BotController
         $message = $callbackQuery->getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
+        static::setRequestTarget($message);
 
         $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $request->send();
@@ -585,11 +565,9 @@ class UserController extends BotController
         $conversation->nextStep();
         $conversation->commit();
 
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
-        $reqData->text = 'Silahkan ketikkan NIK anda.';
-        return Request::sendMessage($reqData->build());
+        $request = static::request('TextDefault');
+        $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
+        return $request->send();
     }
 
     public static function onRegistReset($callbackData, $callbackQuery)
@@ -597,6 +575,7 @@ class UserController extends BotController
         $message = $callbackQuery->getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
+        static::setRequestTarget($message);
 
         $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $response = $request->send();
@@ -634,12 +613,6 @@ class UserController extends BotController
 
         $chatId = $conversation->chatId;
 
-        $reqData = New RequestData();
-        $reqData->parseMode = 'markdown';
-        $reqData->chatId = $chatId;
-        $reqData->replyMarkup = $conversation->type == 'private' ? Keyboard::remove(['selective' => true])
-            : Keyboard::forceReply(['selective' => true]);
-
         $registration = Registration::query(function($db, $table) use ($chatId) {
             $query = "SELECT * FROM $table WHERE request_type='user' AND status='unprocessed' AND chat_id=%i";
             $data = $db->queryFirstRow($query, $chatId);
@@ -648,8 +621,16 @@ class UserController extends BotController
         });
 
         if($registration) {
-            $reqData->text = ( UserText::getRegistSuccessText($conversation) )->get();
-            return Request::sendMessage($reqData->build());
+            $request = static::request('Registration/TextOnReview');
+            $request->setRegistration($registration);
+            if($registration['data']['level'] == 'regional' || $registration['data']['level'] == 'witel') {
+                $request->setRegional(Regional::find($registration['data']['regional_id']));
+            }
+            if($registration['data']['level'] == 'witel') {
+                $request->setWitel(Witel::find($registration['data']['witel_id']));
+            }
+
+            return $request->send();
         }
 
         $registData = [];
@@ -682,10 +663,15 @@ class UserController extends BotController
             $registData['data']['nik'] = $conversation->nik;
         }
 
+        if($conversation->type == 'supergroup') {
+            $registData['data']['message_thread_id'] = $conversation->messageThreadId;
+        }
+
         $registration = Registration::create($registData);
         if(!$registration) {
-            $reqData->text = 'Terdapat error saat akan menyimpan data anda. Silahkan coba beberapa saat lagi.';
-            return Request::sendMessage($reqData->build());
+            $request = static::request('TextDefault');
+            $request->setText(fn($text) => $text->addText('Terdapat error saat akan menyimpan data anda. Silahkan coba beberapa saat lagi.'));
+            return $request->send();
         }
 
         $request = BotController::request('Registration/TextOnReview');
@@ -716,9 +702,12 @@ class UserController extends BotController
             return Request::emptyResponse();
         }
 
-        $request = BotController::request('Registration/TextUserRejected');
-        $request->params->chatId = $registData['chat_id'];
+        $request = static::request('Registration/TextUserRejected');
         $request->setRejectedDate($registData['updated_at']);
+        $request->params->chatId = $registData['chat_id'];
+        if( isset($registData['data']['message_thread_id']) ) {
+            $request->params->messageThreadId = $telgUser['message_thread_id'];
+        }
         return $request->send();
     }
 }

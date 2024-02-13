@@ -71,6 +71,38 @@ if($callbackAnswer != 'approve') {
     $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Permohonan registrasi telah ditolak.'));
     $response = $request->send();
 
+    if(isset($regist['data']['approval_messages']) && count($regist['data']['approval_messages']) > 0) {
+        try {
+
+            $apprMsgs = $regist['data']['approval_messages'];
+    
+            $request = static::request('Registration/TextDoneReviewed');
+            $request->setStatusText('ditolak');
+
+            if($admin['level'] == 'regional') {
+                $regional = Regional::find($admin['regional_id']);
+                $admin['regional_name'] = $regional ? $regional['name'] : 'NULL';
+            } elseif($admin['level'] == 'witel') {
+                $witel = Witel::find($admin['witel_id']);
+                $admin['witel_name'] = $witel ? $witel['witel_name'] : 'NULL';
+            }
+            $request->setAdminData($admin);
+
+            $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
+            $responses = [];
+            foreach($apprMsgs as $apprMsg) {
+                if($apprMsg['chat_id'] != $chatId) {
+                    $request->params->chatId = $apprMsg['chat_id'];
+                    $request->params->messageId = $apprMsg['message_id'];
+                    $request->sendUpdate();
+                }
+            }
+
+        } catch(\Throwable $rr) {
+            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        }
+    }
+
     UserController::whenRegistRejected($regist['id']);
     return $response;
     
@@ -101,6 +133,10 @@ if($registUser['type'] != 'private') {
 } else {
     $dataUser['first_name'] = $registUser['first_name'];
     $dataUser['last_name'] = $registUser['last_name'];
+}
+
+if(isset($registUser['message_thread_id'])) {
+    $dataUser['message_thread_id'] = $registUser['message_thread_id'];
 }
 
 $telgUser = TelegramUser::create($dataUser);
@@ -155,6 +191,37 @@ $request = static::request('TextDefault');
 $request->params->chatId = $chatId;
 $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Akses telah diizinkan.'));
 $response = $request->send();
+
+if(isset($regist['data']['approval_messages']) && count($regist['data']['approval_messages']) > 0) {
+    try {
+
+        $apprMsgs = $regist['data']['approval_messages'];
+
+        $request = static::request('Registration/TextDoneReviewed');
+        $request->setStatusText('disetujui');
+
+        if($admin['level'] == 'regional') {
+            $regional = Regional::find($admin['regional_id']);
+            $admin['regional_name'] = $regional ? $regional['name'] : 'NULL';
+        } elseif($admin['level'] == 'witel') {
+            $witel = Witel::find($admin['witel_id']);
+            $admin['witel_name'] = $witel ? $witel['witel_name'] : 'NULL';
+        }
+        $request->setAdminData($admin);
+
+        $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
+        foreach($apprMsgs as $apprMsg) {
+            if($apprMsg['chat_id'] != $chatId) {
+                $request->params->chatId = $apprMsg['chat_id'];
+                $request->params->messageId = $apprMsg['message_id'];
+                $request->sendUpdate();
+            }
+        }
+
+    } catch(\Throwable $rr) {
+        \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+    }
+}
 
 UserController::whenRegistApproved($regist['id']);
 return $response;

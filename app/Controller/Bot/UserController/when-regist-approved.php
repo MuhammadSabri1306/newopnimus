@@ -5,30 +5,33 @@ use App\Model\AlertUsers;
 use App\Model\Regional;
 use App\Model\Witel;
 
-$telegramUser = TelegramUser::findByRegistId($registId);
-if(!$telegramUser) {
+$telgUser = TelegramUser::findByRegistId($registId);
+if(!$telgUser) {
     return Request::emptyResponse();
 }
 
 $request = static::request('Registration/TextApproved');
-$request->params->chatId = $telegramUser['chat_id'];
+$request->params->chatId = $telgUser['chat_id'];
+if($telgUser['message_thread_id']) {
+    $request->params->messageThreadId = $telgUser['message_thread_id'];
+}
 
 $isPivotGroup = false;
-if(!$telegramUser['is_pic'] && $telegramUser['type'] != 'private') {
-    if($telegramUser['level'] == 'witel') {
-        $alertPivot = AlertUsers::findPivot($telegramUser['level'], $telegramUser['witel_id']);
-        $witel = Witel::find($telegramUser['witel_id']);
+if(!$telgUser['is_pic'] && $telgUser['type'] != 'private') {
+    if($telgUser['level'] == 'witel') {
+        $alertPivot = AlertUsers::findPivot($telgUser['level'], $telgUser['witel_id']);
+        $witel = Witel::find($telgUser['witel_id']);
         $request->setPivotArea($witel['witel_name']);
-    } elseif($telegramUser['level'] == 'regional') {
-        $alertPivot = AlertUsers::findPivot($telegramUser['level'], $telegramUser['regional_id']);
-        $regional = Regional::find($telegramUser['regional_id']);
+    } elseif($telgUser['level'] == 'regional') {
+        $alertPivot = AlertUsers::findPivot($telgUser['level'], $telgUser['regional_id']);
+        $regional = Regional::find($telgUser['regional_id']);
         $request->setPivotArea($regional['name']);
-    } elseif($telegramUser['level'] == 'nasional') {
-        $alertPivot = AlertUsers::findPivot($telegramUser['level']);
+    } elseif($telgUser['level'] == 'nasional') {
+        $alertPivot = AlertUsers::findPivot($telgUser['level']);
         $request->setPivotArea('Lokasi Nasional');
     }
     if($alertPivot) {
-        if($alertPivot['telegram_user_id'] != $telegramUser['id']) {
+        if($alertPivot['id'] != $telgUser['id']) {
             $pivotGroup = TelegramUser::find($alertPivot['id']);
             if($pivotGroup) {
                 $request->setPivotGroup($pivotGroup['username']);
@@ -39,15 +42,15 @@ if(!$telegramUser['is_pic'] && $telegramUser['type'] != 'private') {
     }
 }
 
-if($telegramUser['level'] == 'witel') {
-    $witel = Witel::find($telegramUser['witel_id']);
+if($telgUser['level'] == 'witel') {
+    $witel = Witel::find($telgUser['witel_id']);
     $request->setPivotArea($witel['witel_name']);
-} elseif($telegramUser['level'] == 'regional') {
-    $regional = Regional::find($telegramUser['regional_id']);
+} elseif($telgUser['level'] == 'regional') {
+    $regional = Regional::find($telgUser['regional_id']);
     $request->setPivotArea($regional['name']);
-} elseif($telegramUser['level'] == 'nasional') {
+} elseif($telgUser['level'] == 'nasional') {
     $request->setPivotArea('Lokasi Nasional');
 }
 
-$request->setUser($telegramUser, $isPivotGroup);
+$request->setUser($telgUser, $isPivotGroup);
 return $request->send();
