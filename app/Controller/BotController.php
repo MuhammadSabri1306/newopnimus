@@ -4,13 +4,16 @@ namespace App\Controller;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
+use Longman\TelegramBot\Entities\Message;
 use App\Core\RequestData;
 use App\Core\Controller;
 use App\Core\Exception\TelegramResponseException;
+use App\Model\TelegramUser;
 
 class BotController extends Controller
 {
     public static $command;
+    protected static $requestTarget = null;
 
     public static function catchCallback($controller, $callbackData, $callbackQuery)
     {
@@ -97,14 +100,67 @@ class BotController extends Controller
         return new $className(...$args);
     }
 
-    public static function request(string $classPath, array $args = [])
+    public static function user()
+    {
+        if(!isset(static::$command)) {
+            return null;
+        }
+
+        $chatId = static::$command->getMessage()->getChat()->getId();
+        return TelegramUser::findByChatId($chatId);
+    }
+
+    protected static function setRequestTarget($target)
+    {
+        $data = [];
+        if($target instanceof Message) {
+
+            $chat = $target->getChat();
+            $reqData = new RequestData();
+            $reqData->chatId = $chat->getId();
+            if($chat->isSuperGroup()) {
+                $messageThreadId = $target->getMessageThreadId();
+                if($messageThreadId) $reqData->messageThreadId = $messageThreadId;
+            }
+            static::$requestTarget = $reqData;
+
+        } elseif($target instanceof RequestData) {
+
+            static::$requestTarget = $target->duplicate('chatId', 'messageThreadId');
+
+        } elseif(is_array($target)) {
+
+            $reqData = new RequestData();
+            if(isset($target['chatId'])) $reqData->chatId = $target['chatId'];
+            if(isset($target['messageThreadId'])) $reqData->messageThreadId = $target['messageThreadId'];
+            static::$requestTarget = $reqData;
+
+        } elseif(is_object($target)) {
+
+            $reqData = new RequestData();
+            if(isset($target->chatId)) $reqData->chatId = $target->chatId;
+            if(isset($target->messageThreadId)) $reqData->messageThreadId = $target->messageThreadId;
+            static::$requestTarget = $reqData;
+
+        }
+    }
+
+    public static function request(string $classPath, array $args = [], $applyTarget = true)
     {
         $classPathArr = explode('/', $classPath);
         $className = 'App\\TelegramRequest\\' . implode('\\', $classPathArr);
         $filePath = __DIR__."/../TelegramRequest/$classPath.php";
 
         require_once $filePath;
-        return empty($args) ? new $className() : new $className(...$args);
+        $request = empty($args) ? new $className() : new $className(...$args);
+
+        if($applyTarget && static::$requestTarget) {
+            $request->params->paste(
+                static::$requestTarget->copy('chatId', 'messageThreadId')
+            );
+        }
+
+        return $request;
     }
 
     public static function sendErrorMessage()

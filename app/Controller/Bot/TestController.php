@@ -496,12 +496,15 @@ class TestController extends BotController
     {
         $message = static::$command->getMessage();
         $chatId = $message->getChat()->getId();
+        $chatType = $message->getChat()->getType();
+        $messageThreadId = $message->getMessageThreadId();
 
         $data = json_encode($message, JSON_PRETTY_PRINT);
 
         $reqData = New RequestData();
         $reqData->parseMode = 'markdown';
         $reqData->chatId = $chatId;
+        if($chatType == 'supergroup') $reqData->messageThreadId = $messageThreadId;
         $reqData->text = TelegramText::create('Chat data structure')->newLine()
             ->addCode($data)
             ->get();
