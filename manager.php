@@ -52,6 +52,8 @@ try {
         if($err->getResponseData()['description'] == 'Bad Request: chat not found') {
             $chatIdExists = false;
         }
+    } elseif($err instanceof \MeekroDBException) {
+        \MuhammadSabri1306\MyBotLogger\Entities\MeekroDbLogger::catch($err);
     } else {
         \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
     }

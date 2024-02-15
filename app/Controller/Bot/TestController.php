@@ -114,6 +114,8 @@ class TestController extends BotController
             ['text' => 'Callback 3', 'callback_data' => $callbackData->createEncodedData($callbackData3)],
         ]);
 
+        static::sendDebugMessage( static::isCallbackCommand() );
+
         return Request::sendMessage($reqData->build());
     }
 
@@ -123,10 +125,7 @@ class TestController extends BotController
         $chatId = $message->getChat()->getId();
 
         $response = static::$command->replyToChat('Running.');
-        BotController::sendDebugMessage([
-            'chat_id' => $chatId,
-            'data' => $callbackData
-        ]);
+        static::sendDebugMessage( static::isCallbackCommand() );
         return $response;
     }
 
@@ -516,59 +515,6 @@ class TestController extends BotController
 
     public static function dynamicTest()
     {
-        $message = UserController::$command->getMessage();
-        static::setRequestTarget($message);
-
-        $registId = 616;
-        $regist = Registration::find($registId);
-        if(!$regist) return null;
-
-        $pic = $regist['data'];
-        $pic['request_level'] = 'pic';
-        if($pic['has_regist']) {
-
-            $telgUser = TelegramUser::find($pic['telegram_user_id']);
-            $telgPersUser = TelegramPersonalUser::findByUserId($pic['telegram_user_id']);
-
-            $pic['full_name'] = $telgPersUser['nama'];
-            $pic['username'] = $telgUser['username'];
-            $pic['user_id'] = $telgUser['user_id'];
-            $pic['telp'] = $telgPersUser['telp'];
-            $pic['level'] = $telgUser['level'];
-            $pic['nik'] = $telgPersUser['nik'];
-            $pic['is_organik'] = $telgPersUser['is_organik'];
-            $pic['instansi'] = $telgPersUser['instansi'];
-            $pic['unit'] = $telgPersUser['unit'];
-            $pic['regional_id'] = $telgUser['regional_id'];
-            $pic['witel_id'] = $telgUser['witel_id'];
-
-        }
-
-        $request = static::request('Registration/SelectAdminPicApproval');
-        $request->setRegistrationData($pic);
-
-        $regional = Regional::find($pic['regional_id']);
-        $request->setRegional($regional);
-
-        $witel = Witel::find($pic['witel_id']);
-        $request->setWitel($witel);
-
-        $locations = RtuLocation::getByIds($pic['locations']);
-        $request->setLocations($locations);
-
-        $callbackData = new CallbackData('admin.picaprv');
-        $request->setInKeyboard(function($inlineKeyboardData) use ($registId, $callbackData) {
-            $inlineKeyboardData['approve']['callback_data'] = $callbackData->createEncodedData([
-                'i' => $registId, 'a' => 1
-            ]);
-            $inlineKeyboardData['reject']['callback_data'] = $callbackData->createEncodedData([
-                'i' => $registId, 'a' => 0
-            ]);
-            return $inlineKeyboardData;
-        });
-
-        $response = $request->send();
-        static::sendDebugMessage($response);
-        return $response;
+        return static::sendDebugMessage(null);
     }
 }

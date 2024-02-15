@@ -21,6 +21,19 @@ class TextPortStatusCatuan extends TelegramRequest
         $this->params->text = $this->getText()->get();
     }
 
+    public function getCurrDateText()
+    {
+        list($year, $month, $day) = explode('-', date('Y-n-j'));
+        $months = [
+            'Januari', 'Februari', 'Maret', 'April', 'Mei', 'Juni',
+            'Juli', 'Agustus', 'September', 'Oktober', 'November', 'Desamber'
+        ];
+
+        $monthIndex = intval($month) - 1;
+        $monthName = $months[$monthIndex];
+        return "$day $monthName $year";
+    }
+
     public function getText()
     {
         $witel = $this->getData('witel', null);
@@ -76,6 +89,7 @@ class TextPortStatusCatuan extends TelegramRequest
 
         }
 
+        $text->newLine(2)->addInlineCode( $this->getCurrDateText() );
         return $text;
     }
 

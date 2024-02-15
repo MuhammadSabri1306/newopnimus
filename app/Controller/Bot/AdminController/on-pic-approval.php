@@ -11,7 +11,7 @@ use App\Model\PicLocation;
 use App\Model\RtuLocation;
 use App\Controller\Bot\PicController;
 
-$message = $callbackQuery->getMessage();
+$message = static::getMessage();
 $chatId = $message->getChat()->getId();
 $messageId = $message->getMessageId();
 
@@ -32,25 +32,32 @@ if(!$regist) {
 
 $pic = $regist['data'];
 $pic['request_level'] = 'pic';
-if($pic['has_regist']) {
-    $telgUser = TelegramUser::find($pic['telegram_user_id']);
-    $telgPersUser = TelegramPersonalUser::findByUserId($pic['telegram_user_id']);
-    $pic['full_name'] = $telgPersUser['nama'];
-    $pic['username'] = $telgUser['username'];
-    $pic['user_id'] = $telgUser['user_id'];
-    $pic['telp'] = $telgPersUser['telp'];
-    $pic['level'] = $telgUser['level'];
-    $pic['nik'] = $telgPersUser['nik'];
-    $pic['is_organik'] = $telgPersUser['is_organik'];
-    $pic['instansi'] = $telgPersUser['instansi'];
-    $pic['unit'] = $telgPersUser['unit'];
+
+$telgUser = TelegramUser::find($pic['telegram_user_id']);
+$telgPersUser = TelegramPersonalUser::findByUserId($pic['telegram_user_id']);
+
+$pic['full_name'] = $telgPersUser['nama'];
+$pic['username'] = $telgUser['username'];
+$pic['user_id'] = $telgUser['user_id'];
+$pic['telp'] = $telgPersUser['telp'];
+$pic['level'] = $telgUser['level'];
+$pic['nik'] = $telgPersUser['nik'];
+$pic['is_organik'] = $telgPersUser['is_organik'];
+$pic['instansi'] = $telgPersUser['instansi'];
+$pic['unit'] = $telgPersUser['unit'];
+
+if($pic['level'] == 'regional' || $pic['level'] == 'witel') {
     $pic['regional_id'] = $telgUser['regional_id'];
+}
+
+if($pic['level'] == 'witel') {
     $pic['witel_id'] = $telgUser['witel_id'];
 }
-$prevRequest = static::request('Registration/SelectAdminPicApproval');
+
+$prevRequest = static::request('RegistPic/SelectAdminApproval');
 $prevRequest->setRegistrationData($pic);
-$prevRequest->setRegional( Regional::find($pic['regional_id']) );
-$prevRequest->setWitel( Witel::find($pic['witel_id']) );
+if(isset($pic['regional_id'])) $prevRequest->setRegional( Regional::find($pic['regional_id']) );
+if(isset($pic['witel_id'])) $prevRequest->setWitel( Witel::find($pic['witel_id']) );
 $prevRequest->setLocations( RtuLocation::getByIds($pic['locations']) );
 $prevRequestText = $prevRequest->params->text;
 
@@ -85,6 +92,38 @@ if(!$isApproved) {
     $request->params->chatId = $chatId;
     $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Pengajuan PIC telah ditolak.'));
     $response = $request->send();
+
+    if(isset($regist['data']['approval_messages']) && count($regist['data']['approval_messages']) > 0) {
+        try {
+
+            $apprMsgs = $regist['data']['approval_messages'];
+    
+            $request = static::request('Registration/TextDoneReviewed');
+            $request->setStatusText('ditolak');
+
+            if($admin['level'] == 'regional') {
+                $regional = Regional::find($admin['regional_id']);
+                $admin['regional_name'] = $regional ? $regional['name'] : 'NULL';
+            } elseif($admin['level'] == 'witel') {
+                $witel = Witel::find($admin['witel_id']);
+                $admin['witel_name'] = $witel ? $witel['witel_name'] : 'NULL';
+            }
+            $request->setAdminData($admin);
+
+            $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
+            $responses = [];
+            foreach($apprMsgs as $apprMsg) {
+                if($apprMsg['chat_id'] != $chatId) {
+                    $request->params->chatId = $apprMsg['chat_id'];
+                    $request->params->messageId = $apprMsg['message_id'];
+                    $request->sendUpdate();
+                }
+            }
+
+        } catch(\Throwable $rr) {
+            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        }
+    }
 
     PicController::whenRegistRejected($regist['id']);
     return $response;
@@ -190,6 +229,37 @@ $request = static::request('TextDefault');
 $request->params->chatId = $chatId;
 $request->setText(fn($text) => $text->addText($prevRequestText)->newLine(2)->addText('Pengajuan PIC telah diizinkan.'));
 $response = $request->send();
+
+if(isset($regist['data']['approval_messages']) && count($regist['data']['approval_messages']) > 0) {
+    try {
+
+        $apprMsgs = $regist['data']['approval_messages'];
+
+        $request = static::request('Registration/TextDoneReviewed');
+        $request->setStatusText('diizinkan');
+
+        if($admin['level'] == 'regional') {
+            $regional = Regional::find($admin['regional_id']);
+            $admin['regional_name'] = $regional ? $regional['name'] : 'NULL';
+        } elseif($admin['level'] == 'witel') {
+            $witel = Witel::find($admin['witel_id']);
+            $admin['witel_name'] = $witel ? $witel['witel_name'] : 'NULL';
+        }
+        $request->setAdminData($admin);
+
+        $request->params->text = $prevRequest->getText()->newLine(2)->addText($request->params->text)->get();
+        foreach($apprMsgs as $apprMsg) {
+            if($apprMsg['chat_id'] != $chatId) {
+                $request->params->chatId = $apprMsg['chat_id'];
+                $request->params->messageId = $apprMsg['message_id'];
+                $request->sendUpdate();
+            }
+        }
+
+    } catch(\Throwable $rr) {
+        \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+    }
+}
 
 PicController::whenRegistApproved($regist['id']);
 return $response;

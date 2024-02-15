@@ -32,5 +32,13 @@ abstract class TelegramRequest
         return $defaultValue;
     }
 
+    public function setTarget($target)
+    {
+        if(is_array($target)) {
+            if(isset($target['chat_id'])) $this->params->chatId = $target['chat_id'];
+            if(isset($target['message_thread_id'])) $this->params->messageThreadId = $target['message_thread_id'];
+        }
+    }
+
     abstract public function send(): ServerResponse;
 }

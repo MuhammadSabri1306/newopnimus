@@ -84,6 +84,16 @@ class Conversation
         if($this->isExists()) $this->step++;
     }
 
+    public function getChatId()
+    {
+        return isset($this->chatId) ? $this->chatId : null;
+    }
+
+    public function getUserId()
+    {
+        return isset($this->userId) ? $this->userId : null;
+    }
+
     public function setUserId($userId)
     {
         $conversation = $this->db->update($this->tableName, [ 'user_id' => $userId ], "id=%i", $this->id);

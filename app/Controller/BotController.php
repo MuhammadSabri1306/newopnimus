@@ -3,10 +3,11 @@ namespace App\Controller;
 
 use Longman\TelegramBot\Commands\Command;
 use Longman\TelegramBot\Entities\ServerResponse;
+use Longman\TelegramBot\Entities\Message;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
-use Longman\TelegramBot\Entities\Message;
 use App\Core\RequestData;
+use App\Core\Conversation;
 use App\Core\Controller;
 use App\Core\Exception\TelegramResponseException;
 use App\Model\TelegramUser;
@@ -16,6 +17,98 @@ class BotController extends Controller
     public static $command;
     private static $currTelegramUser = null;
     protected static $requestTarget = null;
+
+    private static $isCmdCallback;
+    private static $cmdMessage;
+    private static $cmdFrom;
+    private static $telgUser;
+    private static $reqTarget;
+
+    private static $conversations = [];
+
+    public static function isCallbackCommand(): bool
+    {
+        if(!isset(static::$isCmdCallback)) {
+            static::$isCmdCallback = is_null(static::$command->getCallbackQuery()) ? false : true;
+        }
+        return static::$isCmdCallback;
+    }
+
+    public static function getMessage(): Message
+    {
+        if(!isset(static::$cmdMessage)) {
+            if(static::isCallbackCommand()) {
+                static::$cmdMessage = static::$command->getCallbackQuery()->getMessage();
+            } else {
+                static::$cmdMessage = static::$command->getMessage();
+            }
+        }
+        return static::$cmdMessage;
+    }
+
+    public static function getFrom()
+    {
+        if(!isset(static::$cmdFrom)) {
+            if(static::isCallbackCommand()) {
+                static::$cmdFrom = static::$command->getCallbackQuery()->getFrom();
+            } else {
+                static::$cmdFrom = static::getMessage()->getFrom();
+            }
+        }
+        return static::$cmdFrom;
+    }
+
+    public static function getUser()
+    {
+        if(!isset(static::$telgUser)) {
+            $message = static::getMessage();
+            if($message) {
+                $chatId = $message->getChat()->getId();
+                static::$telgUser = TelegramUser::findByChatId($chatId);
+            }
+        }
+        return static::$telgUser;
+    }
+
+    public static function getRequestTarget()
+    {
+        if(!isset(static::$reqTarget)) {
+
+            $message = static::getMessage();
+            $chat = $message->getChat();
+
+            $reqData = new RequestData();
+            $reqData->chatId = $chat->getId();
+            if($chat->isSuperGroup()) {
+                $messageThreadId = $message->getMessageThreadId();
+                if($messageThreadId) $reqData->messageThreadId = $messageThreadId;
+            }
+            static::$reqTarget = $reqData->build();
+
+        }
+
+        return static::$reqTarget;
+    }
+
+    public static function getConversation($conversationKey, $chatId = null, $fromId = null)
+    {
+        if(!$chatId) $chatId = static::getMessage()->getChat()->getId();
+        if(!$fromId) $fromId = static::getFrom()->getId();
+
+        $isExists = isset(static::$conversations[$conversationKey]);
+        if($isExists) {
+            $isExists = static::$conversations[$conversationKey]->getChatId() == $chatId;
+            if($isExists) {
+                $isExists = static::$conversations[$conversationKey]->getUserId() == $fromId;
+            }
+        }
+
+        if(!$isExists) {
+            static::$conversations[$conversationKey] = new Conversation($conversationKey, $fromId, $chatId);
+        }
+
+        return static::$conversations[$conversationKey];
+    }
 
     public static function catchCallback($controller, $callbackData, $callbackQuery)
     {
@@ -100,31 +193,6 @@ class BotController extends Controller
 
         require_once $filePath;
         return new $className(...$args);
-    }
-
-    public static function getMessage()
-    {
-        $message = null;
-        if(isset(static::$command)) {
-            $message = static::$command->getMessage();
-            if(!$message) {
-                $message = static::$command->getCallbackQuery()->getMessage();
-            }
-        }
-        
-        return $message ?? null;
-    }
-
-    public static function user()
-    {
-        if(!static::$currTelegramUser) {
-            $message = static::getMessage();
-            if($message) {
-                $chatId = $message->getChat()->getId();
-                static::$currTelegramUser = TelegramUser::findByChatId($chatId);
-            }
-        }
-        return static::$currTelegramUser;
     }
 
     public static function handle(Command $command)

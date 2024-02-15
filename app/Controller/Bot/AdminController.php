@@ -83,7 +83,6 @@ class AdminController extends BotController
         $apprMessages = [];
         foreach($admins as $admin) {
             $request->params->chatId = $admin['chat_id'];
-            $request->params->chatId = $admin['chat_id'];
             $response = $request->send();
             if($response->isOk()) {
                 array_push($apprMessages, [
