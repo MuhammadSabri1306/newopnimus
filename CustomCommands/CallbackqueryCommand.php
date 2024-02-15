@@ -15,6 +15,7 @@ use App\Controller\Bot\PortController;
 use App\Controller\Bot\RtuController;
 use App\Controller\Bot\AlertController;
 use App\Controller\Bot\StatisticController;
+use App\Controller\Bot\ManagementUserController;
 use App\Controller\Bot\TestController;
 
 useHelper('telegram-callback');
@@ -55,13 +56,14 @@ class CallbackqueryCommand extends SystemCommand
      */
     public function execute(): ServerResponse
     {
-        $callbackQuery = $this->getCallbackQuery();
+        BotController::$command = $this;
+
+        $callbackQuery = BotController::$command->getCallbackQuery();
         $callbackData  = $callbackQuery->getData();
-        $decodedCallbackData = decodeCallbackData($callbackData);
         
         $fromUserId = null;
-        if($callbackQuery->getFrom() && $callbackQuery->getFrom()->getId()) {
-            $fromUserId = $callbackQuery->getFrom()->getId();
+        if(BotController::getFrom() && BotController::getFrom()->getId()) {
+            $fromUserId = BotController::getFrom()->getId();
         }
 
         $decCallbackData = CallbackData::decode($callbackData);
@@ -76,109 +78,40 @@ class CallbackqueryCommand extends SystemCommand
                 ]);
             }
 
-            if($methodName = $decCallbackData->isCallbackOf(TestController::$callbacks)) {
-                TestController::$command = $this;
-                TestController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
+            $controllers = [
+                TestController::class,
+                PortController::class,
+                AdminController::class,
+                AlarmController::class,
+                UserController::class,
+                StatisticController::class,
+                AlertController::class,
+                RtuController::class,
+                PicController::class,
+            ];
 
-            if($methodName = $decCallbackData->isCallbackOf(PortController::$callbacks)) {
-                PortController::$command = $this;
-                PortController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(AdminController::$callbacks)) {
-                AdminController::$command = $this;
-                AdminController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(AlarmController::$callbacks)) {
-                AlarmController::$command = $this;
-                AlarmController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(UserController::$callbacks)) {
-                UserController::$command = $this;
-                UserController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(StatisticController::$callbacks)) {
-                StatisticController::$command = $this;
-                StatisticController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(AlertController::$callbacks)) {
-                AlertController::$command = $this;
-                AlertController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(RtuController::$callbacks)) {
-                RtuController::$command = $this;
-                RtuController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
-            }
-
-            if($methodName = $decCallbackData->isCallbackOf(PicController::$callbacks)) {
-                PicController::$command = $this;
-                PicController::$methodName($decCallbackData->value, $callbackQuery);
-                return $callbackQuery->answer();
+            foreach($controllers as $controller) {
+                if($methodName = $decCallbackData->isCallbackOf($controller::$callbacks)) {
+                    $controller::$methodName($decCallbackData->value, $callbackQuery);
+                    return $callbackQuery->answer();
+                }
             }
 
         }
 
-        if($decodedCallbackData) {
+        $controllers = [
+            AdminController::class,
+            PicController::class,
+            PortController::class,
+            AlertController::class,
+            ManagementUserController::class,
+            TestController::class,
+        ];
 
-            if($methodName = $this->isCallbackOf(UserController::class, $decodedCallbackData)) {
-                $this->callHandler(
-                    UserController::class,
-                    $methodName,
-                    $callbackQuery,
-                    $decodedCallbackData
-                );
+        foreach($controllers as $controller) {
+            if(BotController::catchCallback($controller, $callbackData, $callbackQuery)) {
                 return $callbackQuery->answer();
             }
-
-            if($methodName = $this->isCallbackOf(RtuController::class, $decodedCallbackData)) {
-                $this->callHandler(
-                    RtuController::class,
-                    $methodName,
-                    $callbackQuery,
-                    $decodedCallbackData
-                );
-                return $callbackQuery->answer();
-            }
-            
-        }
-
-        AdminController::$command = $this;
-        if(BotController::catchCallback(AdminController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        PicController::$command = $this;
-        if(BotController::catchCallback(PicController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        PortController::$command = $this;
-        if(BotController::catchCallback(PortController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        AlertController::$command = $this;
-        if(BotController::catchCallback(AlertController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
-        }
-
-        TestController::$command = $this;
-        if(BotController::catchCallback(TestController::class, $callbackData, $callbackQuery)) {
-            return $callbackQuery->answer();
         }
 
         return $callbackQuery->answer([
@@ -186,30 +119,5 @@ class CallbackqueryCommand extends SystemCommand
             'show_alert' => true,
             'cache_time' => 10,
         ]);
-    }
-
-    private function isCallbackOf($controller, $decodedCallbackData)
-    {
-        if(!is_array($decodedCallbackData)) {
-            return null;
-        }
-
-        $callbacks = $controller::$callbacks ?? [];
-        $currCallbackKey = isset($decodedCallbackData['callbackKey']) ? $decodedCallbackData['callbackKey'] : null;
-
-        if(!array_key_exists($currCallbackKey, $callbacks)) {
-            return null;
-        }
-        return $callbacks[$currCallbackKey];
-    }
-
-    private function callHandler($controller, $methodName, $callbackQuery, $decodedCallbackData)
-    {
-        $callbackData = [
-            'title' => $decodedCallbackData['optionTitle'],
-            'value' => $decodedCallbackData['optionValue'],
-        ];
-        $controller::$command = $this;
-        $controller::$methodName($callbackData, $callbackQuery);
     }
 }

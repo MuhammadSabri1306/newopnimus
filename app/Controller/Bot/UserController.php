@@ -24,8 +24,6 @@ use App\Model\AlertUsers;
 use App\BuiltMessageText\UserText;
 use App\Core\Exception\TelegramResponseException;
 
-useHelper('telegram-callback');
-
 class UserController extends BotController
 {
     public static $callbacks = [

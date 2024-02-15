@@ -20,8 +20,6 @@ use App\Model\Witel;
 use App\Model\RtuLocation;
 use App\Model\RtuList;
 
-useHelper('telegram-callback');
-
 class RtuController extends BotController
 {
     public static $callbacks = [
