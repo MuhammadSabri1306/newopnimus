@@ -3,8 +3,6 @@ namespace App\Controller\Bot;
 
 use App\Controller\BotController;
 use App\Model\TelegramAdmin;
-use App\Model\TelegramUser;
-use App\Model\TelegramPersonalUser;
 use App\Model\PicLocation;
 
 class ManagementUserController extends BotController
@@ -13,7 +11,26 @@ class ManagementUserController extends BotController
         'mngusr.unv' => 'onSelectUnavailableFeature',
         'mngusr.rmuser' => 'onSelectRemoveUser',
         'mngusr.rmusertreg' => 'onSelectRegionalRemoveUser',
+        'mngusr.rmuserwit' => 'onSelectWitelRemoveUser',
     ];
+
+    public static function getRmUserConversation($isRequired = false, $chatId = null, $fromId = null)
+    {
+        $conversation = static::getConversation('admin_rm_user', $chatId, $fromId);
+
+        if($isRequired && !$conversation->isExists()) {
+            $request = static::request('TextDefault');
+            $request->setTarget( static::getRequestTarget() );
+            $request->setText(function($text) {
+                return $text->addText('Sesi anda telah berakhir. Mohon untuk melakukan permintaan')
+                    ->addText(' ulang dengan mengetikkan perintah /user_management.');
+            });
+            $request->send();
+            return null;
+        }
+
+        return $conversation;
+    }
 
     protected static function getAdmin()
     {
@@ -21,11 +38,22 @@ class ManagementUserController extends BotController
         return TelegramAdmin::findByChatId($chatId);
     }
 
-    public static function menu()
+    public static function manage()
     {
         $admin = static::getAdmin();
         if(!$admin) return static::sendEmptyResponse();
 
+        $rmUserConversation = static::getRmUserConversation();
+        if($rmUserConversation->isExists()) {
+            $response = static::removeUser();
+            if($response) return $response;
+        }
+
+        return static::menu();
+    }
+
+    public static function menu()
+    {
         $request = static::request('ManagementUser/SelectMenu');
         $request->setTarget( static::getRequestTarget() );
         $request->setInKeyboard(function($inKeyboard) {
@@ -39,6 +67,11 @@ class ManagementUserController extends BotController
         return $request->send();
     }
 
+    public static function removeUser()
+    {
+        return static::callModules('remove-user');
+    }
+
     public static function onSelectUnavailableFeature()
     {
         $request = static::request('TextDefault');
@@ -50,5 +83,15 @@ class ManagementUserController extends BotController
     public static function onSelectRemoveUser()
     {
         return static::callModules('on-select-remove-user');
+    }
+
+    public static function onSelectRegionalRemoveUser($regionalId)
+    {
+        return static::callModules('on-select-regional-remove-user', compact('regionalId'));
+    }
+
+    public static function onSelectWitelRemoveUser($witelId)
+    {
+        return static::callModules('on-select-witel-remove-user', compact('witelId'));
     }
 }

@@ -42,6 +42,6 @@ class UserManagementCommand extends UserCommand
     public function execute(): ServerResponse
     {
         ManagementUserController::$command = $this;
-        return ManagementUserController::menu();
+        return ManagementUserController::manage();
     }
 }

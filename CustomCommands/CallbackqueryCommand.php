@@ -88,6 +88,7 @@ class CallbackqueryCommand extends SystemCommand
                 AlertController::class,
                 RtuController::class,
                 PicController::class,
+                ManagementUserController::class,
             ];
 
             foreach($controllers as $controller) {
