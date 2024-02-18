@@ -36,9 +36,11 @@ function toErrorText($err) {
     $text = "$errMessage\n  at $errFile:$errLine";
 
     foreach($err->getTrace() as $errTrace) {
-        $errFile = $errTrace['file'];
-        $errLine = $errTrace['line'];
-        $text .= "\n  at $errFile:$errLine";
+        if(isset($errTrace['file'], $errTrace['line'])) {
+            $errFile = $errTrace['file'];
+            $errLine = $errTrace['line'];
+            $text .= "\n  at $errFile:$errLine";
+        }
     }
 
     return $text;

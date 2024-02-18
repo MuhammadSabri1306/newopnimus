@@ -11,7 +11,7 @@ if(AppConfig::$MODE == 'production') {
             return false;
         }
 
-        $currPath = \App\Helper\Helper::appPath('Controller/Bot/PortController/get-newosase-port-detail.php');
+        $currPath = \App\Helper\Helper::appPath('Controller/Bot/PortController/get-port-chart.php');
         $errTrace = $err->getTrace();
         foreach($errTrace as $trace) {
             if(isset($trace['file']) && $trace['file'] == $currPath) {
@@ -22,22 +22,7 @@ if(AppConfig::$MODE == 'production') {
     });
 }
 
-$newosaseApi = new NewosaseApi();
-$newosaseApi->request['query'] = $newosaseApiParams;
-$fetchResponse = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
-
-if(!$fetchResponse || !$fetchResponse->result->payload) {
-    return null;
-}
-
-$ports = array_filter($fetchResponse->result->payload, fn($port) =>$port->no_port != 'many');
-if(count($ports) < 1) {
-    return [ 'port' => null ];
-}
-
-$data = [ 'port' => $ports[0] ];
-$portId = $data['port']->id;
-
+$portChart = null;
 $currHourDateTime = new \DateTime();
 $currHourDateTime->setTime($currHourDateTime->format('H'), 0, 0);
 $fileName = 'checkport_chart_port_'.$portId.'_' . $currHourDateTime->getTimestamp();
@@ -49,8 +34,8 @@ $pngFileName = $fileName . '.png';
 $pngFilePath = __DIR__.'/../../../../public/charts/'.$pngFileName;
 
 if(file_exists($pngFilePath)) {
-    $data['chart'] = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
-    return $data;
+    $portChart = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
+    return $portChart;
 }
 
 $currDateTime = new \DateTime('now', new \DateTimeZone('Asia/Jakarta'));
@@ -130,7 +115,7 @@ foreach($poolingData->result as $item) {
 }
 
 if($isDataEmpty) {
-    return $data;
+    return $portChart;
 }
 
 $chartStartDate = date('Y-m-d\TH:i', $startTime / 1000);
@@ -251,8 +236,8 @@ try {
 
         if(exec($cmd, $output)) {
             
-            $data['chart'] = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
-            return $data;
+            $portChart = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
+            return $portChart;
     
         }
         
@@ -293,4 +278,4 @@ try {
 } catch(\Throwable $err) {
     \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
 }
-return $data;
+return $portChart;
