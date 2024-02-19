@@ -20,6 +20,10 @@ $newosaseApi->request['query'] = [
     'location' => $locationId,
 ];
 
+$request = static::request('Action/Typing');
+$request->setTarget( static::getRequestTarget() );
+$request->send();
+
 $rtuSnames = [];
 try {
 

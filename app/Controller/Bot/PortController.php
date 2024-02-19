@@ -114,19 +114,19 @@ class PortController extends BotController
         return static::callModules('on-select-rtu-log', compact('rtuSname', 'callbackQuery'));
     }
 
-    public static function onSelectLocationLog($locId, $callbackQuery)
+    public static function onSelectLocationLog($locId)
     {   
-        return static::callModules('on-select-loc-log', compact('locId', 'callbackQuery'));
+        return static::callModules('on-select-loc-log', compact('locId'));
     }
 
-    public static function onSelectWitelLog($witelId, $callbackQuery)
+    public static function onSelectWitelLog($witelId)
     {   
-        return static::callModules('on-select-witel-log', compact('witelId', 'callbackQuery'));
+        return static::callModules('on-select-witel-log', compact('witelId'));
     }
 
-    public static function onSelectRegionalLog($regionalId, $callbackQuery)
+    public static function onSelectRegionalLog($regionalId)
     {   
-        return static::callModules('on-select-regional-log', compact('regionalId', 'callbackQuery'));
+        return static::callModules('on-select-regional-log', compact('regionalId'));
     }
 
     public static function checkStatus()

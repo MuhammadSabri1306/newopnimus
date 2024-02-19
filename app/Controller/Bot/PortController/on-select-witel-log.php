@@ -3,15 +3,15 @@
 use App\Core\CallbackData;
 use App\Model\RtuLocation;
 
-$message = $callbackQuery->getMessage();
-$fromId = $callbackQuery->getFrom()->getId();
+$message = static::getMessage();
+$fromId = static::getFrom()->getId();
 $chatId = $message->getChat()->getId();
 $messageId = $message->getMessageId();
 
 static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
 $request = static::request('Area/SelectLocation');
-$request->params->chatId = $chatId;
+$request->setTarget( static::getRequestTarget() );
 $request->setLocations( RtuLocation::getSnameOrderedByWitel($witelId) );
 
 $callbackData = new CallbackData('portlog.loc');

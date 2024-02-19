@@ -5,7 +5,7 @@ use App\Model\RtuLocation;
 use App\Model\RtuList;
 use App\Model\AlarmHistory;
 
-$message = $callbackQuery->getMessage();
+$message = static::getMessage();
 $chatId = $message->getChat()->getId();
 $messageId = $message->getMessageId();
 
@@ -19,7 +19,7 @@ if($rtu = RtuList::findBySname($rtuSname)) {
 $alarmPorts = AlarmHistory::getCurrDayByRtuDesc($rtuSname);
 
 $request = static::request('Port/TextLogTable');
-$request->params->chatId = $chatId;
+$request->setTarget( static::getRequestTarget() );
 $request->setLevel('rtu');
 $request->setRtuSname($rtuSname);
 $request->setLocationName( isset($loc['location_name']) ? $loc['location_name'] : null );

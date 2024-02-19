@@ -6,15 +6,12 @@ use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\RtuLocation;
 
-$message = static::$command->getMessage();
-$chatId = $message->getChat()->getId();
-$fromId = $message->getFrom()->getId();
-
-$telgUser = TelegramUser::findByChatId($chatId);
+$fromId = static::getMessage()->getFrom()->getId();
+$telgUser = static::getUser();
 if(!$telgUser) {
 
     $request = static::request('Error/TextUserUnidentified');
-    $request->params->chatId = $chatId;
+    $request->setTarget( static::getRequestTarget() );
     return $request->send();
 
 }
@@ -22,7 +19,7 @@ if(!$telgUser) {
 if($telgUser['level'] == 'witel') {
 
     $request = static::request('Area/SelectLocation');
-    $request->params->chatId = $chatId;
+    $request->setTarget( static::getRequestTarget() );
 
     $witelId = $telgUser['witel_id'];
     $request->setLocations(RtuLocation::getSnameOrderedByWitel($witelId));
@@ -52,9 +49,8 @@ if($telgUser['level'] == 'witel') {
 if($telgUser['level'] == 'regional') {
 
     $request = static::request('Area/SelectWitel');
-    $request->params->chatId = $chatId;
-
-    $request->setWitels(Witel::getNameOrdered($telgUser['regional_id']));
+    $request->setTarget( static::getRequestTarget() );
+    $request->setWitels( Witel::getNameOrdered($telgUser['regional_id']) );
 
     $callbackData = new CallbackData('portlog.wit');
     $callbackData->limitAccess($fromId);
@@ -68,9 +64,8 @@ if($telgUser['level'] == 'regional') {
 }
 
 $request = static::request('Area/SelectRegional');
-$request->params->chatId = $chatId;
-
-$request->setRegionals(Regional::getSnameOrdered());
+$request->setTarget( static::getRequestTarget() );
+$request->setRegionals( Regional::getSnameOrdered() );
 
 $callbackData = new CallbackData('portlog.reg');
 $callbackData->limitAccess($fromId);
