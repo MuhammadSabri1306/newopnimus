@@ -42,7 +42,7 @@ class SelectRemoveUserApproval extends TelegramRequest
         if(!$isPrivateChat) {
             $text->addText("Nama Grup       : $telgUser->username")->newLine();
         } elseif($telgPersUser) {
-            $text->addText("Nama Pengguna   : $telgPersUser->full_name")->newLine();
+            $text->addText("Nama Pengguna   : $telgPersUser->nama")->newLine();
             $text->addText("No. Handphone   : $telgPersUser->telp")->newLine();
         }
 
@@ -110,8 +110,8 @@ class SelectRemoveUserApproval extends TelegramRequest
     public function setInKeyboard(callable $callButton)
     {
         $inKeyboardItem = $callButton([
-            'approve' => ['text' => '❎ Hapus User', 'callback_data' => null],
-            'reject' => ['text' => 'Batalkan', 'callback_data' => null]
+            'approve' => [ 'text' => '❎ Hapus User', 'callback_data' => null ],
+            'reject' => [ 'text' => 'Batalkan', 'callback_data' => null ]
         ]);
 
         $inlineKeyboardData = [ $inKeyboardItem['approve'], $inKeyboardItem['reject'] ];

@@ -12,6 +12,7 @@ class ManagementUserController extends BotController
         'mngusr.rmuser' => 'onSelectRemoveUser',
         'mngusr.rmusertreg' => 'onSelectRegionalRemoveUser',
         'mngusr.rmuserwit' => 'onSelectWitelRemoveUser',
+        'mngusr.rmuserappr' => 'onSelectRemoveUserApproval',
     ];
 
     public static function getRmUserConversation($isRequired = false, $chatId = null, $fromId = null)
@@ -93,5 +94,10 @@ class ManagementUserController extends BotController
     public static function onSelectWitelRemoveUser($witelId)
     {
         return static::callModules('on-select-witel-remove-user', compact('witelId'));
+    }
+
+    public static function onSelectRemoveUserApproval($telgUserId)
+    {
+        return static::callModules('on-select-remove-user-approval', compact('telgUserId'));
     }
 }

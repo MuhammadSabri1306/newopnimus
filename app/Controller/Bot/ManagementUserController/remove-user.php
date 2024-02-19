@@ -1,5 +1,6 @@
 <?php
 
+use App\Core\CallbackData;
 use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
 use App\Model\Regional;
@@ -15,7 +16,7 @@ if(!is_array($userIds) || count($userIds) < 1) {
 
 $messageText = trim(static::getMessage()->getText(true));
 if(!preg_match('/^\d+$/', $messageText)) {
-    return null;
+    return static::sendEmptyResponse();
 }
 
 $selectedNo = intval($messageText);
@@ -49,5 +50,12 @@ if($telgUser['level'] != 'nasional') {
 if($telgUser['level'] == 'witel') {
     $request->setWitel( Witel::find($telgUser['witel_id']) );
 }
+
+$callbackData = new CallbackData('mngusr.rmuserappr');
+$request->setInKeyboard(function($inKeyboard) use ($callbackData, $selectedUserId) {
+    $inKeyboard['approve']['callback_data'] = $callbackData->createEncodedData($selectedUserId);
+    $inKeyboard['reject']['callback_data'] = $callbackData->createEncodedData(0);
+    return $inKeyboard;
+});
 
 return $request->send();

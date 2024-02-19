@@ -41,7 +41,7 @@ class TextRemoveUser extends TelegramRequest
 
             if($user['type'] != 'private') {
                 $groupName = $user['username'];
-                $text->addText($groupName);
+                $text->addText("$groupName - ")->addBold('Group');
             } else {
                 $username = $user['username'];
                 if(isset($user['full_name'])) {
@@ -50,7 +50,7 @@ class TextRemoveUser extends TelegramRequest
                     $name = implode(' ', array_filter([ $user['first_name'], $user['last_name'] ]));
                 }
                 $text->addMentionByUsername($user['user_id'], "@$username")
-                    ->addText(" $name");
+                    ->addText(" $name - ")->addBold('Personal');
             }
 
         }
