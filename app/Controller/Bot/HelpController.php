@@ -7,11 +7,11 @@ class HelpController extends BotController
 {
     public static function guide()
     {
-        $message = static::$command->getMessage();
+        $message = static::getMessage();
         $chatId = $message->getChat()->getId();
 
         $request = static::request('TextDefault');
-        $request->params->chatId = $chatId;
+        $request->setTarget( static::getRequestTarget() );
         $request->params->remove('parseMode');
         $request->setText(function($text) {
             return $text->addText('🤖WELCOME🤖')->newLine(3)
