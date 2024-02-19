@@ -37,7 +37,7 @@ if($pic['level'] == 'witel') {
 $admins = TelegramAdmin::getByUserArea($pic);
 if(count($admins) < 1) return;
 
-$request = static::request('Registration/SelectAdminPicApproval');
+$request = static::request('RegistPic/SelectAdminApproval');
 $request->setRegistrationData($pic);
 if(isset($pic['regional_id'])) $request->setRegional( Regional::find($pic['regional_id']) );
 if(isset($pic['witel_id'])) $request->setWitel( Witel::find($pic['witel_id']) );
