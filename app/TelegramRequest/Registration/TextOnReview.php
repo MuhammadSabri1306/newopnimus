@@ -36,8 +36,14 @@ class TextOnReview extends TelegramRequest
             return TelegramText::create('Terdapat error saat akan menyimpan data anda. Silahkan coba beberapa saat lagi.');
         }
         
-        $text = TelegramText::create()
-            ->addText('Terima kasih, grup akan didaftarkan sesuai data berikut.')->newLine(2)
+        $text = TelegramText::create('Terima kasih, ');
+        if($registration['data']['type'] == 'private') {
+            $text->addText('anda');
+        } else {
+            $text->addText('grup');
+        }
+        $text->addText(' akan didaftarkan sesuai data berikut.')
+            ->newLine(2)
             ->startCode();
 
         if($registration['data']['type'] == 'private') {
