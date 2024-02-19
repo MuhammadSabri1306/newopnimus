@@ -44,10 +44,10 @@ class SelectAdminApproval extends TelegramRequest
             ->addText("Unit Kerja      : $apprvData->unit");
 
         if($regional) {
-            $text->addText('Regional        : '.$regional['name']);
+            $text->newLine()->addText('Regional        : '.$regional['name']);
         }
         if($witel) {
-            $text->addText('Witel           : '.$witel['witel_name']);
+            $text->newLine()->addText('Witel           : '.$witel['witel_name']);
         }
 
         $text->endCode()->newLine(2)
