@@ -3,10 +3,8 @@ namespace App\Controller\Bot;
 
 use App\Core\CallbackData;
 use App\Controller\BotController;
-use App\Model\TelegramUser;
 use App\Model\Regional;
 use App\Model\Witel;
-use App\Model\AlarmPortStatus;
 use App\Model\AlarmHistory;
 
 class StatisticController extends BotController
@@ -18,27 +16,24 @@ class StatisticController extends BotController
 
     public static function daily()
     {
-        $message = StatisticController::$command->getMessage();
-        $chatId = $message->getChat()->getId();
-        $userChatId = $message->getFrom()->getId();
-
-        $telgUser = TelegramUser::findByChatId($chatId);
+        $fromId = static::getMessage()->getFrom()->getId();
+        $telgUser = static::getUser();
         if(!$telgUser) {
             
-            $request = BotController::request('Error/TextUserUnidentified');
-            $request->params->chatId = $chatId;
+            $request = static::request('Error/TextUserUnidentified');
+            $request->setTarget( static::getRequestTarget() );
             return $request->send();
 
         }
 
         if($telgUser['level'] == 'nasional') {
 
-            $request = BotController::request('Area/SelectRegional');
-            $request->params->chatId = $chatId;
+            $request = static::request('Area/SelectRegional');
+            $request->setTarget( static::getRequestTarget() );
             $request->setRegionals(Regional::getSnameOrdered());
 
             $callbackData = new CallbackData('stat.treg');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem, $regional) use ($callbackData) {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData([
                     'c' => 'day', 'r' => $regional['id']
@@ -52,8 +47,8 @@ class StatisticController extends BotController
 
         if($telgUser['level'] == 'regional') {
 
-            $request = BotController::request('Area/SelectWitel');
-            $request->params->chatId = $chatId;
+            $request = static::request('Area/SelectWitel');
+            $request->setTarget( static::getRequestTarget() );
             
             $witels = Witel::getNameOrdered($telgUser['regional_id']);
             $allWitelOption = [
@@ -64,7 +59,7 @@ class StatisticController extends BotController
             $request->setWitels([ $allWitelOption, ...$witels ]);
 
             $callbackData = new CallbackData('stat.witl');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
                 $val = [ 'c' => 'day', 'w' => $witel['id'] ];
                 if($witel['id'] == 'ALL') $val['r'] = $witel['regional_id'];
@@ -78,7 +73,7 @@ class StatisticController extends BotController
 
         // LEVEL = WITEL
         $request = BotController::request('Statistic/TextDailyWitel');
-        $request->params->chatId = $chatId;
+        $request->setTarget( static::getRequestTarget() );
 
         $witel = Witel::find($telgUser['witel_id']);
         $request->setWitel($witel);
@@ -96,27 +91,24 @@ class StatisticController extends BotController
 
     public static function monthly()
     {
-        $message = StatisticController::$command->getMessage();
-        $chatId = $message->getChat()->getId();
-        $userChatId = $message->getFrom()->getId();
-
-        $telgUser = TelegramUser::findByChatId($chatId);
+        $fromId = static::getMessage()->getFrom()->getId();
+        $telgUser = static::getUser();
         if(!$telgUser) {
             
             $request = BotController::request('Error/TextUserUnidentified');
-            $request->params->chatId = $chatId;
+            $request->setTarget( static::getRequestTarget() );
             return $request->send();
 
         }
 
         if($telgUser['level'] == 'nasional') {
 
-            $request = BotController::request('Area/SelectRegional');
-            $request->params->chatId = $chatId;
+            $request = static::request('Area/SelectRegional');
+            $request->setTarget( static::getRequestTarget() );
             $request->setRegionals(Regional::getSnameOrdered());
 
             $callbackData = new CallbackData('stat.treg');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem, $regional) use ($callbackData) {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData([
                     'c' => 'month', 'r' => $regional['id']
@@ -130,8 +122,8 @@ class StatisticController extends BotController
 
         if($telgUser['level'] == 'regional') {
 
-            $request = BotController::request('Area/SelectWitel');
-            $request->params->chatId = $chatId;
+            $request = static::request('Area/SelectWitel');
+            $request->setTarget( static::getRequestTarget() );
             
             $witels = Witel::getNameOrdered($telgUser['regional_id']);
             $allWitelOption = [
@@ -142,7 +134,7 @@ class StatisticController extends BotController
             $request->setWitels([ $allWitelOption, ...$witels ]);
 
             $callbackData = new CallbackData('stat.witl');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
                 $val = [ 'c' => 'month', 'w' => $witel['id'] ];
                 if($witel['id'] == 'ALL') $val['r'] = $witel['regional_id'];
@@ -154,8 +146,8 @@ class StatisticController extends BotController
 
         }
 
-        $request = BotController::request('Statistic/TextMonthlyWitel');
-        $request->params->chatId = $chatId;
+        $request = static::request('Statistic/TextMonthlyWitel');
+        $request->setTarget( static::getRequestTarget() );
 
         $witel = Witel::find($telgUser['witel_id']);
         $request->setWitel($witel);
@@ -172,17 +164,17 @@ class StatisticController extends BotController
         return $request->send();
     }
 
-    public static function onSelectRegional($params, $callbackQuery)
+    public static function onSelectRegional($params)
     {
-        $message = $callbackQuery->getMessage();
+        $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
+        $fromId = static::getFrom()->getId();
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
-        $request = BotController::request('Area/SelectWitel');
-        $request->params->chatId = $chatId;
+        $request = static::request('Area/SelectWitel');
+        $request->setTarget( static::getRequestTarget() );
 
         $statCategory = $params['c'];
         $regionalId = $params['r'];
@@ -192,7 +184,7 @@ class StatisticController extends BotController
         $request->setWitels([ $allWitelOption, ...$witels ]);
 
         $callbackData = new CallbackData('stat.witl');
-        $callbackData->limitAccess($userChatId);
+        $callbackData->limitAccess($fromId);
         $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData, $statCategory, $regionalId) {
             if( isset($witel['title']) && $witel['title'] == 'PILIH SEMUA WITEL' ) {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData([
@@ -209,14 +201,14 @@ class StatisticController extends BotController
         return $request->send();
     }
 
-    public static function onSelectWitel($params, $callbackQuery)
+    public static function onSelectWitel($params)
     {
-        $message = $callbackQuery->getMessage();
+        $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
+        $fromId = static::getFrom()->getId();
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         $statCategory = $params['c'];
         $witelId = $params['w'];
@@ -226,8 +218,8 @@ class StatisticController extends BotController
             $regionalId = $params['r'];
             if($statCategory == 'month') {
 
-                $request = BotController::request('Statistic/TextMonthlyRegional');
-                $request->params->chatId = $chatId;
+                $request = static::request('Statistic/TextMonthlyRegional');
+                $request->setTarget( static::getRequestTarget() );
 
                 $regional = Regional::find($regionalId);
                 $request->setRegional($regional);
@@ -245,8 +237,8 @@ class StatisticController extends BotController
 
             } else {
 
-                $request = BotController::request('Statistic/TextDailyRegional');
-                $request->params->chatId = $chatId;
+                $request = static::request('Statistic/TextDailyRegional');
+                $request->setTarget( static::getRequestTarget() );
 
                 $regional = Regional::find($regionalId);
                 $request->setRegional($regional);
@@ -267,8 +259,8 @@ class StatisticController extends BotController
 
         if($statCategory == 'month') {
 
-            $request = BotController::request('Statistic/TextMonthlyWitel');
-            $request->params->chatId = $chatId;
+            $request = static::request('Statistic/TextMonthlyWitel');
+            $request->setTarget( static::getRequestTarget() );
 
             $witel = Witel::find($witelId);
             $request->setWitel($witel);
@@ -286,8 +278,8 @@ class StatisticController extends BotController
 
         }
 
-        $request = BotController::request('Statistic/TextDailyWitel');
-        $request->params->chatId = $chatId;
+        $request = static::request('Statistic/TextDailyWitel');
+        $request->setTarget( static::getRequestTarget() );
 
         $witel = Witel::find($witelId);
         $request->setWitel($witel);
