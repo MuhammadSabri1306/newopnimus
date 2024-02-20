@@ -1,6 +1,7 @@
 <?php
 namespace App\Controller\Bot;
 
+use Longman\TelegramBot\Entities\Keyboard;
 use Longman\TelegramBot\Entities\KeyboardButton;
 use App\Core\Conversation;
 use App\Core\CallbackData;
@@ -49,6 +50,7 @@ class UserController extends BotController
         $chat = static::getMessage()->getChat();
         $chatType = $chat->getType();
         $chatId = $chat->getId();
+        $from = static::getFrom();
 
         if(!TelegramUser::exists($chatId)) {
 
@@ -75,8 +77,8 @@ class UserController extends BotController
 
         }
 
-        $fullName = ($chatType == 'group' || $chatType == 'supergroup') ? 'Grup '.$message->getChat()->getTitle()
-            : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
+        $fullName = ($chatType == 'group' || $chatType == 'supergroup') ? 'Grup '.$chat->getTitle()
+            : $from->getFirstName().' '.$from->getLastName();
         
         $request = static::request('Registration/AnimationUserExists');
         $request->setTarget( static::getRequestTarget() );
