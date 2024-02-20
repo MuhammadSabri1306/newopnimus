@@ -4,6 +4,7 @@ use App\Core\CallbackData;
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
 use App\Model\Witel;
 use App\Model\AlarmHistory;
 
@@ -33,6 +34,7 @@ if(is_string($locId) && substr($locId, 0, 1) == 'w') {
 
 $newosaseApi = new NewosaseApiV2();
 $newosaseApi->setupAuth();
+$newosaseApiUrlPath = '/parameter-service/mapview';
 $newosaseApi->request['query'] = [
     'isArea' => 'hide',
     'isChildren' => 'view',
@@ -46,7 +48,7 @@ $request->send();
 $rtuSnames = [];
 try {
 
-    $osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
+    $osaseData = $newosaseApi->sendRequest('GET', $newosaseApiUrlPath);
     $rtuData = $osaseData->get('result.0.witel.0.rtu');
     $rtuSnames = array_reduce($rtuData, function($list, $port) {
         if(isset($port->rtu_sname) && !in_array($port->rtu_sname, $list)) {
@@ -74,6 +76,20 @@ try {
 
     HttpClientLogger::catch($err);
     return $response;
+
+} catch(\Throwable $err) {
+
+    $logger = new ErrorWithDataLogger($err);
+    $logger->data = [
+        'api_path' => $newosaseApiUrlPath,
+        'api_params' => $newosaseApi->request['query']
+    ];
+    $logger->log();
+    
+    $request = static::request('TextDefault');
+    $request->setTarget( static::getRequestTarget() );
+    $request->setText(fn($text) => $text->addText('Data RTU tidak dapat ditemukan.'));
+    return $request->send();
 
 }
 
