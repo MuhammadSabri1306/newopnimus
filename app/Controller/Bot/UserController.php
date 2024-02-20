@@ -33,23 +33,25 @@ class UserController extends BotController
         'user.witl' => 'onSelectWitel',
         'user.orgn' => 'onSelectOrganik',
         'user.reset' => 'onRegistReset',
+        'user.regcancel' => 'onRegistCancel',
     ];
 
-    public static function getRegistConversation()
+    public static function getRegistConversation($isRequired = false, $chatId = null, $fromId = null)
     {
-        if($command = UserController::$command) {
-            if($command->getMessage()) {
-                $chatId = UserController::$command->getMessage()->getChat()->getId();
-                $userId = UserController::$command->getMessage()->getFrom()->getId();
-                return new Conversation('regist', $userId, $chatId);
-            } elseif($command->getCallbackQuery()) {
-                $chatId = UserController::$command->getCallbackQuery()->getMessage()->getChat()->getId();
-                $userId = UserController::$command->getCallbackQuery()->getFrom()->getId();
-                return new Conversation('regist', $userId, $chatId);
-            }
+        $conversation = static::getConversation('regist', $chatId, $fromId);
+
+        if($isRequired && !$conversation->isExists()) {
+            $request = static::request('TextDefault');
+            $request->setTarget( static::getRequestTarget() );
+            $request->setText(function($text) {
+                return $text->addText('Sesi anda telah berakhir. Mohon untuk melakukan permintaan')
+                    ->addText(' ulang dengan mengetikkan perintah /start.');
+            });
+            $request->send();
+            return null;
         }
 
-        return null;
+        return $conversation;
     }
 
     public static function checkRegistStatus()
@@ -707,5 +709,15 @@ class UserController extends BotController
             $request->params->messageThreadId = $telgUser['message_thread_id'];
         }
         return $request->send();
+    }
+
+    public static function whenRegistCancel()
+    {   
+        return static::callModules('when-regist-cancel');
+    }
+
+    public static function onRegistCancel($registId)
+    {   
+        return static::callModules('on-regist-cancel', compact('registId'));
     }
 }

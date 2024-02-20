@@ -47,6 +47,8 @@ class CancelCommand extends UserCommand
     {
         BotController::$command = $this;
 
+        $response = UserController::whenRegistCancel();
+
         $conversation = PicController::getPicRegistConversation();
         if($conversation->isExists()) {
 
@@ -58,18 +60,7 @@ class CancelCommand extends UserCommand
 
         }
 
-        $conversation = UserController::getRegistConversation();
-        if($conversation->isExists()) {
-
-            $conversation->cancel();
-            $request = BotController::request('TextDefault');
-            $request->setTarget( BotController::getRequestTarget() );
-            $request->setText(fn($text) => $text->addText('Registrasi User dibatalkan.'));
-            $response = $request->send();
-
-        }
-
-        if(isset($response)) return $response;
+        if($response instanceof ServerResponse) return $response;
 
         $request = BotController::request('TextDefault');
         $request->setTarget( BotController::getRequestTarget() );
