@@ -6,7 +6,8 @@ use App\Controller\BotController;
 class AlertController extends BotController
 {
     public static $callbacks = [
-        'alert.excl' => 'onStartRequestExclusion'
+        'alert.excl' => 'onStartRequestExclusion',
+        'alert.mode' => 'onChangeMode',
     ];
 
     public static function getAlertExclusionConversation()
@@ -37,5 +38,15 @@ class AlertController extends BotController
     public static function whenRequestExclusionReviewed(bool $isApproved, $registId)
     {
         return static::callModules('when-request-exclusion-reviewed', compact('isApproved', 'registId'));
+    }
+
+    public static function changeAlertMode()
+    {
+        return static::callModules('change-alert-mode');
+    }
+
+    public static function onChangeMode($modeId)
+    {
+        return static::callModules('on-change-mode', compact('modeId'));
     }
 }
