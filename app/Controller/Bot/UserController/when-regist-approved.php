@@ -7,7 +7,7 @@ use App\Model\Witel;
 
 $telgUser = TelegramUser::findByRegistId($registId);
 if(!$telgUser) {
-    return Request::emptyResponse();
+    return static::sendEmptyResponse();
 }
 
 $request = static::request('Registration/TextApproved');

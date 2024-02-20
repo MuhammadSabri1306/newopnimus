@@ -1,15 +1,7 @@
 <?php
 namespace App\Controller\Bot;
 
-use Longman\TelegramBot\Request;
-use Longman\TelegramBot\Entities\ServerResponse;
-use Longman\TelegramBot\Entities\Keyboard;
 use Longman\TelegramBot\Entities\KeyboardButton;
-use Longman\TelegramBot\Entities\InlineKeyboard;
-
-use App\Core\DB;
-use App\Core\RequestData;
-use App\Core\TelegramText;
 use App\Core\Conversation;
 use App\Core\CallbackData;
 use App\Controller\BotController;
@@ -21,8 +13,6 @@ use App\Model\Registration;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\AlertUsers;
-use App\BuiltMessageText\UserText;
-use App\Core\Exception\TelegramResponseException;
 
 class UserController extends BotController
 {
@@ -56,10 +46,9 @@ class UserController extends BotController
 
     public static function checkRegistStatus()
     {
-        $message = UserController::$command->getMessage();
-        $chatType = $message->getChat()->getType();
-        $chatId = $message->getChat()->getId();
-        static::setRequestTarget($message);
+        $chat = static::getMessage()->getChat();
+        $chatType = $chat->getType();
+        $chatId = $chat->getId();
 
         if(!TelegramUser::exists($chatId)) {
 
@@ -73,6 +62,7 @@ class UserController extends BotController
             if(!$regist) return null;
 
             $request = static::request('Registration/TextOnReview');
+            $request->setTarget( static::getRequestTarget() );
             $request->setRegistration($regist);
             if($regist['data']['level'] == 'regional' || $regist['data']['level'] == 'witel') {
                 $request->setRegional(Regional::find($regist['data']['regional_id']));
@@ -88,54 +78,52 @@ class UserController extends BotController
         $fullName = ($chatType == 'group' || $chatType == 'supergroup') ? 'Grup '.$message->getChat()->getTitle()
             : $message->getFrom()->getFirstName().' '.$message->getFrom()->getLastName();
         
-        $request = BotController::request('Registration/AnimationUserExists');
-        // $request->params->chatId = $chatId;
+        $request = static::request('Registration/AnimationUserExists');
+        $request->setTarget( static::getRequestTarget() );
         $request->setName($fullName);
         return $request->send();
     }
 
     public static function tou()
     {
-        $message = UserController::$command->getMessage();
-        $userChatId = $message->getFrom()->getId();
-        static::setRequestTarget($message);
-        
-        $request1 = BotController::request('Registration/AnimationTou');
-        $response = $request1->send();
+        $fromId = static::getFrom()->getId();
 
-        $request2 = BotController::request('Registration/TextTou');
-        $response = $request2->send();
-        
+        $request = static::request('Registration/AnimationTou');
+        $request->setTarget( static::getRequestTarget() );
+        $request->send();
+
+        $request = static::request('Registration/TextTou');
+        $request->setTarget( static::getRequestTarget() );
+        $request->send();
+
+        $request = static::request('Registration/SelectTouApproval');
+        $request->setTarget( static::getRequestTarget() );
+
         $callbackData = new CallbackData('user.aggrmnt');
-        $callbackData->limitAccess($userChatId);
-        $request3 = BotController::request('Registration/SelectTouApproval');
-        $request3->setInKeyboard(function($inKeyboardItem) use ($callbackData) {
+        $callbackData->limitAccess($fromId);
+        $request->setInKeyboard(function($inKeyboardItem) use ($callbackData) {
             $inKeyboardItem['approve']['callback_data'] = $callbackData->createEncodedData('agree');
             $inKeyboardItem['reject']['callback_data'] = $callbackData->createEncodedData('disagree');
             return $inKeyboardItem;
         });
 
-        return $request3->send();
+        return $request->send();
     }
 
     public static function resetRegistration()
     {
-        $message = UserController::$command->getMessage();
-        $userChatId = $message->getFrom()->getId();
-        $chatId = $message->getChat()->getId();
-        static::setRequestTarget($message);
-
-        $currUser = TelegramUser::findByChatId($chatId);
+        $fromId = static::getFrom()->getId();
+        $currUser = static::getUser();
         if(!$currUser) {
             
-            $request = BotController::request('Error/TextUserUnidentified');
-            // $request->params->chatId = $chatId;
+            $request = static::request('Error/TextUserUnidentified');
+            $request->setTarget( static::getRequestTarget() );
             return $request->send();
 
         }
         
-        $request = BotController::request('Registration/SelectResetApproval');
-        // $request->params->chatId = $chatId;
+        $request = static::request('Registration/SelectResetApproval');
+        $request->setTarget( static::getRequestTarget() );
         
         $request->setUser($currUser);
         if($currUser['level'] != 'nasional') {
@@ -146,7 +134,7 @@ class UserController extends BotController
         }
 
         $callbackData = new CallbackData('user.reset');
-        $callbackData->limitAccess($userChatId);
+        $callbackData->limitAccess($fromId);
         $request->setInKeyboard(function($inKeyboardData) use ($callbackData) {
             $inKeyboardData['yes']['callback_data'] = $callbackData->createEncodedData(1);
             $inKeyboardData['no']['callback_data'] = $callbackData->createEncodedData(0);
@@ -158,20 +146,20 @@ class UserController extends BotController
 
     public static function register()
     {
-        $conversation = UserController::getRegistConversation();
+        $conversation = static::getRegistConversation();
         if(!$conversation->isExists()) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
-        $message = UserController::$command->getMessage();
+        $message = static::getMessage();
         $isPrivateChat = $message->getChat()->isPrivateChat();
         $chatId = $message->getChat()->getId();
-        $userChatId = $message->getFrom()->getId();
-        static::setRequestTarget($message);
+        $fromId = static::getFrom()->getId();
 
         if($conversation->getStep() == 0) {
 
             $request = static::request('Registration/SelectLevel');
+            $request->setTarget( static::getRequestTarget() );
             $request->params->text = $request->getText()
                 ->clear()
                 ->addText('Proses registrasi dimulai. Silahkan memilih ')->startBold()->addText('Level Monitoring')->endBold()->addText('.')->newLine(2)
@@ -179,7 +167,7 @@ class UserController extends BotController
                 ->get();
 
             $callbackData = new CallbackData('user.lvl');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem) use ($callbackData) {
                 $inKeyboardItem['nasional']['callback_data'] = $callbackData->createEncodedData('nasional');
                 $inKeyboardItem['regional']['callback_data'] = $callbackData->createEncodedData('regional');
@@ -197,6 +185,7 @@ class UserController extends BotController
 
             if(empty($messageText)) {
                 $request = static::request('TextDefault');
+                $request->setTarget( static::getRequestTarget() );
                 if($isPrivateChat) {
                     $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
                 } else {
@@ -219,15 +208,16 @@ class UserController extends BotController
 
         if(!$isPrivateChat && $conversation->getStep() > 1) {
             if($conversation->getStep() == 2) {
-                return UserController::saveRegistFromConversation();
+                return static::saveRegistFromConversation();
             }
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         if($conversation->getStep() == 2) {
 
             if(!$message->getContact()) {
                 $request = static::request('TextDefault');
+                $request->setTarget( static::getRequestTarget() );
                 $request->setText(fn($text) => $text->addText('Silahkan pilih menu "Bagikan Kontak Saya".'));
 
                 $keyboardButton = new KeyboardButton('Bagikan Kontak Saya');
@@ -251,6 +241,7 @@ class UserController extends BotController
 
             if(empty($messageText)) {
                 $request = static::request('TextDefault');
+                $request->setTarget( static::getRequestTarget() );
                 $request->setText(fn($text) => $text->addText('Silahkan ketikkan instansi anda.'));
                 return $request->send();
             }
@@ -266,6 +257,7 @@ class UserController extends BotController
 
             if(empty($messageText)) {
                 $request = static::request('TextDefault');
+                $request->setTarget( static::getRequestTarget() );
                 $request->setText(fn($text) => $text->addText('Silahkan ketikkan unit kerja anda.'));
                 return $request->send();
             }
@@ -279,10 +271,11 @@ class UserController extends BotController
 
         if($conversation->getStep() == 5) {
 
-            $request = BotController::request('Registration/SelectIsOrganik');
+            $request = static::request('Registration/SelectIsOrganik');
+            $request->setTarget( static::getRequestTarget() );
             
             $callbackData = new CallbackData('user.orgn');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardData) use ($callbackData) {
                 $inKeyboardData['yes']['callback_data'] = $callbackData->createEncodedData(1);
                 $inKeyboardData['no']['callback_data'] = $callbackData->createEncodedData(0);
@@ -297,6 +290,7 @@ class UserController extends BotController
 
             if(empty($messageText)) {
                 $request = static::request('TextDefault');
+                $request->setTarget( static::getRequestTarget() );
                 $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
                 return $request->send();
             }
@@ -310,31 +304,30 @@ class UserController extends BotController
 
         if($conversation->getStep() == 7) {
 
-            return UserController::saveRegistFromConversation();
+            return static::saveRegistFromConversation();
 
         }
 
-        return Request::emptyResponse();
+        return static::sendEmptyResponse();
     }
 
-    public static function onRegist($callbackValue, $callbackQuery)
+    public static function onRegist($callbackValue)
     {
-        $message = $callbackQuery->getMessage();
+        $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        $from = $callbackQuery->getFrom();
+        $from = static::getFrom();
         $fromId = $from->getId();
-        static::setRequestTarget($message);
 
-        $request = static::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         if($callbackValue == 'disagree') {
 
             $request = static::request('Registration/TextTouReject');
+            $request->setTarget( static::getRequestTarget() );
             $response = $request->send();
             
-            $conversation = UserController::getRegistConversation();
+            $conversation = static::getRegistConversation();
             if($conversation->isExists()) {
                 $conversation->cancel();
             }
@@ -345,7 +338,7 @@ class UserController extends BotController
         
         if($callbackValue == 'agree') {
             
-            $conversation = UserController::getRegistConversation();
+            $conversation = static::getRegistConversation();
             if(!$conversation->isExists()) {
                 
                 $conversation->create();
@@ -370,6 +363,7 @@ class UserController extends BotController
             }
 
             $request = static::request('Registration/SelectLevel');
+            $request->setTarget( static::getRequestTarget() );
             
             $callbackData = new CallbackData('user.lvl');
             $callbackData->limitAccess($fromId);
@@ -384,30 +378,28 @@ class UserController extends BotController
 
         }
 
-        return Request::emptyResponse();
+        return static::sendEmptyResponse();
     }
 
-    public static function onSelectLevel($callbackData, $callbackQuery)
+    public static function onSelectLevel($callbackData)
     {
         if(in_array($callbackData, ['nasional', 'regional', 'witel'])) {
-            $conversation = UserController::getRegistConversation();
+            $conversation = static::getRegistConversation();
 
             if(!$conversation->isExists()) {
-                return Request::emptyResponse();
+                return static::sendEmptyResponse();
             }
 
             $conversation->level = $callbackData;
             $conversation->commit();
         }
         
-        $message = $callbackQuery->getMessage();
-        $userChatId = $callbackQuery->getFrom()->getId();
+        $message = static::getMessage();
+        $fromId = static::getFrom()->getId();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        static::setRequestTarget($message);
         
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         if($conversation->level == 'nasional') {
 
@@ -415,6 +407,7 @@ class UserController extends BotController
             $conversation->commit();
 
             $request = static::request('TextDefault');
+            $request->setTarget( static::getRequestTarget() );
             if($message->getChat()->isPrivateChat()) {
                 $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
             } else {
@@ -424,9 +417,9 @@ class UserController extends BotController
 
         } elseif($conversation->level == 'regional' || $conversation->level == 'witel') {
 
-            $request = BotController::request('Area/SelectRegional');
+            $request = static::request('Area/SelectRegional');
+            $request->setTarget( static::getRequestTarget() );
             $request->setRegionals(Regional::getSnameOrdered());
-            $request->params->chatId = $chatId;
             $request->params->text = $request->getText()
                 ->clear()
                 ->addText('Silahkan pilih')
@@ -435,7 +428,7 @@ class UserController extends BotController
                 ->get();
 
             $callbackData = new CallbackData('user.treg');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem, $regional) use ($callbackData) {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($regional['id']);
                 return $inKeyboardItem;
@@ -448,24 +441,22 @@ class UserController extends BotController
         return static::sendEmptyResponse();
     }
 
-    public static function onSelectRegional($callbackData, $callbackQuery)
+    public static function onSelectRegional($callbackData)
     {
-        $conversation = UserController::getRegistConversation();
+        $conversation = static::getRegistConversation();
         if(!$conversation->isExists()) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         $conversation->regionalId = $callbackData;
         $conversation->commit();
 
-        $message = $callbackQuery->getMessage();
-        $userChatId = $callbackQuery->getFrom()->getId();
+        $message = static::getMessage();
+        $fromId = static::getFrom()->getId();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        static::setRequestTarget($message);
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         if($conversation->level == 'regional') {
 
@@ -473,6 +464,7 @@ class UserController extends BotController
             $conversation->commit();
 
             $request = static::request('TextDefault');
+            $request->setTarget( static::getRequestTarget() );
             if($message->getChat()->isPrivateChat()) {
                 $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
             } else {
@@ -484,10 +476,10 @@ class UserController extends BotController
 
         if($conversation->level == 'witel') {
 
-            $request = BotController::request('Area/SelectWitel');
-            $request->setWitels(Witel::getNameOrdered($conversation->regionalId));
+            $request = static::request('Area/SelectWitel');
+            $request->setTarget( static::getRequestTarget() );
+            $request->setWitels( Witel::getNameOrdered($conversation->regionalId) );
 
-            $request->params->chatId = $chatId;
             $request->params->text = $request->getText()
                 ->clear()
                 ->addText('Silahkan pilih')
@@ -496,7 +488,7 @@ class UserController extends BotController
                 ->get();
 
             $callbackData = new CallbackData('user.witl');
-            $callbackData->limitAccess($userChatId);
+            $callbackData->limitAccess($fromId);
             $request->setInKeyboard(function($inKeyboardItem, $witel) use ($callbackData) {
                 $inKeyboardItem['callback_data'] = $callbackData->createEncodedData($witel['id']);
                 return $inKeyboardItem;
@@ -506,23 +498,20 @@ class UserController extends BotController
 
         }
 
-        return Request::emptyResponse();
+        return static::sendEmptyResponse();
     }
 
-    public static function onSelectWitel($callbackData, $callbackQuery)
+    public static function onSelectWitel($callbackData)
     {
-        $message = $callbackQuery->getMessage();
+        $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        $isPrivateChat = $message->getChat()->isPrivateChat();
-        static::setRequestTarget($message);
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
-        $conversation = UserController::getRegistConversation();
+        $conversation = static::getRegistConversation();
         if(!$conversation->isExists()) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         $conversation->witelId = $callbackData;
@@ -534,6 +523,7 @@ class UserController extends BotController
             $conversation->commit();
 
             $request = static::request('TextDefault');
+            $request->setTarget( static::getRequestTarget() );
             if($message->getChat()->isPrivateChat()) {
                 $request->setText(fn($text) => $text->addText('Silahkan ketikkan nama lengkap anda.'));
             } else {
@@ -543,22 +533,20 @@ class UserController extends BotController
 
         }
 
-        return Request::emptyResponse();
+        return static::sendEmptyResponse();
     }
 
-    public static function onSelectOrganik($callbackData, $callbackQuery)
+    public static function onSelectOrganik($callbackData)
     {
-        $message = $callbackQuery->getMessage();
+        $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        static::setRequestTarget($message);
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
-        $request->send();
+        static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
-        $conversation = UserController::getRegistConversation();
+        $conversation = static::getRegistConversation();
         if(!$conversation->isExists()) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         $conversation->isOrganik = $callbackData == 1;
@@ -566,27 +554,27 @@ class UserController extends BotController
         $conversation->commit();
 
         $request = static::request('TextDefault');
+        $request->setTarget( static::getRequestTarget() );
         $request->setText(fn($text) => $text->addText('Silahkan ketikkan NIK anda.'));
         return $request->send();
     }
 
-    public static function onRegistReset($callbackData, $callbackQuery)
+    public static function onRegistReset($callbackData)
     {
-        $message = $callbackQuery->getMessage();
+        $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        static::setRequestTarget($message);
 
-        $request = BotController::request('Action/DeleteMessage', [ $messageId, $chatId ]);
+        $request = static::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $response = $request->send();
 
         if($callbackData != 1) {
             return $response;
         }
 
-        $telegramUser = TelegramUser::findByChatId($chatId);
+        $telegramUser = static::getUser();
         if(!$telegramUser) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         TelegramPersonalUser::deleteByUserId($telegramUser['id']);
@@ -595,8 +583,8 @@ class UserController extends BotController
 
         TelegramUser::delete($telegramUser['id']);
 
-        $request = BotController::request('TextDefault');
-        $request->params->chatId = $chatId;
+        $request = static::request('TextDefault');
+        $request->setTarget( static::getRequestTarget() );
         $request->setText(function($text) {
             return $text->addText('Terimakasih User/Grup ini sudah tidak terdaftar di OPNIMUS lagi.')
                 ->addText(' Anda dapat melakukan registrasi kembali untuk menggunakan bot ini lagi.');
@@ -606,9 +594,9 @@ class UserController extends BotController
 
     private static function saveRegistFromConversation()
     {
-        $conversation = UserController::getRegistConversation();
+        $conversation = static::getRegistConversation();
         if(!$conversation->isExists()) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         $chatId = $conversation->chatId;
@@ -622,12 +610,13 @@ class UserController extends BotController
 
         if($registration) {
             $request = static::request('Registration/TextOnReview');
+            $request->setTarget( static::getRequestTarget() );
             $request->setRegistration($registration);
             if($registration['data']['level'] == 'regional' || $registration['data']['level'] == 'witel') {
-                $request->setRegional(Regional::find($registration['data']['regional_id']));
+                $request->setRegional( Regional::find($registration['data']['regional_id']) );
             }
             if($registration['data']['level'] == 'witel') {
-                $request->setWitel(Witel::find($registration['data']['witel_id']));
+                $request->setWitel( Witel::find($registration['data']['witel_id']) );
             }
 
             return $request->send();
@@ -669,23 +658,26 @@ class UserController extends BotController
 
         $registration = Registration::create($registData);
         if(!$registration) {
+
             $request = static::request('TextDefault');
+            $request->setTarget( static::getRequestTarget() );
             $request->setText(fn($text) => $text->addText('Terdapat error saat akan menyimpan data anda. Silahkan coba beberapa saat lagi.'));
             return $request->send();
+
         }
 
-        $request = BotController::request('Registration/TextOnReview');
-        $request->params->chatId = $chatId;
+        $request = static::request('Registration/TextOnReview');
+        $request->setTarget( static::getRequestTarget() );
         $request->setRegistration($registration);
         if($conversation->level == 'regional' || $conversation->level == 'witel') {
-            $request->setRegional(Regional::find($conversation->regionalId));
+            $request->setRegional( Regional::find($conversation->regionalId) );
         }
         if($conversation->level == 'witel') {
-            $request->setWitel(Witel::find($conversation->witelId));
+            $request->setWitel( Witel::find($conversation->witelId) );
         }
 
         $response = $request->send();
-        AdminController::whenRegistUser($registration['id']);
+        AdminController::whenRegistUser( $registration['id'] );
         $conversation->done();
         return $response;
     }
@@ -699,7 +691,7 @@ class UserController extends BotController
     {
         $registData = Registration::find($registId);
         if(!$registData) {
-            return Request::emptyResponse();
+            return static::sendEmptyResponse();
         }
 
         $request = static::request('Registration/TextUserRejected');
