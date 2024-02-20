@@ -9,7 +9,7 @@ use App\Core\TelegramRequest\TextList;
 use App\Core\TelegramRequest\PortFormat;
 use App\Helper\ArrayHelper;
 
-class TextPortWitel extends TelegramRequest
+class TextPortRegional extends TelegramRequest
 {
     use TextList, PortFormat;
 
@@ -23,17 +23,17 @@ class TextPortWitel extends TelegramRequest
     public function getText()
     {
         $alarms = $this->getData('alarms', []);
-        $witel = $this->getData('witel', null);
+        $regional = $this->getData('regional', null);
         $currDateTime = date('Y-m-d H:i:s');
 
-        if(!$witel) {
+        if(!$regional) {
             return TelegramText::create();
         }
 
         if(empty($alarms)) {
 
             $text = TelegramText::create('✅✅')->addBold('ZERO ALARM')->addText('✅✅')->newLine()
-                ->addText('Saat ini tidak ada alarm di ')->addBold($witel['witel_name']);
+                ->addText('Saat ini tidak ada alarm di ')->addBold($regional['name']);
             $text->addText(' pada ')->addBold($currDateTime)->newLine()
                 ->startInlineCode()
                 ->addText('Tetap Waspada dan disiplin mengawal Network Element Kita.')
@@ -45,32 +45,40 @@ class TextPortWitel extends TelegramRequest
         }
 
         $text = TelegramText::create('Status alarm OSASE di ')
-            ->addBold($witel['witel_name'])
+            ->addBold($regional['name'])
             ->addText(" pada $currDateTime WIB adalah:");
 
-        foreach($alarms as $rtu) {
-            $text->newLine(2)
-                ->addBold("⛽️$rtu->rtu_sname ($rtu->location) :")
-                ->startCode();
+        foreach($alarms as $witelItem) {
 
-            foreach($rtu->ports as $portIndex => $port) {
+            $text->newLine(3)->addBold("🌇 $witelItem->witel");
 
-                $portNo = $port->no_port;
-                $portIcon = $this->getAlarmIcon($portNo, $port->port_name, $port->severity->name);
-                $portStatus = strtoupper($port->severity->name);
-                $portDescr = $port->description;
-                $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
+            foreach($witelItem->rtus as $rtu) {
 
-                if($portIndex > 0) $text->newLine();
-                $text->addSpace(2)
-                    ->addText($portIcon."$portStatus: ($portNo) $portDescr ($portValue)");
-                if(isset($port->alert_start_time)) {
-                    $duration = $this->formatTimeDiff($port->alert_start_time);
-                    $text->addText(" $duration");
+                $text->newLine(2)
+                    ->addBold("⛽️$rtu->rtu_sname ($rtu->location) :")
+                    ->startCode();
+    
+                foreach($rtu->ports as $portIndex => $port) {
+    
+                    $portNo = $port->no_port;
+                    $portIcon = $this->getAlarmIcon($portNo, $port->port_name, $port->severity->name);
+                    $portStatus = strtoupper($port->severity->name);
+                    $portDescr = $port->description;
+                    $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
+    
+                    if($portIndex > 0) $text->newLine();
+                    $text->addSpace(2)
+                        ->addText($portIcon."$portStatus: ($portNo) $portDescr ($portValue)");
+                    if(isset($port->alert_start_time)) {
+                        $duration = $this->formatTimeDiff($port->alert_start_time);
+                        $text->addText(" $duration");
+                    }
                 }
+    
+                $text->endCode();
+
             }
 
-            $text->endCode();
         }
 
         return $text;
@@ -98,9 +106,19 @@ class TextPortWitel extends TelegramRequest
             $groupData = [];
             foreach($ports as $port) {
 
+                $witelName = $port->witel;
                 $rtuName = $port->rtu_name;
-                if(!isset($groupData[$rtuName])) {
-                    $groupData[$rtuName] = [
+
+                if(!isset($groupData[$witelName])) {
+                    $groupData[$witelName] = [
+                        'witel' => $port->witel,
+                        'regional' => $port->regional,
+                        'rtus' => []
+                    ];
+                }
+
+                if(!isset($groupData[$witelName]['rtus'][$rtuName])) {
+                    $groupData[$witelName]['rtus'][$rtuName] = [
                         'rtu_id' => $port->rtu_id,
                         'rtu_name' => $port->rtu_name,
                         'rtu_sname' => $port->rtu_sname,
@@ -112,19 +130,23 @@ class TextPortWitel extends TelegramRequest
                     ];
                 }
 
-                array_push($groupData[$rtuName]['ports'], $port);
+                array_push($groupData[$witelName]['rtus'][$rtuName]['ports'], $port);
             }
 
-            $alarms = ArrayHelper::sortByKey($groupData);
+            $alarms = array_map(function($item) {
+                $item['rtus'] = ArrayHelper::sortByKey($item['rtus']);
+                return $item;
+            }, ArrayHelper::sortByKey($groupData));
+
             $this->setData('alarms', json_decode(json_encode($alarms)));
             $this->params->text = $this->getText()->get();
         }
     }
 
-    public function setWitel($witel)
+    public function setRegional($regional)
     {
-        if(is_array($witel)) {
-            $this->setData('witel', $witel);
+        if(is_array($regional)) {
+            $this->setData('regional', $regional);
             $this->params->text = $this->getText()->get();
         }
     }
