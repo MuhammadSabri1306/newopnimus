@@ -1,25 +1,7 @@
 <?php
 namespace App\Controller\Bot;
 
-use Longman\TelegramBot\Entities\ServerResponse;
-use Longman\TelegramBot\Request;
-use Longman\TelegramBot\Entities\InlineKeyboard;
-use Longman\TelegramBot\ChatAction;
-use Goat1000\SVGGraph\SVGGraph;
-
-use App\Core\RequestData;
-use App\Core\Conversation;
-use App\Core\CallbackData;
-use App\BuiltMessageText\UserText;
-use App\BuiltMessageText\PortText;
 use App\Controller\BotController;
-use App\Model\TelegramUser;
-use App\Model\Regional;
-use App\Model\Witel;
-use App\Model\RtuLocation;
-use App\Model\RtuList;
-use App\ApiRequest\NewosaseApi;
-use App\Request\RequestInKeyboard;
 
 class PortController extends BotController
 {

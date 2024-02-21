@@ -1,19 +1,7 @@
 <?php
 namespace App\Controller\Bot;
 
-use Longman\TelegramBot\Entities\Keyboard;
-use Longman\TelegramBot\Entities\KeyboardButton;
-use App\Core\Conversation;
-use App\Core\CallbackData;
 use App\Controller\BotController;
-use App\Controller\Bot\AdminController;
-use App\Model\TelegramUser;
-use App\Model\TelegramPersonalUser;
-use App\Model\PicLocation;
-use App\Model\Registration;
-use App\Model\Regional;
-use App\Model\Witel;
-use App\Model\AlertUsers;
 
 class UserController extends BotController
 {

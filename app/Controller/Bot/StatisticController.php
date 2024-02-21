@@ -16,7 +16,7 @@ class StatisticController extends BotController
 
     public static function daily()
     {
-        $fromId = static::getMessage()->getFrom()->getId();
+        $fromId = static::getFrom()->getId();
         $telgUser = static::getUser();
         if(!$telgUser) {
             
@@ -91,7 +91,7 @@ class StatisticController extends BotController
 
     public static function monthly()
     {
-        $fromId = static::getMessage()->getFrom()->getId();
+        $fromId = static::getFrom()->getId();
         $telgUser = static::getUser();
         if(!$telgUser) {
             

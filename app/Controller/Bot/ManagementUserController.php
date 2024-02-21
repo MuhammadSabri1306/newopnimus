@@ -3,7 +3,6 @@ namespace App\Controller\Bot;
 
 use App\Controller\BotController;
 use App\Model\TelegramAdmin;
-use App\Model\PicLocation;
 
 class ManagementUserController extends BotController
 {
