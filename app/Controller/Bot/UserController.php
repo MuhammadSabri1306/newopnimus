@@ -63,6 +63,10 @@ class UserController extends BotController
 
             if(!$regist) return null;
 
+            if(!isset($regist['data']['approval_messages']) || empty($regist['data']['approval_messages'])) {
+                AdminController::whenRegistUser( $regist['id'] );
+            }
+
             $request = static::request('Registration/TextOnReview');
             $request->setTarget( static::getRequestTarget() );
             $request->setRegistration($regist);
