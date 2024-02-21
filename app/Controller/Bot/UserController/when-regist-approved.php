@@ -1,5 +1,6 @@
 <?php
 
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
 use App\Model\TelegramUser;
 use App\Model\AlertUsers;
 use App\Model\Regional;
@@ -7,7 +8,17 @@ use App\Model\Witel;
 
 $telgUser = TelegramUser::findByRegistId($registId);
 if(!$telgUser) {
-    return static::sendEmptyResponse();
+
+    try {
+        throw new \Error('$telgUser is not inserted successfully');
+    } catch(\Throwable $err) {
+        ErrorWithDataLogger::catch($err, [ 'registId' => $registId ]);
+    }
+
+    $request = static::request('Error/TextErrorServer');
+    $request->setTarget( static::getRequestTarget() );
+    return $request->send();
+
 }
 
 $request = static::request('Registration/TextApproved');
@@ -18,6 +29,7 @@ if($telgUser['message_thread_id']) {
 
 $isPivotGroup = false;
 if(!$telgUser['is_pic'] && $telgUser['type'] != 'private') {
+
     if($telgUser['level'] == 'witel') {
         $alertPivot = AlertUsers::findPivot($telgUser['level'], $telgUser['witel_id']);
         $witel = Witel::find($telgUser['witel_id']);
@@ -30,6 +42,7 @@ if(!$telgUser['is_pic'] && $telgUser['type'] != 'private') {
         $alertPivot = AlertUsers::findPivot($telgUser['level']);
         $request->setPivotArea('Lokasi Nasional');
     }
+
     if($alertPivot) {
         if($alertPivot['id'] != $telgUser['id']) {
             $pivotGroup = TelegramUser::find($alertPivot['id']);
@@ -40,6 +53,7 @@ if(!$telgUser['is_pic'] && $telgUser['type'] != 'private') {
             $isPivotGroup = true;
         }
     }
+
 }
 
 if($telgUser['level'] == 'witel') {

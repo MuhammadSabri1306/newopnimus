@@ -273,7 +273,7 @@ class BotController extends Controller
             $text = '*Tidak dapat merespon Permintaan Anda.*'.PHP_EOL.
                 'Terjadi masalah saat memproses permintaan anda, silahkan menunggu beberapa saat.'.
                 ' Anda juga dapat melaporkan kepada Tim Pengembang sebagai bug jika Error tetap berlanjut.';
-            static::$command->replyToChat($text, [ 'parse_mode' => 'markdown' ]);
+            return static::$command->replyToChat($text, [ 'parse_mode' => 'markdown' ]);
         }
     }
 

@@ -48,16 +48,6 @@ class StartCommand extends SystemCommand
     public function execute(): ServerResponse
     {
         UserController::$command = $this;
-        $conversation = UserController::getRegistConversation();
-        
-        if(!$conversation->isExists()) {
-            $response = UserController::checkRegistStatus();
-            if($response) return $response;
-    
-            $response = UserController::tou();
-            return $response;
-        }
-        
         return UserController::register();
     }
 }
