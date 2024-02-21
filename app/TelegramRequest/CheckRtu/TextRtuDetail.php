@@ -12,6 +12,7 @@ class TextRtuDetail extends TelegramRequest
     {
         parent::__construct();
         $this->params->parseMode = 'markdown';
+        $this->params->text = $this->getText()->get();
     }
 
     public function getText()
@@ -41,6 +42,38 @@ class TextRtuDetail extends TelegramRequest
             ->addText("📡 IP RTU     : $rtu->ip_address")->newLine()
             ->addText("🔔 Status RTU : $rtu->status")->newLine()
             ->endCode();
+    }
+
+    public function setRegional($regional)
+    {
+        if(is_array($regional)) {
+            $this->setData('regional', $regional);
+            $this->params->text = $this->getText()->get();
+        }
+    }
+
+    public function setWitel($witel)
+    {
+        if(is_array($witel)) {
+            $this->setData('witel', $witel);
+            $this->params->text = $this->getText()->get();
+        }
+    }
+
+    public function setLocation($loc)
+    {
+        if(is_array($loc)) {
+            $this->setData('location', $loc);
+            $this->params->text = $this->getText()->get();
+        }
+    }
+
+    public function setRtu($rtu)
+    {
+        if($rtu) {
+            $this->setData('rtu', $rtu);
+            $this->params->text = $this->getText()->get();
+        }
     }
 
     public function send(): ServerResponse
