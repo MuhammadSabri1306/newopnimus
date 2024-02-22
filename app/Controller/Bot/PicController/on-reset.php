@@ -89,7 +89,7 @@ if($regist && $regist['status'] == 'unprocessed') {
             }
     
         } catch(\Throwable $rr) {
-            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+            static::logError( new \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger($err) );
         }
 
     }

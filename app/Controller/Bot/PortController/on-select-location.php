@@ -52,8 +52,7 @@ try {
         $response = $request->send();
     }
 
-
-    HttpClientLogger::catch($err);
+    static::logError(new HttpClientLogger($err));
     return $response;
 
 }

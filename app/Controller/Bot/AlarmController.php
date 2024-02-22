@@ -56,8 +56,7 @@ class AlarmController extends BotController
                 $response = $request->send();
             }
 
-
-            HttpClientLogger::catch($err);
+            static::logError( new HttpClientLogger($err) );
             return $response;
 
         }
@@ -109,7 +108,7 @@ class AlarmController extends BotController
             }
 
 
-            HttpClientLogger::catch($err);
+            static::logError( new HttpClientLogger($err) );
             return $response;
 
         }

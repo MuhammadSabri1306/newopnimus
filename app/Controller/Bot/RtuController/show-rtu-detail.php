@@ -71,8 +71,7 @@ if(!$rtuId && $rtuSname) {
 
         }
 
-
-        HttpClientLogger::catch($err);
+        static::logError( new HttpClientLogger($err) );
         return $response;
 
     }
@@ -111,8 +110,7 @@ try {
 
     }
 
-
-    HttpClientLogger::catch($err);
+    static::logError( new HttpClientLogger($err) );
     return $response;
 
 }

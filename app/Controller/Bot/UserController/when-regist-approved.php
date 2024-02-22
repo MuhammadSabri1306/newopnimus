@@ -1,6 +1,6 @@
 <?php
 
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
 use App\Model\TelegramUser;
 use App\Model\AlertUsers;
 use App\Model\Regional;
@@ -12,7 +12,9 @@ if(!$telgUser) {
     try {
         throw new \Error('$telgUser is not inserted successfully');
     } catch(\Throwable $err) {
-        ErrorWithDataLogger::catch($err, [ 'registId' => $registId ]);
+        $logger = new ErrorLogger($err);
+        $logger->setParams([ 'registId' => $registId ]);
+        static::logError($logger);
     }
 
     $request = static::request('Error/TextErrorServer');

@@ -1,7 +1,7 @@
 <?php
 
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
 use App\Model\Regional;
@@ -44,16 +44,18 @@ try {
         $response = $request->send();
     }
 
-
-    HttpClientLogger::catch($err);
+    static::logError( new HttpClientLogger($err) );
     return $response;
 
 } catch(\Throwable $err) {
 
-    ErrorWithDataLogger::catch($err, [
+    $logger = new ErrorLogger($err);
+    $logger->setParams([
         'newosaseUrlPath' => $requestUrlPath,
         'requestUrlParams' => $newosaseApi->request['query']
     ]);
+
+    static::logError($logger);
 
     $request = static::request('Error/TextErrorServer');
     $request->setTarget( static::getRequestTarget() );

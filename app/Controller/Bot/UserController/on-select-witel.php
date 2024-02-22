@@ -1,6 +1,6 @@
 <?php
 
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
 
 $conversation = static::getRegistConversation(true);
 if(!$conversation) {
@@ -13,7 +13,9 @@ try {
     }
 } catch(\Throwable $err) {
 
-    ErrorWithDataLogger::catch($err, [ 'level' => $conversation->level ]);
+    $logger = new ErrorLogger($err);
+    $logger->setParams([ 'level' => $conversation->level ]);
+    static::logError($logger);
     return static::sendErrorMessage();
 
 }

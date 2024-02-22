@@ -1,6 +1,6 @@
 <?php
 
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
 use App\Model\Registration;
 
 $regist = Registration::find($registId);
@@ -9,7 +9,9 @@ if(!$regist) {
     try {
         throw new \Error('$regist not found');
     } catch(\Throwable $err) {
-        ErrorWithDataLogger::catch($err, [ 'registId' => $registId ]);
+        $logger = new ErrorLogger($err);
+        $logger->setParams([ 'registId' => $registId ]);
+        static::logError($logger);
     }
 
     $request = static::request('Error/TextErrorServer');

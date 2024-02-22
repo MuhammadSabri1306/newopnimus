@@ -48,16 +48,17 @@ try {
     $chatIdExists = true;
 
     if($err instanceof \App\Core\Exception\TelegramResponseException) {
-        \MuhammadSabri1306\MyBotLogger\Entities\TelegramResponseLogger::catch($err);
+        $logger = new \MuhammadSabri1306\MyBotLogger\Entities\TelegramResponseLogger($err);
         if($err->getResponseData()['description'] == 'Bad Request: chat not found') {
             $chatIdExists = false;
         }
     } elseif($err instanceof \MeekroDBException) {
-        \MuhammadSabri1306\MyBotLogger\Entities\MeekroDbLogger::catch($err);
+        $logger = new \MuhammadSabri1306\MyBotLogger\Entities\MeekroDbLogger($err);
     } else {
-        \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        $logger = new \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger($err);
     }
 
+    \App\Controller\BotController::logError($logger);
     if($chatIdExists) {
         \App\Controller\BotController::sendErrorMessage();
     }

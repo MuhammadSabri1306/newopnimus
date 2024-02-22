@@ -121,7 +121,7 @@ if(!$isApproved) {
             }
 
         } catch(\Throwable $rr) {
-            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+            static::logError( new \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger($err) );
         }
     }
 
@@ -257,7 +257,7 @@ if(isset($regist['data']['approval_messages']) && count($regist['data']['approva
         }
 
     } catch(\Throwable $rr) {
-        \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        static::logError( new \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger($err) );
     }
 }
 

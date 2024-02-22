@@ -1,6 +1,6 @@
 <?php
 
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
 use App\Core\CallbackData;
 use App\Model\Regional;
 
@@ -10,7 +10,9 @@ try {
     }
 } catch(\Throwable $err) {
 
-    ErrorWithDataLogger::catch($err, [ 'level' => $level ]);
+    $logger = new ErrorLogger($err);
+    $logger->setParams([ 'level' => $level ]);
+    static::logError($logger);
 
     $request = static::request('Error/TextErrorServer');
     $request->setTarget( static::getRequestTarget() );

@@ -4,7 +4,7 @@ use App\Core\CallbackData;
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
 use App\Model\Witel;
 use App\Model\AlarmHistory;
 
@@ -73,18 +73,18 @@ try {
         $response = $request->send();
     }
 
-
-    HttpClientLogger::catch($err);
+    static::logError( new HttpClientLogger($err) );
     return $response;
 
 } catch(\Throwable $err) {
 
-    $logger = new ErrorWithDataLogger($err);
-    $logger->data = [
+    $logger = new ErrorLogger($err);
+    $logger->setParams([
         'api_path' => $newosaseApiUrlPath,
         'api_params' => $newosaseApi->request['query']
-    ];
-    $logger->log();
+    ]);
+
+    static::logError($logger);
     
     $request = static::request('TextDefault');
     $request->setTarget( static::getRequestTarget() );

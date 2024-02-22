@@ -6,6 +6,7 @@ use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Entities\Message;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
+use MuhammadSabri1306\MyBotLogger\Logger;
 use App\Core\RequestData;
 use App\Core\Conversation;
 use App\Core\Controller;
@@ -29,6 +30,7 @@ class BotController extends Controller
     public static function isCallbackCommand(): bool
     {
         if(!isset(static::$isCmdCallback)) {
+            if(!isset(static::$command)) return false;
             static::$isCmdCallback = is_null(static::$command->getCallbackQuery()) ? false : true;
         }
         return static::$isCmdCallback;
@@ -37,12 +39,14 @@ class BotController extends Controller
     public static function getMessage(): Message
     {
         if(!isset(static::$cmdMessage)) {
+            if(!isset(static::$command)) return null;
             if(static::isCallbackCommand()) {
                 static::$cmdMessage = static::$command->getCallbackQuery()->getMessage();
             } else {
                 static::$cmdMessage = static::$command->getMessage();
             }
         }
+
         return static::$cmdMessage;
     }
 
@@ -50,6 +54,7 @@ class BotController extends Controller
     {
         if(!isset(static::$cmdFrom)) {
             if(static::isCallbackCommand()) {
+                if(!isset(static::$command)) return null;
                 static::$cmdFrom = static::$command->getCallbackQuery()->getFrom();
             } else {
                 static::$cmdFrom = static::getMessage()->getFrom();
@@ -195,25 +200,6 @@ class BotController extends Controller
         return new $className(...$args);
     }
 
-    public static function handle(Command $command)
-    {
-        static::$command = $command;
-        $user = static::user();
-
-        if($user) {
-
-            if(isset($user['type']) && $user['type'] == 'supergroup') {
-                if($user['message_thread_id'] !== null) {
-                    $messageThreadId = $message->getMessageThreadId();
-                    if(isset($user['message_thread_id']) && $user['message_thread_id'] != $messageThreadId) {
-                        return static::sendEmptyResponse();
-                    }
-                }
-            }
-
-        }
-    }
-
     protected static function setRequestTarget($target)
     {
         $data = [];
@@ -286,5 +272,35 @@ class BotController extends Controller
     public static function sendEmptyResponse()
     {
         return Request::emptyResponse();
+    }
+
+    public static function setLoggerParams(Logger $logger)
+    {
+        $params = [];
+
+        if(static::isCallbackCommand()) {
+            $params['callback_data'] = static::$command->getCallbackQuery()->getData();
+            $params['chat_id'] = static::getMessage()->getChat()->getId();
+        } elseif(static::getMessage()) {
+            $params['message_text'] = static::getMessage()->getText();
+            $params['chat_id'] = static::getMessage()->getChat()->getId();
+        }
+
+        if(static::getFrom()) {
+            $params['user_id'] = static::getFrom()->getId();
+        }
+
+        $logger->setParams($params);
+        return $logger;
+    }
+
+    public static function logError(Logger $logger)
+    {
+        try {
+            $logger = static::setLoggerParams($logger);
+            $logger->log();
+        } catch(\Throwable $err) {
+            \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+        }
     }
 }

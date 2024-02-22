@@ -139,7 +139,7 @@ trait TextList
                 $serverResponse = $response;
 
             } catch(\Throwable $err) {
-                \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
+                static::logError( new \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger($err) );
             }
 
         }
