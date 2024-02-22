@@ -2,6 +2,8 @@
 
 use App\Core\CallbackData;
 use App\Model\Registration;
+use App\Model\Regional;
+use App\Model\Witel;
 
 $chatId = static::getMessage()->getChat()->getId();
 $fromId = static::getFrom()->getId();
