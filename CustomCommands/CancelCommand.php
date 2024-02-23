@@ -47,24 +47,9 @@ class CancelCommand extends UserCommand
     {
         BotController::$command = $this;
 
-        $response = UserController::whenRegistCancel();
+        UserController::whenRegistCancel();
+        PicController::whenRegistCancel();
 
-        $conversation = PicController::getPicRegistConversation();
-        if($conversation->isExists()) {
-
-            $conversation->cancel();
-            $request = BotController::request('TextDefault');
-            $request->setTarget( BotController::getRequestTarget() );
-            $request->setText(fn($text) => $text->addText('Registrasi PIC dibatalkan.'));
-            $response = $request->send();
-
-        }
-
-        if($response instanceof ServerResponse) return $response;
-
-        $request = BotController::request('TextDefault');
-        $request->setTarget( BotController::getRequestTarget() );
-        $request->setText(fn($text) => $text->addText('Tidak ada permintaan yang aktif.'));
-        return $request->send();
+        return BotController::sendEmptyResponse();
     }
 }

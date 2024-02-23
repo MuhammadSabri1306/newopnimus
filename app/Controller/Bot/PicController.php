@@ -205,12 +205,11 @@ class PicController extends BotController
         return $request->send();
     }
 
-    public static function onSetStart($callbackValue, $callbackQuery)
+    public static function onSetStart($callbackValue)
     {
         $message = static::getMessage();
         $messageId = $message->getMessageId();
         $chatId = $message->getChat()->getId();
-        $user = $callbackQuery->getFrom();
 
         $request = static::request('Action/DeleteMessage', [ $messageId, $chatId ]);
         $request->send();
@@ -263,7 +262,7 @@ class PicController extends BotController
         return static::askLocations();
     }
 
-    public static function onSetRegional($regionalId, $callbackQuery)
+    public static function onSetRegional($regionalId)
     {
         $message = static::getMessage();
         $chatId = $message->getChat()->getId();
@@ -288,7 +287,7 @@ class PicController extends BotController
         return $request->send();
     }
 
-    public static function onSetWitel($witelId, $callbackQuery)
+    public static function onSetWitel($witelId)
     {
         $message = static::getMessage();
         $chatId = $message->getChat()->getId();
@@ -322,7 +321,7 @@ class PicController extends BotController
         return $request->send();
     }
 
-    public static function onAddLocation($locId, $callbackQuery)
+    public static function onAddLocation($locId)
     {
         $message = static::getMessage();
         $messageId = $message->getMessageId();
@@ -340,7 +339,7 @@ class PicController extends BotController
         return static::askLocations();
     }
     
-    public static function onRemoveLocation($selectedLocId, $callbackQuery)
+    public static function onRemoveLocation($selectedLocId)
     {
         $message = static::getMessage();
         $messageId = $message->getMessageId();
@@ -363,7 +362,7 @@ class PicController extends BotController
         return static::askLocations();
     }
 
-    public static function onUpdateLocation($callbackValue, $callbackQuery)
+    public static function onUpdateLocation($callbackValue)
     {
         $message = static::getMessage();
         $messageId = $message->getMessageId();
@@ -458,22 +457,23 @@ class PicController extends BotController
 
     public static function list()
     {
-        $message = PicController::$command->getMessage();
-        $chatId = $message->getChat()->getId();
-        $fromId = $message->getFrom()->getId();
+        $chatId = static::getMessage()->getChat()->getId();
+        $fromId = static::getFrom()->getId();
 
-        $telgUser = TelegramUser::findByChatId($chatId);
+        $telgUser = static::getUser();
         if(!$telgUser) {
+
             $request = static::request('Error/TextUserUnidentified');
-            $request->params->chatId = $chatId;
+            $request->setTarget( static::getRequestTarget() );
             return $request->send();
+
         }
 
         if($telgUser['level'] == 'nasional') {
 
-            $request = BotController::request('Area/SelectRegional');
-            $request->params->chatId = $chatId;
-            $request->setRegionals(Regional::getSnameOrdered());
+            $request = static::request('Area/SelectRegional');
+            $request->setTarget( static::getRequestTarget() );
+            $request->setRegionals( Regional::getSnameOrdered() );
 
             $callbackData = new CallbackData('pic.listtreg');
             $callbackData->limitAccess($fromId);
@@ -489,8 +489,8 @@ class PicController extends BotController
         if($telgUser['level'] == 'regional') {
 
             $request = static::request('Area/SelectWitel');
-            $request->params->chatId = $chatId;
-            $request->setWitels(Witel::getNameOrdered($telgUser['regional_id']));
+            $request->setTarget( static::getRequestTarget() );
+            $request->setWitels( Witel::getNameOrdered($telgUser['regional_id']) );
 
             $callbackData = new CallbackData('pic.listwit');
             $callbackData->limitAccess($fromId);
@@ -519,24 +519,24 @@ class PicController extends BotController
         });
 
         $request = static::request('Pic/TextListInWitel');
-        $request->params->chatId = $chatId;
+        $request->setTarget( static::getRequestTarget() );
         $request->setWitel($witel);
         $request->setPics($pics);
         return $request->send();
     }
 
-    public static function onListSelectRegional($regionalId, $callbackQuery)
+    public static function onListSelectRegional($regionalId)
     {
-        $message = $callbackQuery->getMessage();
-        $fromId = $callbackQuery->getFrom()->getId();
+        $message = static::getMessage();
+        $fromId = static::getFrom()->getId();
         $chatId = $message->getChat()->getId();
         $messageId = $message->getMessageId();
 
         static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
         $request = static::request('Area/SelectWitel');
-        $request->params->chatId = $chatId;
-        $request->setWitels(Witel::getNameOrdered($regionalId));
+        $request->setTarget( static::getRequestTarget() );
+        $request->setWitels( Witel::getNameOrdered($regionalId) );
 
         $callbackData = new CallbackData('pic.listwit');
         $callbackData->limitAccess($fromId);
@@ -548,10 +548,10 @@ class PicController extends BotController
         return $request->send();
     }
 
-    public static function onListSelectWitel($witelId, $callbackQuery)
+    public static function onListSelectWitel($witelId)
     {
-        $message = $callbackQuery->getMessage();
-        $fromId = $callbackQuery->getFrom()->getId();
+        $message = static::getMessage();
+        $fromId = static::getFrom()->getId();
         $chatId = $message->getChat()->getId();
         $messageId = $message->getMessageId();
 
@@ -572,9 +572,14 @@ class PicController extends BotController
         });
 
         $request = static::request('Pic/TextListInWitel');
-        $request->params->chatId = $chatId;
+        $request->setTarget( static::getRequestTarget() );
         $request->setWitel($witel);
         $request->setPics($pics);
         return $request->send();
+    }
+
+    public static function whenRegistCancel()
+    {   
+        return static::callModules('when-regist-cancel');
     }
 }

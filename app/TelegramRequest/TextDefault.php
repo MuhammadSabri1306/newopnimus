@@ -21,9 +21,16 @@ class TextDefault extends TelegramRequest
         return $msgText ?? TelegramText::create();
     }
 
-    public function setText(callable $setTextFunc)
+    public function setText($arg)
     {
-        $msgText = $setTextFunc(TelegramText::create());
+        if(is_callable($arg)) {
+            $msgText = $arg(TelegramText::create());
+        } elseif(is_string($arg)) {
+            $msgText = $arg;
+        } else {
+            throw new \Exception('1\'st args should be string or array');
+        }
+
         $this->setData('message_text', $msgText);
         $this->params->text = $this->getText()->get();
     }
