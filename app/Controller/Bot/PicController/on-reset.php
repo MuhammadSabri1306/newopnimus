@@ -13,14 +13,8 @@ $chatId = $message->getChat()->getId();
 $messageId = $message->getMessageId();
 
 $response = static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
-if($callbackValue != 'continue') return $response;
-
-if(!$message->getChat()->isPrivateChat()) {
-            
-    $request = static::request('Pic/TextErrorNotInPrivate');
-    $request->setTarget( static::getRequestTarget() );
-    return $request->send();
-
+if(!$isApproved) {
+    return $response;
 }
 
 $telgUser = static::getUser();

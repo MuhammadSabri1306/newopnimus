@@ -1,5 +1,5 @@
 <?php
-namespace App\TelegramRequest\Pic;
+namespace App\TelegramRequest\Error;
 
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
@@ -19,10 +19,8 @@ class TextErrorNotInPrivate extends TelegramRequest
     {
         $botUsername = \App\Config\BotConfig::$BOT_USERNAME;
         return TelegramText::create()
-            ->addText('Mohon maaf, permintaan set PIC Lokasi tidak dapat dilakukan melalui grup. ')
-            ->addText('Anda dapat melakukan private chat ')
-            ->startBold()->addText('(japri)')->endBold()
-            ->addText(" langsung ke bot @$botUsername dan mengetikkan perintah /setpic, terima kasih.");
+            ->addText('Mohon maaf, permintaan tidak dapat dilakukan melalui grup.')
+            ->addText('Silahkan melakukan private chat/japri langsung ke Bot.');
     }
 
     public function send(): ServerResponse

@@ -39,7 +39,7 @@ class PicController extends BotController
         'pic.add_location' => 'onAddLocation',
         'pic.update_loc' => 'onUpdateLocation',
         'pic.remove_loc' => 'onRemoveLocation',
-        'pic.set_reset' => 'onReset',
+        'pic.resetapprv' => 'onReset',
         'pic.listtreg' => 'onListSelectRegional',
         'pic.listwit' => 'onListSelectWitel',
     ];
@@ -141,7 +141,7 @@ class PicController extends BotController
 
         if(!$message->getChat()->isPrivateChat()) {
             
-            $request = static::request('Pic/TextErrorNotInPrivate');
+            $request = static::request('RegistPic/TextErrorNotInPrivate');
             $request->setTarget( static::getRequestTarget() );
             return $request->send();
 
@@ -200,45 +200,6 @@ class PicController extends BotController
         $request->setInKeyboard(function($inkeyboardData) {
             $inkeyboardData['agree']['callback_data'] = 'pic.set_start.continue';
             $inkeyboardData['disagree']['callback_data'] = 'pic.set_start.cancel';
-            return $inkeyboardData;
-        });
-        return $request->send();
-    }
-
-    public static function reset()
-    {
-        $message = PicController::$command->getMessage();
-        $chatId = $message->getChat()->getId();
-
-        if(!$message->getChat()->isPrivateChat()) {
-            $replyText = PicText::picAbortInGroup()->get();
-            return PicController::$command->replyToChat($replyText);
-        }
-
-        $conversation = static::getPicRegistConversation();
-        if($conversation->isExists()) {
-            $conversation->cancel();
-        }
-
-        $telgUser = TelegramUser::findByChatId($chatId);
-        if(!$telgUser) {
-            $request = static::request('Error/TextUserUnidentified');
-            $request->params->chatId = $chatId;
-            return $request->send();
-        }
-
-        if(!$telgUser['is_pic']) {
-            $request = static::request('TextDefault');
-            $request->params->chatId = $chatId;
-            $request->setText(fn($text) => $text->addText('Anda belum terdaftar sebagai PIC.'));
-            return $request->send();
-        }
-
-
-        $request = BotController::getRequest('Registration/PicReset', [ $chatId, $telgUser ]);
-        $request->setRequest(function($inkeyboardData) {
-            $inkeyboardData['continue']['callback_data'] = 'pic.set_reset.continue';
-            $inkeyboardData['cancel']['callback_data'] = 'pic.set_reset.cancel';
             return $inkeyboardData;
         });
         return $request->send();
@@ -441,12 +402,14 @@ class PicController extends BotController
         }
     }
 
-    public static function onReset($callbackValue, $callbackQuery)
+    public static function reset()
     {
-        return static::callModules('on-reset', [
-            'callbackValue' => $callbackValue,
-            'callbackQuery' => $callbackQuery
-        ]);
+        return static::callModules('reset');
+    }
+
+    public static function onReset($isApproved)
+    {
+        return static::callModules('on-reset', compact('isApproved'));
     }
 
     private static function sendRegistRequest()
