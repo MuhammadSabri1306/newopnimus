@@ -1,7 +1,10 @@
 <?php
 namespace App\Libraries\HttpClient;
 
-class ResponseData
+use App\Libraries\HttpClient\ResponseDataValidation;
+use App\Libraries\HttpClient\Exceptions\DataNotFoundException;
+
+class ResponseData implements ResponseDataValidation
 {
     protected $data;
 
@@ -40,6 +43,49 @@ class ResponseData
             }
 
         }
+        return $data;
+    }
+
+    public function find(string $keyNode = null, int $searchPattern = 1)
+    {
+        $data = $this->get($keyNode);
+
+        if($searchPattern === self::EXPECT_NOT_EMPTY) {
+            $emptyValues = [ null, [], '' ];
+            foreach($emptyValues as $item) {
+                if($data === $item) {
+                    throw new DataNotFoundException('searched response data not found');
+                }
+            }
+        }
+
+        if($searchPattern === self::EXPECT_NOT_NULL) {
+            if($data === null) {
+                throw new DataNotFoundException('searched response data is null');
+            }
+        }
+
+        if($searchPattern === self::EXPECT_ARRAY || $searchPattern === self::EXPECT_ARRAY_NOT_EMPTY) {
+            if(!is_array($data)) {
+                throw new DataNotFoundException('searched response data expected as array');
+            }
+            if($searchPattern === self::EXPECT_ARRAY_NOT_EMPTY && count($data) < 1) {
+                throw new DataNotFoundException('searched response data is an empty array');
+            }
+        }
+
+        if($searchPattern === self::EXPECT_STRING_NOT_EMPTY) {
+            if(!is_string($data) || strlen($data) < 1) {
+                throw new DataNotFoundException('searched response data is an empty string');
+            }
+        }
+
+        if($searchPattern === self::EXPECT_BOOLEAN) {
+            if(!is_bool($data) || ( $data !== '0' && $data !== '1' && $data !== 'false' && $data !== 'true' )) {
+                throw new DataNotFoundException('searched response data expected as boolean');
+            }
+        }
+
         return $data;
     }
 }

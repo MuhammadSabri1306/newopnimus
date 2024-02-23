@@ -4,9 +4,10 @@ namespace App\ApiRequest;
 use App\Libraries\HttpClient\RestClient;
 use App\Libraries\HttpClient\Exceptions\ClientException;
 use App\Libraries\HttpClient\Exceptions\RequestException;
+use App\Libraries\HttpClient\ResponseDataValidation;
 use App\Config\AppConfig;
 
-class NewosaseApiV2 extends RestClient
+class NewosaseApiV2 extends RestClient implements ResponseDataValidation
 {
     private $useAuth = false;
     private $db;
