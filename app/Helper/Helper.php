@@ -10,16 +10,24 @@ class Helper
         return $default;
     }
 
-    public static function basePath(string $targetPath)
+    public static function basePath(string $subPath = '')
     {
-        $pathArr = explode('/', $targetPath);
-        return realpath(__DIR__.'/../../'. implode('/', $pathArr));
+        $basePath = realpath(__DIR__.'/../..');
+        $subPathArr = array_filter( explode('/', $subPath) );
+        $subPath = implode('/', $subPathArr);
+        return implode('/', [ $basePath, $subPath ]);
     }
 
-    public static function appPath(string $targetPath)
+    public static function appPath(string $subPath = '')
     {
-        $pathArr = explode('/', $targetPath);
-        return realpath(__DIR__.'/../'. implode('/', $pathArr));
+        $subPath = implode('/', [ 'app', $subPath ]);
+        return Helper::basePath($subPath);
+    }
+
+    public static function publicPath(string $subPath = '')
+    {
+        $subPath = implode('/', [ 'public', $subPath ]);
+        return Helper::basePath($subPath);
     }
 
     public static function debug(...$vars) {
