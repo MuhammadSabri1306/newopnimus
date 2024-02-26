@@ -95,7 +95,7 @@ try {
     static::logError( new HttpClientLogger($err) );
     return null;
 } catch(DataNotFoundException $err) {
-    static::logError( new ErrorLogger($err) );
+    // static::logError( new ErrorLogger($err) );
     return null;
 }
 
