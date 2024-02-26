@@ -7,11 +7,12 @@ use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 use App\Core\TelegramRequest\TextList;
 use App\Core\TelegramRequest\PortFormat;
+use App\Core\TelegramRequest\RtuFormat;
 use App\Helper\ArrayHelper;
 
 class TextPortRegional extends TelegramRequest
 {
-    use TextList, PortFormat;
+    use TextList, PortFormat, RtuFormat;
 
     public function __construct()
     {
@@ -57,24 +58,29 @@ class TextPortRegional extends TelegramRequest
                 $text->newLine(2)
                     ->addBold("⛽️$rtu->rtu_sname ($rtu->location) :")
                     ->startCode();
-    
-                foreach($rtu->ports as $portIndex => $port) {
-    
-                    $portNo = $port->no_port;
-                    $portIcon = $this->getAlarmIcon($portNo, $port->port_name, $port->severity->name);
-                    $portStatus = strtoupper($port->severity->name);
-                    $portDescr = $port->description;
-                    $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
-    
-                    if($portIndex > 0) $text->newLine();
-                    $text->addSpace(2)
-                        ->addText($portIcon."$portStatus: ($portNo) $portDescr ($portValue)");
-                    if(isset($port->alert_start_time)) {
-                        $duration = $this->formatTimeDiff($port->alert_start_time);
-                        $text->addText(" $duration");
+
+                if($rtu->is_rtu_off) {
+                    $text->addSpace(2)->addText("‼️OFF: $rtu->rtu_sname dalam kondisi OFF");
+                } else {
+                    foreach($rtu->ports as $portIndex => $port) {
+
+                        $portNo = $port->no_port;
+                        $portIcon = $this->getAlarmIcon($portNo, $port->port_name, $port->severity->name);
+                        $portStatus = strtoupper($port->severity->name);
+                        $portDescr = $port->description;
+                        $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
+
+                        if($portIndex > 0) $text->newLine();
+                        $text->addSpace(2)
+                            ->addText($portIcon."$portStatus: ($portNo) $portDescr ($portValue)");
+                        if(isset($port->alert_start_time)) {
+                            $duration = $this->formatTimeDiff($port->alert_start_time);
+                            $text->addText(" $duration");
+                        }
+
                     }
                 }
-    
+
                 $text->endCode();
 
             }
@@ -126,11 +132,14 @@ class TextPortRegional extends TelegramRequest
                         'location' => $port->location,
                         'witel' => $port->witel,
                         'regional' => $port->regional,
+                        'is_rtu_off' => $this->isRtuStatusOff($port->rtu_status),
                         'ports' => []
                     ];
                 }
 
-                array_push($groupData[$witelName]['rtus'][$rtuName]['ports'], $port);
+                if(!$groupData[$witelName]['rtus'][$rtuName]['is_rtu_off']) {
+                    array_push($groupData[$witelName]['rtus'][$rtuName]['ports'], $port);
+                }
             }
 
             $alarms = array_map(function($item) {

@@ -14,6 +14,11 @@ trait RtuFormat
         return true;
     }
 
+    protected function isRtuStatusOff($rtuStatus)
+    {
+        return strtolower($rtuStatus) == 'off';
+    }
+
     protected function getRtuStatusIcon($rtuStatus)
     {
         $rtuStatusKey = strtolower($rtuStatus);
