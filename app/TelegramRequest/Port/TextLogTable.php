@@ -65,7 +65,7 @@ class TextLogTable extends TelegramRequest
             $dateAlarmStartTime = $alarm['alert_start_time'] ? date('Y-m-d H:i', $alarm['alert_start_time'] / 1000) : null;
             $alarmDate = $dateAlarmStartTime ?? $dateOpenedAt;
             
-            $alarmPortValue = $this->toDefaultPortValueFormat($alarm['port_no'], $alarm['port_unit'], null);
+            $alarmPortValue = $this->toDefaultPortValueFormat($alarm['port_value'], $alarm['port_unit'], $alarm['port_identifier']);
 
             $text->newLine()->addText( static::getFixedChars("$no", 2) )
                 ->addText(' | ')->addText( static::getFixedChars($alarmDate, 16) );
