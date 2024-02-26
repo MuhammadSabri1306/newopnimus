@@ -2,10 +2,8 @@
 namespace App\Libraries\HttpClient;
 
 use GuzzleHttp\Client;
-use GuzzleHttp\Psr7;
-use GuzzleHttp\Exception\ClientException as HttpClientException;
+use GuzzleHttp\Exception\RequestException;
 use App\Libraries\HttpClient\Exceptions\ClientException;
-use App\Libraries\HttpClient\Exceptions\RequestException;
 use App\Libraries\HttpClient\ResponseData;
 
 class RestClient
@@ -57,10 +55,8 @@ class RestClient
             $this->responseData->set($data);
             return $this->responseData;
         
-        } catch (HttpClientException $err) {
+        } catch (RequestException $err) {
             throw new ClientException($err);
-        } catch (\Throwable $err) {
-            throw new RequestException($err->getMessage());
         }
     }
 }

@@ -3,7 +3,6 @@
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
 
 $newosaseApi = new NewosaseApiV2();
 $newosaseApi->setupAuth();

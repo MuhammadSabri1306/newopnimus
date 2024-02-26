@@ -2,7 +2,6 @@
 require __DIR__.'/../app/bootstrap.php';
 
 use App\ApiRequest\NewosaseApiV2;
-use App\Libraries\HttpClient\Exceptions\RequestException;
 
 $locationId = '1259';
 

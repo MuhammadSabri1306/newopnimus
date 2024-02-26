@@ -3,7 +3,6 @@ namespace App\ApiRequest;
 
 use App\Libraries\HttpClient\RestClient;
 use App\Libraries\HttpClient\Exceptions\ClientException;
-use App\Libraries\HttpClient\Exceptions\RequestException;
 use App\Libraries\HttpClient\ResponseDataValidation;
 use App\Config\AppConfig;
 

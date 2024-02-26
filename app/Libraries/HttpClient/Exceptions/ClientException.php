@@ -1,16 +1,20 @@
 <?php
 namespace App\Libraries\HttpClient\Exceptions;
 
-use GuzzleHttp\Exception\ClientException as HttpClientException;
+use GuzzleHttp\Exception\RequestException;
 
 class ClientException extends \Exception
 {
     protected $request;
     protected $response;
 
-    public function __construct(HttpClientException $previous = null) {
+    public function __construct(RequestException $previous = null) {
         parent::__construct($previous->getMessage(), $previous->getCode(), $previous);
-        $this->response = json_decode($previous->getResponse()->getBody()->getContents());
+        if(!$previous->hasResponse()) {
+            $this->response = null;
+        } else {
+            $this->response = json_decode($previous->getResponse()->getBody()->getContents());
+        }
         
         $request = $previous->getRequest();
 

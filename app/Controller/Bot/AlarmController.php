@@ -5,7 +5,6 @@ use App\Core\CallbackData;
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
-use MuhammadSabri1306\MyBotLogger\Entities\ErrorWithDataLogger;
 use App\Controller\BotController;
 use App\Model\Regional;
 use App\Model\Witel;
