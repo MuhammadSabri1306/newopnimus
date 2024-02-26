@@ -110,14 +110,14 @@ try {
 
     $tTresholds = [];
     $bTresholds = [];
-    foreach($rules as $rule) {
+    foreach($rules as $rulesItem) {
 
-        if(preg_match('/val\s*<\s*(\d+)/', $rule, $matches)) {
+        if(preg_match('/val\s*<\s*(\d+)/', $rulesItem->rule, $matches)) {
             $tresholdVal = ( $matches[1] === (int) $matches[1] ) ? (int) $matches[1] : (double) $matches[1];
             array_push($tTresholds, $tresholdVal);
         }
 
-        if(preg_match('/val\s*>\s*(\d+)/', $rule, $matches)) {
+        if(preg_match('/val\s*>\s*(\d+)/', $rulesItem->rule, $matches)) {
             $tresholdVal = ( $matches[1] === (int) $matches[1] ) ? (int) $matches[1] : (double) $matches[1];
             array_push($bTresholds, $tresholdVal);
         }
