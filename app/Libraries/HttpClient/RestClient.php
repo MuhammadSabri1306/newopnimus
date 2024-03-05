@@ -37,7 +37,7 @@ class RestClient
     protected function getBaseUrl()
     {
         if(empty($this->path)) {
-            return $this->option['base_uri'];
+            return isset($this->option['base_uri']) ? $this->option['base_uri'] : '';
         }
         return $this->option['base_uri'].'/'.$this->path;
     }

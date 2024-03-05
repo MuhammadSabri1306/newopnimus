@@ -81,7 +81,7 @@ class ResponseData implements ResponseDataValidation
         }
 
         if($searchPattern === self::EXPECT_BOOLEAN) {
-            if(!is_bool($data) || ( $data !== '0' && $data !== '1' && $data !== 'false' && $data !== 'true' )) {
+            if(!is_bool($data) && $data !== '0' && $data !== '1' && $data !== 'false' && $data !== 'true') {
                 throw new DataNotFoundException('searched response data expected as boolean');
             }
         }
