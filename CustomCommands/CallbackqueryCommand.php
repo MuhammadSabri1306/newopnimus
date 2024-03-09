@@ -16,6 +16,7 @@ use App\Controller\Bot\RtuController;
 use App\Controller\Bot\AlertController;
 use App\Controller\Bot\StatisticController;
 use App\Controller\Bot\ManagementUserController;
+use App\Controller\Bot\CronController;
 use App\Controller\Bot\TestController;
 
 useHelper('telegram-callback');
@@ -89,6 +90,7 @@ class CallbackqueryCommand extends SystemCommand
                 RtuController::class,
                 PicController::class,
                 ManagementUserController::class,
+                CronController::class,
             ];
 
             foreach($controllers as $controller) {

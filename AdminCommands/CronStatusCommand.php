@@ -43,11 +43,6 @@ class CronStatusCommand extends UserCommand
     public function execute(): ServerResponse
     {
         CronController::$command = $this;
-
-        if(!CronController::isSuperAdmin()) {
-            return Request::emptyResponse();
-        }
-
-        return CronController::nodeCronStatus();
+        return CronController::cronStatus();
     }
 }

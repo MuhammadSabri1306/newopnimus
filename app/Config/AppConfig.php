@@ -17,6 +17,7 @@ class AppConfig
     public static $OSASEAPI_DBTABLE = null;
 
     public static $DENSUS_HOST_CLIENT_CREDENTIAL = null;
+    public static $DENSUS_HOST_STATUS_URL = null;
 
     protected static $ERR_EXCLUSIONS = [];
 
@@ -48,6 +49,7 @@ class AppConfig
         static::$OSASEAPI_DBTABLE = Helper::env('OSASEAPI_MYSQL_TABLE');
 
         static::$DENSUS_HOST_CLIENT_CREDENTIAL = '$2y$10$SghyVeUtHk3HU/xtg/bUFOZQBaRsvhiqjatZVVlb.SxrdqLmJNxiu';
+        static::$DENSUS_HOST_STATUS_URL = 'https://densus.telkom.co.id/crons/node-crons/src/opnimus-alerting-port-v5/api/status.php';
 
         static::$ERR_EXCLUSIONS = [
             'error' => [],
