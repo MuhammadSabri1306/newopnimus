@@ -89,4 +89,11 @@ class TelegramAdmin extends Model
             return $id ? TelegramAdmin::find($id) : null;
         });
     }
+
+    public static function delete($id)
+    {
+        return static::query(function ($db, $table) use ($id) {
+            return $db->delete($table, 'id=%i', $id);
+        });
+    }
 }

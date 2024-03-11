@@ -11,6 +11,7 @@ use App\Core\RequestData;
 use App\Core\Conversation;
 use App\Core\Controller;
 use App\Core\Exception\TelegramResponseException;
+use App\Core\CallbackAnswer;
 use App\Model\TelegramUser;
 
 class BotController extends Controller
@@ -251,6 +252,11 @@ class BotController extends Controller
         }
 
         return $request;
+    }
+
+    public static function createCallbackAnswer(string $text = null, bool $showAlert = null, int $cacheTime = null)
+    {
+        return new CallbackAnswer($text, $showAlert, $cacheTime);
     }
 
     public static function sendErrorMessage()

@@ -76,6 +76,7 @@ class GenericmessageCommand extends SystemCommand
             'alert_exclusion' => 'request_alert',
             'admin_rm_user' => 'user_management',
             'admin_rm_pic' => 'user_management',
+            'admin_rm_admin' => 'user_management',
         ];
 
         foreach($conversationList as $conversationName => $command) {

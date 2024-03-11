@@ -6,6 +6,7 @@ use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Conversation;
 
 use App\Core\CallbackData;
+use App\Core\CallbackAnswer;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\AdminController;
@@ -95,7 +96,10 @@ class CallbackqueryCommand extends SystemCommand
 
             foreach($controllers as $controller) {
                 if($methodName = $decCallbackData->isCallbackOf($controller::$callbacks)) {
-                    $controller::$methodName($decCallbackData->value, $callbackQuery);
+                    $response = $controller::$methodName($decCallbackData->value, $callbackQuery);
+                    if($response instanceof CallbackAnswer) {
+                        return $response->answer($callbackQuery);
+                    }
                     return $callbackQuery->answer();
                 }
             }
@@ -112,7 +116,10 @@ class CallbackqueryCommand extends SystemCommand
         ];
 
         foreach($controllers as $controller) {
-            if(BotController::catchCallback($controller, $callbackData, $callbackQuery)) {
+            if($response = BotController::catchCallback($controller, $callbackData, $callbackQuery)) {
+                if($response instanceof CallbackAnswer) {
+                    return $response->answer($callbackQuery);
+                }
                 return $callbackQuery->answer();
             }
         }

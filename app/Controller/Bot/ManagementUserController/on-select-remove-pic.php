@@ -18,7 +18,7 @@ if(!$admin) return static::sendEmptyResponse();
 if($admin['level'] == 'nasional') {
 
     $request = static::request('Area/SelectRegional');
-    $request->params->chatId = $chatId;
+    $request->setTarget( static::getRequestTarget() );
 
     $regionalOptions = [
         [ 'id' => 'n', 'name' => 'NASIONAL' ],
