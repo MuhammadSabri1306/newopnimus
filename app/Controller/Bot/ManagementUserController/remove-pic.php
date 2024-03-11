@@ -5,8 +5,9 @@ use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
 use App\Model\Regional;
 use App\Model\Witel;
+use App\Model\PicLocation;
 
-$conversation = static::getRmUserConversation();
+$conversation = static::getRmPicConversation();
 $conversation->done();
 
 $userIds = $conversation->userIds;
@@ -27,21 +28,19 @@ if($selectedNo < 0 && $selectedNo > $maxUsersNo) {
     $request->setTarget( static::getRequestTarget() );
     $request->setText(function($text) use ($maxUsersNo) {
         return $text->addText("Input hanya dapat menerima angka dari 1 - $maxUsersNo.")->newLine()
-            ->addItalic('\* Silahkan ketik nomor user yang akan dihapus.');
+            ->addItalic('\* Silahkan ketik nomor user PIC yang akan di-reset.');
     });
     return $request->send();
 }
 
-$request = static::request('ManagementUser/SelectRemoveUserApproval');
+$request = static::request('ManagementUser/SelectRemovePicApproval');
 $request->setTarget( static::getRequestTarget() );
 
 $selectedUserId = $userIds[ $selectedNo - 1 ];
 $telgUser = TelegramUser::find($selectedUserId);
 $request->setTelegramUser($telgUser);
-
-if($telgUser['type'] == 'private') {
-    $request->setTelegramPersonalUser( TelegramPersonalUser::findByUserId($selectedUserId) );
-}
+$request->setTelegramPersonalUser( TelegramPersonalUser::findByUserId($selectedUserId) );
+$request->setLocations( PicLocation::getByUser($selectedUserId) );
 
 if($telgUser['level'] != 'nasional') {
     $request->setRegional( Regional::find($telgUser['regional_id']) );
@@ -51,7 +50,7 @@ if($telgUser['level'] == 'witel') {
     $request->setWitel( Witel::find($telgUser['witel_id']) );
 }
 
-$callbackData = new CallbackData('mngusr.rmuserappr');
+$callbackData = new CallbackData('mngusr.rmpicappr');
 $request->setInKeyboard(function($inKeyboard) use ($callbackData, $selectedUserId) {
     $inKeyboard['approve']['callback_data'] = $callbackData->createEncodedData($selectedUserId);
     $inKeyboard['reject']['callback_data'] = $callbackData->createEncodedData(0);

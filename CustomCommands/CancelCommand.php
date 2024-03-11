@@ -6,6 +6,7 @@ use Longman\TelegramBot\Entities\Keyboard;
 use Longman\TelegramBot\Entities\ServerResponse;
 use Longman\TelegramBot\Exception\TelegramException;
 
+use App\Core\Conversation;
 use App\Controller\BotController;
 use App\Controller\Bot\UserController;
 use App\Controller\Bot\PicController;
@@ -49,6 +50,18 @@ class CancelCommand extends UserCommand
 
         UserController::whenRegistCancel();
         PicController::whenRegistCancel();
+
+        $chatId = static::getMessage()->getChat()->getId();
+        $userId = static::getMessage()->getFrom()->getId();
+        $canceledConvIds = Conversation::clearAll($userId, $chatId);
+        if(count($canceledConvIds)) {
+
+            $request = BotController::request('TextDefault');
+            $request->setTarget( BotController::getRequestTarget() );
+            $request->setText('Percakapan dibatalkan.');
+            return $request->send();
+
+        }
 
         return BotController::sendEmptyResponse();
     }

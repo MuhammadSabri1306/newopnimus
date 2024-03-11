@@ -6,7 +6,7 @@ use App\Config\AppConfig;
 class Conversation
 {
     private $db;
-    private $tableName = 'conversation';
+    public const TABLE_NAME = 'conversation';
 
     private $name;
     private $userId;
@@ -28,9 +28,10 @@ class Conversation
         $dbConfig = AppConfig::$DATABASE->default;
         $this->db = new \MeekroDB($dbConfig->host, $dbConfig->username, $dbConfig->password, $dbConfig->name);
 
-        $defaultCall = function($db, $params) {
+        $tableName = self::TABLE_NAME;
+        $defaultCall = function($db, $params) use ($tableName) {
             return $db->queryFirstRow(
-                "SELECT * FROM $this->tableName WHERE status='active' AND name=%s_name AND chat_id=%i_chatid",
+                "SELECT * FROM $tableName WHERE status='active' AND name=%s_name AND chat_id=%i_chatid",
                 [ 'name' => $params['name'], 'chatid' => $params['chatId'] ]
             );
         };
@@ -51,7 +52,7 @@ class Conversation
     public function toJson()
     {
         $data = [
-            'tableName' => $this->tableName,
+            'tableName' => self::TABLE_NAME,
             'name' => $this->name,
             'userId' => $this->userId,
             'chatId' => $this->chatId,
@@ -96,7 +97,7 @@ class Conversation
 
     public function setUserId($userId)
     {
-        $conversation = $this->db->update($this->tableName, [ 'user_id' => $userId ], "id=%i", $this->id);
+        $conversation = $this->db->update(self::TABLE_NAME, [ 'user_id' => $userId ], "id=%i", $this->id);
         $this->userId = $userId;
     }
 
@@ -108,7 +109,7 @@ class Conversation
     public function create()
     {
         $currDatetime = date('Y-m-d H:i:s');
-        $conversation = $this->db->insert($this->tableName, [
+        $conversation = $this->db->insert(self::TABLE_NAME, [
             'user_id' => $this->userId,
             'chat_id' => $this->chatId,
             'name' => $this->name,
@@ -130,7 +131,7 @@ class Conversation
             return null;
         }
 
-        $this->db->update($this->tableName, [
+        $this->db->update(self::TABLE_NAME, [
             'step' => $this->step,
             'state' => json_encode($this->state),
             'updated_at' => date('Y-m-d H:i:s')
@@ -143,7 +144,7 @@ class Conversation
             return null;
         }
 
-        $this->db->update($this->tableName, [
+        $this->db->update(self::TABLE_NAME, [
             'step' => $this->step,
             'state' => json_encode($this->state),
             'status' => 'cancel',
@@ -157,7 +158,7 @@ class Conversation
             return null;
         }
 
-        $this->db->update($this->tableName, [
+        $this->db->update(self::TABLE_NAME, [
             'step' => $this->step,
             'state' => json_encode($this->state),
             'status' => 'done',
@@ -195,5 +196,26 @@ class Conversation
             $conversation->create();
         }
         return $conversation;
+    }
+
+    public static function clearAll($userId, $chatId)
+    {
+        $dbConfig = AppConfig::$DATABASE->default;
+        $db = new \MeekroDB($dbConfig->host, $dbConfig->username, $dbConfig->password, $dbConfig->name);
+        $tableName = self::TABLE_NAME;
+
+        $activeConvs = $db->query(
+            "SELECT * FROM $tableName WHERE status='active' AND user_id=%i_userid AND chat_id=%i_chatid",
+            [ 'userid' => $userId, 'chatid' => $chatId ]
+        );
+
+        $convIds = array_map(fn($conv) => $conv['id'], $activeConvs);
+        if(count($convIds) < 1) return $convIds;
+
+        $db->update($tableName, [
+            'status' => 'cancel',
+            'updated_at' => date('Y-m-d H:i:s')
+        ], "id IN %li", $convIds);
+        return $convIds;
     }
 }

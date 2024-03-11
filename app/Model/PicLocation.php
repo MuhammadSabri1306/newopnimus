@@ -18,7 +18,7 @@ class PicLocation extends Model
             return $id ? PicLocation::find($id) : null;
         });
     }
-    
+
     public static function getByUser($userId)
     {
         return PicLocation::query(function ($db, $table) use ($userId) {
@@ -28,7 +28,17 @@ class PicLocation extends Model
             return $db->query($query, $userId);
         });
     }
-    
+
+    public static function getByUsers($userIds)
+    {
+        return PicLocation::query(function ($db, $table) use ($userIds) {
+            $locationTable = RtuLocation::$table;
+            $query = "SELECT $table.*, $locationTable.location_name, $locationTable.location_sname FROM $table ".
+                "LEFT JOIN $locationTable ON $locationTable.id=$table.location_id WHERE user_id IN %li";
+            return $db->query($query, $userIds);
+        });
+    }
+
     public static function find($id)
     {
         return PicLocation::query(function ($db, $table) use ($id) {
