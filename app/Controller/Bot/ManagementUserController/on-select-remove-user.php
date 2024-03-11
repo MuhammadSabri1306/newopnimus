@@ -76,6 +76,7 @@ if($response->isOk()) {
     $conversation = static::getRmUserConversation();
     if(!$conversation->isExists()) $conversation->create();
     $conversation->users = $users;
+    $conversation->userIds = array_map(fn($telgUser) => $telgUser['id'], $users);
     $conversation->commit();
 }
 
