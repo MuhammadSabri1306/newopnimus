@@ -2,10 +2,12 @@
 namespace App\Controller;
 
 use Longman\TelegramBot\Commands\Command;
-use Longman\TelegramBot\Entities\ServerResponse;
-use Longman\TelegramBot\Entities\Message;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\ChatAction;
+use Longman\TelegramBot\Entities\ServerResponse;
+use Longman\TelegramBot\Entities\Message;
+use Longman\TelegramBot\Entities\Keyboard;
+
 use MuhammadSabri1306\MyBotLogger\Logger;
 use App\Core\RequestData;
 use App\Core\Conversation;
@@ -85,10 +87,17 @@ class BotController extends Controller
 
             $reqData = new RequestData();
             $reqData->chatId = $chat->getId();
+
             if($chat->isSuperGroup()) {
                 $messageThreadId = $message->getMessageThreadId();
                 if($messageThreadId) $reqData->messageThreadId = $messageThreadId;
             }
+
+            $reqData->replyMarkup = Keyboard::remove([ 'selective' => true ]);
+            if($chat->isGroupChat() || $chat->isSuperGroup()) {
+                $reqData->replyMarkup = Keyboard::forceReply([ 'selective' => true ]);
+            }
+
             static::$reqTarget = $reqData->build();
 
         }

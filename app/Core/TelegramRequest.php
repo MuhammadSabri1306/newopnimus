@@ -37,6 +37,9 @@ abstract class TelegramRequest
         if(is_array($target)) {
             if(isset($target['chat_id'])) $this->params->chatId = $target['chat_id'];
             if(isset($target['message_thread_id'])) $this->params->messageThreadId = $target['message_thread_id'];
+            if(!$this->params->replyMarkup && isset($target['reply_markup'])) {
+                $this->params->replyMarkup = $target['reply_markup'];
+            }
         }
     }
 
