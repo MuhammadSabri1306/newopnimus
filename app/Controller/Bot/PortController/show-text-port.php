@@ -46,21 +46,12 @@ try {
 } catch(ClientException $err) {
 
     $errResponse = $err->getResponse();
-    if($errResponse && $errResponse->code == 404) {
-
-        $request = static::request('TextDefault');
-        $request->setTarget( static::getRequestTarget() );
-        $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
-        $response = $request->send();
-
-    } else {
+    if(!$errResponse || $errResponse->code != 404) {
+        static::logError(new HttpClientLogger($err));
         $request = static::request('Error/TextErrorServer');
         $request->setTarget( static::getRequestTarget() );
-        $response = $request->send();
+        return $request->send();
     }
-
-    static::logError( new HttpClientLogger($err) );
-    return $response;
 
 }
 

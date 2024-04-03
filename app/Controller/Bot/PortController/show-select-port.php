@@ -4,6 +4,7 @@ use Longman\TelegramBot\Entities\InlineKeyboard;
 use App\Core\CallbackData;
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
+use App\Libraries\HttpClient\Exceptions\DataNotFoundException;
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
 
 $newosaseApi = new NewosaseApiV2();
@@ -19,7 +20,7 @@ $ports = [];
 try {
 
     $osaseData = $newosaseApi->sendRequest('GET', $requestUrlPath);
-    $osasePortData = $osaseData->get('result.payload');
+    $osasePortData = $osaseData->find('result.payload', NewosaseApiV2::EXPECT_ARRAY_NOT_EMPTY);
     $ports = array_filter($osasePortData, function($port) {
         return $port->no_port != 'many';
     });
@@ -27,23 +28,14 @@ try {
 } catch(ClientException $err) {
 
     $errResponse = $err->getResponse();
-    if($errResponse && $errResponse->code == 404) {
-
-        $request = static::request('TextDefault');
-        $request->setTarget( static::getRequestTarget() );
-        $request->setText(fn($text) => $text->addText('Data Port tidak dapat ditemukan.'));
-        $response = $request->send();
-
-    } else {
+    if(!$errResponse || $errResponse->code != 404) {
+        static::logError(new HttpClientLogger($err));
         $request = static::request('Error/TextErrorServer');
         $request->setTarget( static::getRequestTarget() );
-        $response = $request->send();
+        return $request->send();
     }
 
-    static::logError(new HttpClientLogger($err));
-    return $response;
-
-}
+} catch(DataNotFoundException $err) {}
 
 if(count($ports) < 1) {
 

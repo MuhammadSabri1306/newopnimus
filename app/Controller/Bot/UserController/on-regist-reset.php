@@ -4,6 +4,7 @@ use App\Model\TelegramPersonalUser;
 use App\Model\PicLocation;
 use App\Model\AlertUsers;
 use App\Model\TelegramUser;
+use App\Model\Registration;
 
 $message = static::getMessage();
 $messageId = $message->getMessageId();
@@ -25,6 +26,9 @@ TelegramPersonalUser::deleteByUserId($telgUser['id']);
 PicLocation::deleteByUserId($telgUser['id']);
 AlertUsers::deleteByUserId($telgUser['id']);
 TelegramUser::delete($telgUser['id']);
+Registration::query(function ($db, $table) use ($chatId) {
+    return $db->delete($table, [ 'chat_id' => $chatId, 'status' => 'unprocessed' ]);
+});
 
 $request = static::request('TextDefault');
 $request->setTarget( static::getRequestTarget() );

@@ -7,6 +7,7 @@ use App\Model\Witel;
 use App\Model\TelegramUser;
 use App\Model\TelegramPersonalUser;
 use App\Model\AlertUsers;
+use App\Model\TelegramAlertException;
 use App\Controller\Bot\UserController;
 
 $message = $callbackQuery->getMessage();
@@ -61,7 +62,9 @@ if($regist['status'] != 'unprocessed') {
 
 }
 
+TelegramAlertException::deleteByChatId($chatId);
 $admin = TelegramAdmin::findByChatId($chatId);
+
 if($callbackAnswer != 'approve') {
     
     Registration::update($regist['id'], [ 'status' => 'rejected' ], $admin['id']);

@@ -6,6 +6,7 @@ use App\Model\PicLocation;
 use App\Model\AlertUsers;
 use App\Model\Regional;
 use App\Model\Witel;
+use App\Model\Registration;
 
 $message = static::getMessage();
 $messageId = $message->getMessageId();
@@ -28,6 +29,9 @@ TelegramPersonalUser::deleteByUserId($telgUserId);
 PicLocation::deleteByUserId($telgUserId);
 AlertUsers::deleteByUserId($telgUserId);
 TelegramUser::delete($telgUserId);
+Registration::query(function ($db, $table) use ($chatId) {
+    return $db->delete($table, [ 'chat_id' => $chatId, 'status' => 'unprocessed' ]);
+});
 
 $request = static::request('TextDefault');
 $request->setTarget( static::getRequestTarget() );
