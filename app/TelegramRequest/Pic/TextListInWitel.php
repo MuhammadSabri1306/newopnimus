@@ -4,7 +4,7 @@ namespace App\TelegramRequest\Pic;
 use Longman\TelegramBot\Request;
 use Longman\TelegramBot\Entities\ServerResponse;
 use App\Core\TelegramRequest;
-use App\Core\TelegramText;
+use App\Libraries\TelegramText\MarkdownText;
 use App\Core\TelegramRequest\TextList;
 use App\Core\TelegramRequest\PortFormat;
 
@@ -25,27 +25,30 @@ class TextListInWitel extends TelegramRequest
         $locs = $this->getData('locs', null);
         $currDate = date('Y-m-d H:i');
 
-        if(!$witel || !$locs) return TelegramText::create();
-        $text = TelegramText::create()
+        if(!$witel || !$locs) return MarkdownText::create();
+        $text = MarkdownText::create()
             ->addBold('List PIC '. $witel['witel_name'])->newLine(2)
             ->addItalic('posisi '.$currDate)->newLine();
         
+        $maxLineChars = 66;
         for($i=0; $i<count($locs); $i++) {
-            $text->newLine()
-                ->addText(strval($i + 1).'. '.$locs[$i]['sname'].' - ');
+            $locText = strval($i + 1).'. '.$locs[$i]['sname'].' - ';
+            $text->newLine()->addText($locText);
 
             if(count($locs[$i]['pics']) < 1) {
 
                 $text->addBold('KOSONG');
 
             } else {
-
                 foreach($locs[$i]['pics'] as $picIndex => $pic) {
-                    if($picIndex > 0) $text->addText(', ');
-                    $picName = $pic['full_name'] ?? implode(' ', array_filter([ $pic['first_name'], $pic['last_name'] ]));
-                    $text->addMentionByName($pic['user_id'], $picName);
-                }
 
+                    if($picIndex > 0) $text->addText(', ');
+
+                    $picName = $pic['full_name'] ?? implode(' ', array_filter([ $pic['first_name'], $pic['last_name'] ]));
+                    // if()
+                    $text->addMention($pic['user_id'], $picName);
+
+                }
             }
         }
 
@@ -97,12 +100,9 @@ class TextListInWitel extends TelegramRequest
 
     public function send(): ServerResponse
     {
-        $text = $this->params->text;
-        $messageTextList = $this->splitText($text, 50);
-
-        if(count($messageTextList) < 2) {
+        if(!$this->getText()->isLengthExceeded()) {
             return Request::sendMessage($this->params->build());
         }
-        return $this->sendList($messageTextList);
+        return $this->sendList($this->getText()->split());
     }
 }
