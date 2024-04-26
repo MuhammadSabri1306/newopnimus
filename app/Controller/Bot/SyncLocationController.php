@@ -24,6 +24,12 @@ class SyncLocationController extends BotController
 
     public static function sync()
     {
+        $request = static::request('TextDefault');
+        $request->setTarget( static::getRequestTarget() );
+        $request->setText('Fitur ini sudah tidak dapat digunakan lagi.');
+        return $request->send();
+        dd('TEST');
+
         $message = static::$command->getMessage();
         $chatId = $message->getChat()->getId();
         $messageText = strtolower(trim($message->getText(true)));
