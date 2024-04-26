@@ -33,7 +33,7 @@ if(!$rtuId && $rtuSname) {
         'isArea' => 'hide',
         'isChildren' => 'view',
         'level' => 4,
-        'location' => $rtuParams['location_id'],
+        'location' => $rtuParams['location_uuid'],
     ];
 
     $request = static::request('Action/Typing');
@@ -129,7 +129,7 @@ $request = static::request('CheckRtu/TextRtuDetail');
 $request->setTarget( static::getRequestTarget() );
 $request->setRegional( Regional::find($rtu['regional_id']) );
 $request->setWitel( Witel::find($rtu['witel_id']) );
-$request->setLocation( RtuLocation::find($rtu['location_id']) );
+$request->setLocation( RtuLocation::find($rtu['location_uuid']) );
 $request->setRtu( $rtuData );
 
 $response = $request->send();

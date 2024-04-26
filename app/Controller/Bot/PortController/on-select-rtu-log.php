@@ -12,7 +12,7 @@ $messageId = $message->getMessageId();
 static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
 if($rtu = RtuList::findBySname($rtuSname)) {
-    $loc = RtuLocation::find($rtu['location_id']);
+    $loc = RtuLocation::findByRtu($rtu['sname']);
     $witel = Witel::find($rtu['witel_id']);
 }
 

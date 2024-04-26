@@ -5,22 +5,32 @@ use App\Core\Model;
 use App\Model\Regional;
 use App\Model\Witel;
 use App\Model\Datel;
+use App\Model\RtuList;
 
 class RtuLocation extends Model
 {
     public static $table = 'rtu_location';
-    
+
     public static function getAll()
     {
         return RtuLocation::query(function ($db, $table) use ($userId) {
             return $db->query("SELECT * FROM $table");
         });
     }
-    
+
     public static function find($id)
     {
         return RtuLocation::query(function ($db, $table) use ($id) {
             return $db->queryFirstRow("SELECT * FROM $table WHERE id=%i", $id);
+        });
+    }
+
+    public static function findByRtu($rtuSname)
+    {
+        return RtuLocation::query(function ($db, $table) use ($rtuSname) {
+            $rtuTableName = RtuList::$table;
+            $query = "SELECT loc.* FROM $table AS loc JOIN $rtuTableName AS rtu ON rtu.location_uuid=loc.uuid WHERE rtu.sname=%s";
+            return $db->queryFirstRow($query, $rtuSname);
         });
     }
 

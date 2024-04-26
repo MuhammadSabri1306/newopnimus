@@ -99,7 +99,7 @@ class AlarmHistory extends Model
 
             $select = [
                 'alarm.*', 'rtu.name AS rtu_name',
-                'rtu.location_id', 'loc.location_name', 'loc.location_sname',
+                'rtu.location_uuid', 'loc.location_name', 'loc.location_sname',
                 'rtu.witel_id', 'wtl.witel_name', 'wtl.witel_code',
                 'rtu.regional_id', 'treg.name AS regional_name', 'treg.divre_code AS regional_code'
             ];
@@ -107,7 +107,7 @@ class AlarmHistory extends Model
             $querySelect = implode(', ', $select);
             $queryWhere = implode(' AND ', $where);
             $query = "SELECT $querySelect FROM $table AS alarm LEFT JOIN $tableRtu AS rtu ON rtu.sname=alarm.rtu_sname".
-                " LEFT JOIN $tableLoc AS loc ON loc.id=rtu.location_id LEFT JOIN $tableWtl AS wtl ON wtl.id=rtu.witel_id".
+                " LEFT JOIN $tableLoc AS loc ON loc.uuid=rtu.location_uuid LEFT JOIN $tableWtl AS wtl ON wtl.id=rtu.witel_id".
                 " LEFT JOIN $tableTreg AS treg ON treg.id=rtu.regional_id WHERE $queryWhere".
                 ' ORDER BY treg.name, wtl.witel_name, loc.location_sname, alarm.opened_at';
 
