@@ -27,6 +27,10 @@ try {
     \MuhammadSabri1306\MyBotLogger\Logger::$botUsername = \App\Config\BotConfig::$BOT_USERNAME;
     \MuhammadSabri1306\MyBotLogger\Logger::$chatId = \App\Config\AppConfig::$LOG_CHAT_ID;
 
+    if(isset($_GET['test']) && $_GET['test'] == 'hookurl') {
+        dd('Webhook url is accessable.');
+    }
+
     // $config = \App\Config\BotConfig::buildArray();
     $bot = new TelegramBot\TelegramBotManager\BotManager($config);
 
