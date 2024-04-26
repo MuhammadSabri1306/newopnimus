@@ -3,6 +3,7 @@
 use App\Core\CallbackData;
 use App\ApiRequest\NewosaseApiV2;
 use App\Libraries\HttpClient\Exceptions\ClientException;
+use App\Libraries\HttpClient\Exceptions\DataNotFoundException;
 use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
 
 if(!isset($locId)) {
@@ -32,7 +33,7 @@ $rtus = [];
 try {
 
     $osaseData = $newosaseApi->sendRequest('GET', '/parameter-service/mapview');
-    $rtuData = $osaseData->get('result.0.witel.0.rtu');
+    $rtuData = $osaseData->find('result.0.witel.0.rtu', NewosaseApiV2::EXPECT_ARRAY_NOT_EMPTY);
     $rtus = array_map(function($item) {
         return [ 'sname' => $item->rtu_sname, 'id' => $item->id_rtu ];
     }, $rtuData);
@@ -55,6 +56,13 @@ try {
 
     static::logError( new HttpClientLogger($err) );
     return $response;
+
+} catch(DataNotFoundException $err) {
+
+    $request = static::request('TextDefault');
+    $request->setTarget( static::getRequestTarget() );
+    $request->setText(fn($text) => $text->addText('Data RTU tidak dapat ditemukan.'));
+    return $request->send();
 
 }
 
