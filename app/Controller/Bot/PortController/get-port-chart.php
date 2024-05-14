@@ -214,6 +214,8 @@ $imgWidth = 300;
 $imgHeight = 200;
 
 $settings = [
+    'use_iconv' => false,
+
     'auto_fit' => true,
     'back_colour' => '#fff',
     'back_stroke_width' => 0,

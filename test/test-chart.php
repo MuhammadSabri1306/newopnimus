@@ -2,29 +2,16 @@
 require __DIR__.'/../app/bootstrap.php';
 
 use Goat1000\SVGGraph\SVGGraph;
-use App\ApiRequest\NewosaseApi;
+use MuhammadSabri1306\MyBotLogger\Entities\HttpClientLogger;
+use MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger;
+use App\Libraries\HttpClient\Exceptions\ClientException;
+use App\Libraries\HttpClient\Exceptions\DataNotFoundException;
+use App\ApiRequest\NewosaseApiV2;
+use App\Config\AppConfig;
 use App\Helper\Helper;
+use App\Controller\BotController;
 
-$newosaseApiParams = [
-    'searchRtuSname' => 'RTU00-D7-WTP',
-    'searchNoPort' => 'A-46'
-];
-
-$newosaseApi = new NewosaseApi();
-$newosaseApi->request['query'] = $newosaseApiParams;
-$fetchResponse = $newosaseApi->sendRequest('GET', '/dashboard-service/dashboard/rtu/port-sensors');
-
-if(!$fetchResponse || !$fetchResponse->result->payload) {
-    return null;
-}
-
-$ports = array_filter($fetchResponse->result->payload, fn($port) =>$port->no_port != 'many');
-if(count($ports) < 1) {
-    return [ 'port' => null ];
-}
-
-$data = [ 'port' => $ports[0] ];
-$portId = $data['port']->id;
+$portId = 'hkB6CmTwfIFcyT_Qe7HR';
 
 $currDateTime = new \DateTime('now', new \DateTimeZone('Asia/Jakarta'));
 $currDateTimeStr = $currDateTime->format('Y-m-d H:i:s');
@@ -33,45 +20,62 @@ $currTimestamp = $currDateTime->getTimestamp();
 $endTime = $currTimestamp * 1000;
 $startTime = ($currTimestamp - (48 * 3600)) * 1000;
 
-$newosaseApi = new NewosaseApi();
-$newosaseApi->setupAuth();
-$newosaseApi->request['query'] = [
+$newosasePoolingUrlPath = "/dashboard-service/operation/chart/pooling/$portId";
+$newosasePoolingUrlParams = [
     'start' => $startTime,
     'end' => $endTime,
     'timeframe' => 'hour',
     'is_formula' => 0
 ];
 
-$poolingData = $newosaseApi->sendRequest('GET', "/dashboard-service/operation/chart/pooling/$portId");
-if(!$poolingData) {
-    $fetchErr = $newosaseApi->getErrorMessages()->response;
-    $errMsg = isset($fetchErr->message) ? $fetchErr->message : '';
-    $errCode = isset($fetchErr->code) ? $fetchErr->code : '';
-    throw new \Error("Newosase API error with code:$errCode, message: $errMsg");
+$newosaseApi = new NewosaseApiV2();
+$newosaseApi->setupAuth();
+$newosaseApi->request['query'] = $newosasePoolingUrlParams;
+
+$poolingData = [];
+try {
+
+    $osaseData = $newosaseApi->sendRequest('GET', $newosasePoolingUrlPath);
+    $poolingData = $osaseData->find('result', NewosaseApiV2::EXPECT_ARRAY_NOT_EMPTY);
+
+} catch(ClientException $err) {
+    debugError($err);
+} catch(DataNotFoundException $err) {
+    debugError($err);
 }
 
+$newosaseTresholdUrlPath = "/dashboard-service/operation/port/treshold/$portId";
 $newosaseApi->request['query'] = [];
-$tresholdData = $newosaseApi->sendRequest('GET', "/dashboard-service/operation/port/treshold/$portId");
-if(!$tresholdData) {
-    $fetchErr = $newosaseApi->getErrorMessages()->response;
-    $errMsg = isset($fetchErr->message) ? $fetchErr->message : '';
-    $errCode = isset($fetchErr->code) ? $fetchErr->code : '';
-    throw new \Error("Newosase API error with code:$errCode, message: $errMsg");
-}
-
 $tresholdTop = null;
 $tresholdBottom = null;
+try {
 
-if($tresholdData->result->rules && count($tresholdData->result->rules) > 0) {
+    $osaseData = $newosaseApi->sendRequest('GET', $newosaseTresholdUrlPath);
+    $rules = $osaseData->find('result.rules', NewosaseApiV2::EXPECT_ARRAY_NOT_EMPTY);
 
-    $treshold = $tresholdData->result->rules[0];
-    $pattern = '/val\s*<\s*(\d+)\s*or\s*val\s*>\s*(\d+)/';
+    $tTresholds = [];
+    $bTresholds = [];
+    foreach($rules as $rulesItem) {
 
-    if(preg_match($pattern, $treshold->rule, $tresholdMatches)) {
-        $tresholdBottom = (int)$tresholdMatches[1];
-        $tresholdTop = (int)$tresholdMatches[2];
+        if(preg_match('/val\s*<\s*(\d+)/', $rulesItem->rule, $matches)) {
+            $tresholdVal = ( $matches[1] === (int) $matches[1] ) ? (int) $matches[1] : (double) $matches[1];
+            array_push($tTresholds, $tresholdVal);
+        }
+
+        if(preg_match('/val\s*>\s*(\d+)/', $rulesItem->rule, $matches)) {
+            $tresholdVal = ( $matches[1] === (int) $matches[1] ) ? (int) $matches[1] : (double) $matches[1];
+            array_push($bTresholds, $tresholdVal);
+        }
+
     }
     
+    if(!empty($tTresholds)) $tresholdTop = max($tTresholds);
+    if(!empty($bTresholds)) $tresholdBottom = min($bTresholds);
+
+} catch(ClientException $err) {
+    debugError($err);
+} catch(DataNotFoundException $err) {
+    debugError($err);
 }
 
 $dataMax = [ 'title' => 'Maximum', 'color' => '#ff4560', 'dash' => null, 'data' => [] ];
@@ -81,7 +85,7 @@ $dataLimitT = [ 'title' => 'Batas Atas', 'color' => '#008ffb', 'dash' => '5,3', 
 $dataLimitB = [ 'title' => 'Batas Bawah', 'color' => '#775dd0', 'dash' => '5,3', 'data' => [] ];
 
 $isDataEmpty = true;
-foreach($poolingData->result as $item) {
+foreach($poolingData as $item) {
 
     $itemDate = date('Y-m-d\TH:i', $item->timestamps / 1000);
 
@@ -103,7 +107,7 @@ foreach($poolingData->result as $item) {
 }
 
 if($isDataEmpty) {
-    return $data;
+    return $portChart;
 }
 
 $chartStartDate = date('Y-m-d\TH:i', $startTime / 1000);
@@ -119,10 +123,13 @@ if($tresholdBottom) {
     $dataLimitB['data'][$chartEndDate] = $tresholdBottom;
 }
 
-$isApplyLimit = count($dataLimitT['data']) > 0 && count($dataLimitB['data']) > 0;
 $chartData = [];
 
-if($isApplyLimit) array_push($chartData, $dataLimitT, $dataLimitB);
+$isApplyLimit = count($dataLimitT['data']) > 0 && count($dataLimitB['data']) > 0;
+if($isApplyLimit) {
+    array_push($chartData, $dataLimitT, $dataLimitB);
+}
+
 if(count($dataMax['data']) > 0) array_push($chartData, $dataMax);
 if(count($dataAvg['data']) > 0) array_push($chartData, $dataAvg);
 if(count($dataMin['data']) > 0) array_push($chartData, $dataMin);
@@ -147,12 +154,14 @@ list($minValue, $maxValue) = array_reduce($chartData, function($result, $item) {
 
 $vAxisBase = 20;
 $vAxisMin = floor($minValue / $vAxisBase) * $vAxisBase;
+if($vAxisMin <= $minValue) $vAxisMin = $minValue - $vAxisBase;
 $vAxisMax = ( ceil($maxValue) % $vAxisBase === 0 ) ? ceil($maxValue) : round(( $maxValue + $vAxisBase / 2 ) / $vAxisBase) * $vAxisBase;
 
 $imgWidth = 300;
 $imgHeight = 200;
 
 $settings = [
+    'use_iconv' => false,
     'auto_fit' => true,
     'back_colour' => '#fff',
     'back_stroke_width' => 0,
@@ -205,6 +214,15 @@ $settings = [
     'legend_entries' => array_map(fn($item) => $item['title'], $chartData)
 ];
 
+// dd_json([
+//     'settings' => $settings,
+//     'colours' => array_map(function($item) {
+//         $color = $item['color'];
+//         return [ "$color:0", "$color:0" ];
+//     }, $chartData),
+//     'data' => array_map(fn($item) => $item['data'], $chartData)
+// ]);
+
 $graph = new SVGGraph($imgWidth, $imgHeight, $settings);
 $graph->colours(array_map(function($item) {
     $color = $item['color'];
@@ -213,33 +231,4 @@ $graph->colours(array_map(function($item) {
 
 $graph->values(array_map(fn($item) => $item['data'], $chartData));
 $svgImg = $graph->fetch('MultiLineGraph');
-
-$svgFileName = "checkport_chart_port_$portId"."_$currTimestamp.svg";
-$svgFilePath = __DIR__.'/../../../../public/charts/'.$svgFileName;
-
-try {
-
-
-    $cmd = "node /var/www/html/newopnimus/app/CLI/svg-to-png charts/$svgFileName";
-    dd($cmd);
-    if(file_put_contents($svgFilePath, $svgImg)) {
-
-        $output = null;
-        if(exec($cmd, $output)) {
-            
-            $outputFile = pathinfo($svgFileName);
-            $pngFileName = $outputFile['filename'] . '.png';
-            $data['chart'] = Helper::env('PUBLIC_URL', '') . "/public/charts/$pngFileName";
-            dd($data);
-    
-        }
-        // dd($cmd);
-
-    }
-    // dd(file_put_contents($svgFilePath, $svgImg));
-
-} catch(\Throwable $err) {
-    \MuhammadSabri1306\MyBotLogger\Entities\ErrorLogger::catch($err);
-}
-
-dd($data);
+echo $svgImg;
