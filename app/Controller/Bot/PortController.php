@@ -20,6 +20,9 @@ class PortController extends BotController
         'portsts.type' => 'onSelectStatusType',
         'portstsa.reg' => 'onSelectRegionalStatusCatuan',
         'portstsa.wit' => 'onSelectWitelStatusCatuan',
+
+        'portpue.reg' => 'onSelectRegionalPue',
+        'portpue.wit' => 'onSelectWitelPue',
     ];
 
     public static function getCekPortAllConversation($isRequired = false, $chatId = null, $fromId = null)
@@ -59,6 +62,16 @@ class PortController extends BotController
     public static function checkLog()
     {
         return static::callModules('check-log');
+    }
+
+    public static function checkPue()
+    {
+        return static::callModules('check-pue');
+    }
+
+    public static function showTextPortPue($regionalId, $witelId = null)
+    {
+        return static::callModules('show-text-port-pue', compact('regionalId', 'witelId'));
     }
 
     public static function onSelectRegional($regionalId)
@@ -138,5 +151,15 @@ class PortController extends BotController
             'on-select-witel-status-catuan',
             compact('witelId', 'callbackQuery')
         );
+    }
+
+    public static function onSelectWitelPue($witelId)
+    {   
+        return static::callModules('on-select-witel-pue', compact('witelId'));
+    }
+
+    public static function onSelectRegionalPue($regionalId)
+    {   
+        return static::callModules('on-select-regional-pue', compact('regionalId'));
     }
 }
