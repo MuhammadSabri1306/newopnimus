@@ -7,10 +7,11 @@ use App\Core\TelegramRequest;
 use App\Core\TelegramText;
 use App\Core\TelegramRequest\TextList;
 use App\Core\TelegramRequest\PortFormat;
+use App\Core\TelegramRequest\PueRanges;
 
 class TextPortPueRegional extends TelegramRequest
 {
-    use TextList, PortFormat;
+    use TextList, PortFormat, PueRanges;
 
     public function __construct()
     {
@@ -47,12 +48,14 @@ class TextPortPueRegional extends TelegramRequest
                 ->startCode();
             foreach($ports as $rtuSname => $port) {
 
-                $portSeverity = $port->severity->name;
-                $portIcon = $this->getAlarmIcon($port->no_port, $port->port_name, $portSeverity);
+                $pueCategoryKey = $this->getPueCategory($port->value);
+                $pueCategory = strtoupper($pueCategoryKey);
+                $pueIcon = $this->getPueIconByCategory($pueCategoryKey);
                 $portValue = $this->toDefaultPortValueFormat($port->value, $port->units, $port->identifier);
+
                 $text->newLine()
                     ->addSpace()
-                    ->addText("$portIcon $rtuSname ($port->no_port) $port->description ($portValue) status $portSeverity");
+                    ->addText("$pueIcon $rtuSname $port->description ($portValue) status $pueCategory");
             
             }
             $text->endCode();

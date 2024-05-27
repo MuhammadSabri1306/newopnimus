@@ -11,8 +11,7 @@ $messageId = $message->getMessageId();
 
 static::request('Action/DeleteMessage', [ $messageId, $chatId ])->send();
 
-$telgUser = static::getUser();
-if(!$telgUser) {
+if(!static::getUser()) {
     $request = static::request('Error/TextUserUnidentified');
     $request->setTarget( static::getRequestTarget() );
     return $request->send();
@@ -21,8 +20,8 @@ if(!$telgUser) {
 $request = static::request('Area/SelectWitel');
 $request->setTarget( static::getRequestTarget() );
 
-$regional = Regional::find($telgUser['regional_id']);
-$witels = Witel::getNameOrdered($telgUser['regional_id']);
+$regional = Regional::find($regionalId);
+$witels = Witel::getNameOrdered($regionalId);
 $allWitelOption = [ 'id' => 'r'.$regional['id'], 'witel_name' => $regional['name'] ];
 $request->setWitels([ $allWitelOption, ...$witels ]);
 

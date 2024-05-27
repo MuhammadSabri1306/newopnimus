@@ -17,7 +17,7 @@ $newosaseApi->setupAuth();
 $requestUrlPath = '/dashboard-service/dashboard/rtu/port-sensors';
 
 $newosaseApi->request['query'] = [
-    'searchPortName' => 'pue',
+    'searchNoPort' => 'A-92',
     'regionalId' => $regionalId
 ];
 if($witelId) {
